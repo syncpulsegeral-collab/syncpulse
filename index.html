@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SyncPulse - O Coração do Teu ZimaOS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { background-color: #050a12; color: #cbd5e1; font-family: 'Inter', sans-serif; }
+        .gradient-text { background: linear-gradient(90deg, #00D1FF, #9D50BB); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .glass { background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
+    </style>
+</head>
+<body>
+
+    <!-- Hero Section -->
+    <header class="py-20 px-6 text-center">
+        <div class="max-w-4xl mx-auto">
+            <div class="w-32 h-32 mx-auto mb-8">
+                <!-- LOGO SVG -->
+                <svg viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#00D1FF"/><stop offset="100%" style="stop-color:#9D50BB"/></linearGradient>
+                    </defs>
+                    <rect x="40" y="40" width="432" height="432" rx="100" fill="#0F172A" stroke="url(#g)" stroke-width="4"/>
+                    <path d="M100 256H160L190 140L256 380L322 140L352 256H412" stroke="url(#g)" stroke-width="25" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </div>
+            <h1 class="text-5xl font-black mb-4 uppercase tracking-tighter">Sync<span class="gradient-text">Pulse</span></h1>
+            <p class="text-xl text-slate-400 mb-10">Sincronização Cloud em tempo real, desenhada exclusivamente para o <b>ZimaOS</b>.</p>
+            <div class="flex justify-center gap-4">
+                <a href="https://ko-fi.com/TEU_USER" class="bg-blue-600 hover:bg-blue-500 text-white px-8 py-4 rounded-full font-bold transition-all shadow-lg shadow-blue-500/20">Apoiar Projeto & Obter Licença</a>
+                <a href="#install" class="bg-slate-800 hover:bg-slate-700 text-white px-8 py-4 rounded-full font-bold transition-all">Ver Tutorial</a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Features -->
+    <section class="py-20 bg-slate-900/50">
+        <div class="max-w-6xl mx-auto px-6 grid md:grid-cols-3 gap-8">
+            <div class="glass p-8 rounded-3xl">
+                <i class="fas fa-bolt text-3xl text-cyan-400 mb-6"></i>
+                <h3 class="text-xl font-bold mb-2">Tempo Real</h3>
+                <p class="text-sm text-slate-400">Deteta alterações instantaneamente e sincroniza sem intervenção manual.</p>
+            </div>
+            <div class="glass p-8 rounded-3xl">
+                <i class="fas fa-cloud text-3xl text-purple-400 mb-6"></i>
+                <h3 class="text-xl font-bold mb-2">Multi-Cloud</h3>
+                <p class="text-sm text-slate-400">Suporte nativo para Google Drive, OneDrive, Mega, Dropbox e muito mais.</p>
+            </div>
+            <div class="glass p-8 rounded-3xl">
+                <i class="fas fa-shield-halved text-3xl text-blue-400 mb-6"></i>
+                <h3 class="text-xl font-bold mb-2">Privacidade Total</h3>
+                <p class="text-sm text-slate-400">As tuas chaves nunca saem do teu ZimaOS. Comunicação direta entre o teu hardware e a cloud.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Installation -->
+    <section id="install" class="py-20 px-6">
+        <div class="max-w-4xl mx-auto">
+            <h2 class="text-3xl font-black mb-8 text-center uppercase tracking-widest">Instalação <span class="text-blue-500">Express</span></h2>
+            <div class="bg-black p-6 rounded-2xl border border-slate-800 font-mono text-sm overflow-x-auto shadow-2xl">
+                <p class="text-slate-500 mb-4"># Copia este YAML para o Custom Install da tua App Store</p>
+                <pre class="text-blue-300">
+name: syncpulse-beta
+services:
+  syncpulse:
+    container_name: SyncPulse_Final
+    image: ghcr.io/syncpulsegeral-collab/syncpulse:beta-1.0
+    privileged: true
+    user: root
+    restart: always
+    environment:
+      - PYTHONUNBUFFERED=1
+      - TZ=Europe/Lisbon
+    ports:
+      - "8181:8181"
+    volumes:
+      - /DATA/AppData/SyncPulse/config:/config
+      - /DATA/AppData/SyncPulse/app:/app
+      - /DATA/AppData/SyncPulse/www:/www
+      - /mnt:/mnt
+      - /etc/machine-id:/etc/machine-id:ro</pre>
+            </div>
+        </div>
+    </section>
+
+    <footer class="py-10 text-center text-slate-500 text-xs">
+        <p>SyncPulse &copy; 2026 - Desenvolvido para a comunidade IceWhale.</p>
+    </footer>
+
+</body>
+</html>
