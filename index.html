@@ -3,18 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SyncPulse - Sincronização Cloud para ZimaOS</title>
+    <title>SyncPulse - Sincronização Cloud Profissional</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap" rel="stylesheet">
     <style>
         body { background-color: #050a12; color: #cbd5e1; font-family: 'Inter', sans-serif; scroll-behavior: smooth; }
         .gradient-text { background: linear-gradient(90deg, #00D1FF, #9D50BB); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         .glass { background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
-        .btn-kofi { background-color: #29abe0; transition: all 0.3s; }
-        .btn-kofi:hover { background-color: #2492bc; transform: translateY(-2px); box-shadow: 0 10px 20px -5px rgba(41, 171, 224, 0.4); }
-        .screen-card { transition: all 0.4s; border: 1px solid #1e293b; }
-        .screen-card:hover { border-color: #3b82f6; transform: scale(1.02); }
+        .tier-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); border: 1px solid #1e293b; position: relative; overflow: hidden; }
+        .tier-card:hover { transform: translateY(-10px); border-color: #3b82f6; box-shadow: 0 20px 40px -15px rgba(59, 130, 246, 0.2); }
+        .roadmap-line { border-left: 2px dashed #1e293b; }
     </style>
 </head>
 <body>
@@ -23,146 +22,178 @@
     <nav class="fixed w-full z-50 glass py-4 px-6">
         <div class="max-w-6xl mx-auto flex justify-between items-center">
             <div class="flex items-center gap-3">
-                <div class="w-8 h-8">
-                    <svg viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <rect x="40" y="40" width="432" height="432" rx="100" fill="#0F172A"/>
-                        <path d="M100 256H160L190 140L256 380L322 140L352 256H412" stroke="#00D1FF" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                </div>
-                <span class="font-bold tracking-tighter text-xl">Sync<span class="text-cyan-400">Pulse</span></span>
+                <svg width="32" height="32" viewBox="0 0 512 512" fill="none">
+                    <rect x="40" y="40" width="432" height="432" rx="100" fill="#0F172A"/>
+                    <path d="M100 256H160L190 140L256 380L322 140L352 256H412" stroke="#00D1FF" stroke-width="40" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span class="font-black tracking-tighter text-2xl uppercase">Sync<span class="text-cyan-400">Pulse</span></span>
             </div>
-            <div class="hidden md:flex gap-8 text-sm font-medium">
-                <a href="#features" class="hover:text-cyan-400 transition">Funcionalidades</a>
-                <a href="#screens" class="hover:text-cyan-400 transition">Screenshots</a>
-                <a href="#install" class="hover:text-cyan-400 transition">Instalação</a>
+            <div class="hidden md:flex gap-8 text-xs font-bold uppercase tracking-widest">
+                <a href="#tiers" class="hover:text-cyan-400 transition">Planos</a>
+                <a href="#roadmap" class="hover:text-cyan-400 transition">Roadmap</a>
+                <a href="#auth" class="hover:text-cyan-400 transition">Gestão de Conta</a>
             </div>
-            <a href="https://ko-fi.com/TEU_USER" target="_blank" class="btn-kofi text-white px-5 py-2 rounded-full text-sm font-bold flex items-center gap-2">
-                <i class="fas fa-heart"></i> Apoiar
+            <a href="https://ko-fi.com/TEU_USER" target="_blank" class="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-full text-xs font-black uppercase tracking-widest transition-all">
+                Apoiar
             </a>
         </div>
     </nav>
 
     <!-- Hero Section -->
-    <header class="pt-40 pb-20 px-6 text-center">
+    <header class="pt-48 pb-20 px-6 text-center">
         <div class="max-w-4xl mx-auto">
-            <span class="bg-blue-500/10 text-blue-400 text-[10px] font-black uppercase tracking-[0.3em] px-4 py-2 rounded-full border border-blue-500/20">ZimaOS Edition</span>
-            <h1 class="text-6xl md:text-7xl font-black mt-8 mb-6 uppercase tracking-tighter">O Teu ZimaOS,<br><span class="gradient-text">Em Sincronia.</span></h1>
-            <p class="text-lg text-slate-400 mb-10 max-w-2xl mx-auto">SyncPulse é o motor de sincronização cloud definitivo. Bisync nativo, monitorização em tempo real e privacidade total.</p>
-            
-            <div class="flex flex-col md:flex-row justify-center gap-4">
-                <a href="https://ko-fi.com/TEU_USER/subscriptions" target="_blank" class="bg-white text-black px-10 py-4 rounded-full font-black transition-all hover:bg-cyan-400">OBTER LICENÇA PRO</a>
-                <a href="#install" class="bg-slate-800 text-white px-10 py-4 rounded-full font-black transition-all hover:bg-slate-700">GUIA DE INSTALAÇÃO</a>
+            <h1 class="text-6xl md:text-8xl font-black mb-6 uppercase tracking-tighter leading-none">Uma conta.<br><span class="gradient-text">Controlo Total.</span></h1>
+            <p class="text-lg text-slate-400 mb-12 max-w-2xl mx-auto leading-relaxed">Sincronização bidirecional em tempo real para o teu ZimaOS. Prepara-te para a expansão Desktop e Mobile com uma única licença centralizada.</p>
+            <div class="flex flex-wrap justify-center gap-4">
+                <a href="#tiers" class="bg-white text-black px-10 py-4 rounded-full font-black uppercase text-xs tracking-widest hover:bg-cyan-400 transition-all">Ver Planos de Acesso</a>
+                <a href="#install" class="bg-slate-800 text-white px-10 py-4 rounded-full font-black uppercase text-xs tracking-widest hover:bg-slate-700 transition-all">Documentação ZimaOS</a>
             </div>
         </div>
     </header>
 
-    <!-- Screenshots Section -->
-    <section id="screens" class="py-20 px-6">
+    <!-- Account Management Preview -->
+    <section id="auth" class="py-20 px-6 bg-blue-600/5 border-y border-blue-500/10">
+        <div class="max-w-6xl mx-auto grid md:grid-cols-2 gap-16 items-center">
+            <div>
+                <h2 class="text-3xl font-black mb-6 uppercase tracking-tight text-white">Painel de Controlo Centralizado</h2>
+                <p class="text-slate-400 mb-6">Esquece as configurações complexas. O SyncPulse utiliza um sistema de conta única baseado no teu e-mail de compra.</p>
+                <ul class="space-y-4">
+                    <li class="flex items-start gap-3 text-sm">
+                        <i class="fas fa-id-badge text-cyan-400 mt-1"></i>
+                        <span><b>Hardware ID:</b> Vinculação automática ao ID do teu ZimaOS.</span>
+                    </li>
+                    <li class="flex items-start gap-3 text-sm">
+                        <i class="fas fa-desktop text-cyan-400 mt-1"></i>
+                        <span><b>Gestão de Slots:</b> Adiciona ou remove dispositivos do teu plano através do portal web.</span>
+                    </li>
+                    <li class="flex items-start gap-3 text-sm">
+                        <i class="fas fa-shield-alt text-cyan-400 mt-1"></i>
+                        <span><b>Segurança:</b> Encriptação local de chaves. O servidor apenas valida o direito de uso.</span>
+                    </li>
+                </ul>
+            </div>
+            <div class="glass p-4 rounded-3xl border-slate-700 shadow-2xl">
+                <div class="bg-slate-900 rounded-2xl p-8 border border-slate-800">
+                    <div class="flex justify-between items-center mb-8">
+                        <span class="text-[10px] font-black uppercase tracking-widest text-slate-500">My SyncPulse Devices</span>
+                        <span class="bg-green-500/20 text-green-400 text-[10px] px-2 py-1 rounded">3/3 Slots Active</span>
+                    </div>
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between p-3 bg-slate-800/50 rounded-xl border border-white/5 text-xs">
+                            <div class="flex items-center gap-3"><i class="fas fa-server text-cyan-400"></i> ZimaBoard-867</div>
+                            <button class="text-red-400 font-bold hover:underline">Release</button>
+                        </div>
+                        <div class="flex items-center justify-between p-3 bg-slate-800/50 rounded-xl border border-white/5 text-xs">
+                            <div class="flex items-center gap-3"><i class="fas fa-laptop text-blue-400"></i> Windows-Work-PC</div>
+                            <button class="text-red-400 font-bold hover:underline">Release</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pricing Tiers -->
+    <section id="tiers" class="py-32 px-6">
         <div class="max-w-6xl mx-auto">
-            <h2 class="text-center text-sm font-black text-cyan-500 uppercase tracking-widest mb-12">Interface do Utilizador</h2>
-            <div class="grid md:grid-cols-2 gap-8">
-                <!-- Screen 1 -->
-                <div class="screen-card rounded-2xl overflow-hidden bg-slate-900 shadow-2xl">
-                    <img src="https://via.placeholder.com/1200x800/0f172a/3b82f6?text=Dashboard+Tarefas" alt="Dashboard SyncPulse" class="w-full">
-                    <div class="p-6">
-                        <h4 class="font-bold text-white">Dashboard Intuitivo</h4>
-                        <p class="text-xs text-slate-500 mt-1">Gere múltiplas nuvens e tarefas com feedback visual imediato.</p>
-                    </div>
-                </div>
-                <!-- Screen 2 -->
-                <div class="screen-card rounded-2xl overflow-hidden bg-slate-900 shadow-2xl">
-                    <img src="https://via.placeholder.com/1200x800/0f172a/9333ea?text=Fila+de+Ficheiros" alt="Fila de Ficheiros" class="w-full">
-                    <div class="p-6">
-                        <h4 class="font-bold text-white">Monitorização de Ficheiros</h4>
-                        <p class="text-xs text-slate-500 mt-1">Acompanha cada transferência e progresso em tempo real.</p>
-                    </div>
-                </div>
+            <div class="text-center mb-20">
+                <h2 class="text-4xl font-black mb-4 uppercase tracking-tighter">Escolhe o teu <span class="text-blue-500">Pulsar</span></h2>
+                <p class="text-slate-500">Apoia o projeto e desbloqueia o potencial máximo de sincronização.</p>
             </div>
-        </div>
-    </section>
-
-    <!-- Ko-fi Memberships / Support -->
-    <section class="py-20 bg-blue-600/5 border-y border-blue-500/10 px-6 text-center">
-        <div class="max-w-4xl mx-auto text-center">
-            <i class="fab fa-ko-fi text-5xl text-[#29abe0] mb-6"></i>
-            <h2 class="text-3xl font-black text-white mb-4">Apoia o Desenvolvimento</h2>
-            <p class="text-slate-400 mb-12">O SyncPulse é um projeto independente. O teu apoio ajuda a manter os servidores e a adicionar novas funcionalidades.</p>
             
-            <div class="grid md:grid-cols-3 gap-6">
+            <div class="grid md:grid-cols-3 gap-8">
                 <!-- Tier 1 -->
-                <div class="glass p-8 rounded-3xl border-slate-800">
-                    <h3 class="font-bold text-white uppercase text-xs tracking-widest mb-2">Supporter</h3>
-                    <div class="text-3xl font-black text-white mb-6">2€ <span class="text-sm text-slate-500 font-normal">/mês</span></div>
-                    <ul class="text-left text-xs space-y-3 mb-8 text-slate-400">
-                        <li><i class="fas fa-check text-cyan-500 mr-2"></i> Crachá de Apoiante</li>
-                        <li><i class="fas fa-check text-cyan-500 mr-2"></i> Acesso antecipado</li>
+                <div class="tier-card glass p-10 rounded-[40px] flex flex-col">
+                    <h3 class="text-sm font-black uppercase tracking-[0.2em] text-slate-400 mb-4">Basic Pro</h3>
+                    <div class="text-5xl font-black mb-8">5€ <span class="text-sm text-slate-600 font-normal">/mês</span></div>
+                    <ul class="text-sm space-y-4 mb-12 flex-1">
+                        <li><i class="fas fa-check text-cyan-400 mr-2"></i> <b>1 Dispositivo Ativo</b></li>
+                        <li><i class="fas fa-check text-cyan-400 mr-2"></i> Painel de Controlo Web</li>
+                        <li><i class="fas fa-check text-cyan-400 mr-2"></i> Suporte Multi-plataforma</li>
+                        <li><i class="fas fa-check text-cyan-400 mr-2"></i> Atualizações Beta</li>
                     </ul>
-                    <a href="https://ko-fi.com/TEU_USER" class="block w-full py-3 rounded-xl border border-slate-700 font-bold hover:bg-slate-800 transition">Doar</a>
+                    <a href="https://ko-fi.com/TEU_USER" class="w-full py-4 bg-slate-800 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-slate-700 transition-all text-center">Subscrever</a>
                 </div>
-                <!-- Tier 2 (Popular) -->
-                <div class="glass p-8 rounded-3xl border-cyan-500/50 relative">
-                    <div class="absolute -top-3 left-1/2 -translate-x-1/2 bg-cyan-500 text-black text-[9px] font-black px-3 py-1 rounded-full uppercase">Mais Popular</div>
-                    <h3 class="font-bold text-white uppercase text-xs tracking-widest mb-2 font-bold">Pro License</h3>
-                    <div class="text-3xl font-black text-white mb-6">5€ <span class="text-sm text-slate-500 font-normal">/mês</span></div>
-                    <ul class="text-left text-xs space-y-3 mb-8">
-                        <li><i class="fas fa-check text-cyan-500 mr-2"></i> <b>Licença Full SyncPulse</b></li>
-                        <li><i class="fas fa-check text-cyan-500 mr-2"></i> Suporte Prioritário</li>
-                        <li><i class="fas fa-check text-cyan-500 mr-2"></i> Todas as Clouds</li>
+
+                <!-- Tier 2 - Popular -->
+                <div class="tier-card glass p-10 rounded-[40px] border-blue-500/50 flex flex-col bg-blue-500/5">
+                    <div class="absolute top-6 right-8 text-[9px] font-black bg-blue-500 text-white px-3 py-1 rounded-full uppercase">Popular</div>
+                    <h3 class="text-sm font-black uppercase tracking-[0.2em] text-blue-400 mb-4">Family / Multi</h3>
+                    <div class="text-5xl font-black mb-8">10€ <span class="text-sm text-slate-600 font-normal">/mês</span></div>
+                    <ul class="text-sm space-y-4 mb-12 flex-1 text-white">
+                        <li><i class="fas fa-check text-blue-400 mr-2"></i> <b>3 Dispositivos Ativos</b></li>
+                        <li><i class="fas fa-check text-blue-400 mr-2"></i> Painel de Controlo Web</li>
+                        <li><i class="fas fa-check text-blue-400 mr-2"></i> Suporte Multi-plataforma</li>
+                        <li><i class="fas fa-check text-blue-400 mr-2"></i> Suporte Prioritário</li>
                     </ul>
-                    <a href="https://ko-fi.com/TEU_USER" class="block w-full py-3 rounded-xl bg-cyan-500 text-black font-bold hover:bg-cyan-400 transition">Subscrever</a>
+                    <a href="https://ko-fi.com/TEU_USER" class="w-full py-4 bg-blue-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-blue-500 transition-all text-center">Subscrever</a>
                 </div>
+
                 <!-- Tier 3 -->
-                <div class="glass p-8 rounded-3xl border-slate-800">
-                    <h3 class="font-bold text-white uppercase text-xs tracking-widest mb-2 font-bold">Lifetime</h3>
-                    <div class="text-3xl font-black text-white mb-6">50€</div>
-                    <ul class="text-left text-xs space-y-3 mb-8 text-slate-400">
-                        <li><i class="fas fa-check text-cyan-500 mr-2"></i> Pagamento Único</li>
-                        <li><i class="fas fa-check text-cyan-500 mr-2"></i> Licença Vitalícia</li>
+                <div class="tier-card glass p-10 rounded-[40px] flex flex-col">
+                    <h3 class="text-sm font-black uppercase tracking-[0.2em] text-purple-400 mb-4">Power User</h3>
+                    <div class="text-5xl font-black mb-8">20€ <span class="text-sm text-slate-600 font-normal">/mês</span></div>
+                    <ul class="text-sm space-y-4 mb-12 flex-1">
+                        <li><i class="fas fa-check text-purple-400 mr-2"></i> <b>5 Dispositivos Ativos</b></li>
+                        <li><i class="fas fa-check text-purple-400 mr-2"></i> Painel de Controlo Web</li>
+                        <li><i class="fas fa-check text-purple-400 mr-2"></i> Suporte Multi-plataforma</li>
+                        <li><i class="fas fa-check text-purple-400 mr-2"></i> Acesso Beta VIP (Discord)</li>
                     </ul>
-                    <a href="https://ko-fi.com/TEU_USER" class="block w-full py-3 rounded-xl border border-slate-700 font-bold hover:bg-slate-800 transition">Comprar</a>
+                    <a href="https://ko-fi.com/TEU_USER" class="w-full py-4 bg-slate-800 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-slate-700 transition-all text-center">Subscrever</a>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Installation -->
-    <section id="install" class="py-20 px-6">
-        <div class="max-w-3xl mx-auto">
-            <h2 class="text-3xl font-black mb-8 text-center uppercase tracking-widest">Instalação</h2>
-            <div class="bg-black p-8 rounded-3xl border border-slate-800 font-mono text-sm shadow-2xl relative">
-                <div class="absolute top-4 right-6 flex gap-2">
-                    <div class="w-3 h-3 rounded-full bg-red-500/20"></div>
-                    <div class="w-3 h-3 rounded-full bg-yellow-500/20"></div>
-                    <div class="w-3 h-3 rounded-full bg-green-500/20"></div>
+    <!-- Roadmap Section -->
+    <section id="roadmap" class="py-20 px-6">
+        <div class="max-w-4xl mx-auto">
+            <h2 class="text-3xl font-black mb-12 text-center uppercase tracking-widest">Pulse <span class="text-cyan-400">Roadmap</span></h2>
+            <div class="space-y-12">
+                <!-- Step 1 -->
+                <div class="flex gap-6">
+                    <div class="flex flex-col items-center">
+                        <div class="w-10 h-10 rounded-full bg-cyan-500 flex items-center justify-center text-black font-bold shadow-[0_0_20px_rgba(6,182,212,0.5)]">1</div>
+                        <div class="flex-1 roadmap-line my-4"></div>
+                    </div>
+                    <div class="pb-8">
+                        <h4 class="font-black text-white uppercase text-sm mb-2">ZimaOS Stable (Agora)</h4>
+                        <p class="text-slate-400 text-sm italic">Sincronização bidirecional, suporte rclone completo e UI nativa.</p>
+                    </div>
                 </div>
-                <p class="text-slate-500 mb-4 italic"># No ZimaOS App Store > Custom Install > Import</p>
-                <pre class="text-cyan-400 leading-relaxed overflow-x-auto">
-name: syncpulse-beta
-services:
-  syncpulse:
-    container_name: SyncPulse_Final
-    image: ghcr.io/syncpulsegeral-collab/syncpulse:beta-1.0
-    privileged: true
-    user: root
-    restart: always
-    environment:
-      - PYTHONUNBUFFERED=1
-      - TZ=Europe/Lisbon
-    ports:
-      - "8181:8181"
-    volumes:
-      - /DATA/AppData/SyncPulse/config:/config
-      - /DATA/AppData/SyncPulse/app:/app
-      - /DATA/AppData/SyncPulse/www:/www
-      - /mnt:/mnt
-      - /etc/machine-id:/etc/machine-id:ro</pre>
+                <!-- Step 2 -->
+                <div class="flex gap-6">
+                    <div class="flex flex-col items-center">
+                        <div class="w-10 h-10 rounded-full border-2 border-slate-700 flex items-center justify-center text-slate-500 font-bold">2</div>
+                        <div class="flex-1 roadmap-line my-4"></div>
+                    </div>
+                    <div class="pb-8">
+                        <h4 class="font-black text-slate-500 uppercase text-sm mb-2">Desktop Client (Em Desenvolvimento)</h4>
+                        <p class="text-slate-500 text-sm">Aplicação nativa para Windows e macOS com integração no System Tray.</p>
+                    </div>
+                </div>
+                <!-- Step 3 -->
+                <div class="flex gap-6">
+                    <div class="flex flex-col items-center">
+                        <div class="w-10 h-10 rounded-full border-2 border-slate-700 flex items-center justify-center text-slate-500 font-bold">3</div>
+                    </div>
+                    <div class="pb-8">
+                        <h4 class="font-black text-slate-500 uppercase text-sm mb-2">Mobile Companion (Planeado)</h4>
+                        <p class="text-slate-500 text-sm">Monitorização de tarefas e gestão de ficheiros on-the-go via iOS e Android.</p>
+                    </div>
+                </div>
             </div>
         </div>
     </section>
 
+    <!-- Footer -->
     <footer class="py-20 text-center border-t border-slate-900">
-        <p class="text-slate-600 text-xs uppercase tracking-widest">SyncPulse &copy; 2026</p>
-        <p class="text-slate-700 text-[10px] mt-2">Desenvolvido com <i class="fas fa-heart text-red-900"></i> para a comunidade ZimaOS.</p>
+        <p class="text-slate-600 text-xs uppercase tracking-[0.5em] mb-4">SyncPulse Project 2026</p>
+        <div class="flex justify-center gap-6 text-slate-500 text-lg">
+            <a href="#" class="hover:text-white"><i class="fab fa-github"></i></a>
+            <a href="#" class="hover:text-[#29abe0]"><i class="fab fa-ko-fi"></i></a>
+            <a href="#" class="hover:text-blue-400"><i class="fab fa-discord"></i></a>
+        </div>
     </footer>
 
 </body>
