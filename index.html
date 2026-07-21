@@ -3,67 +3,140 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SyncPulse - O Coração do Teu ZimaOS</title>
+    <title>SyncPulse - Sincronização Cloud para ZimaOS</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
     <style>
-        body { background-color: #050a12; color: #cbd5e1; font-family: 'Inter', sans-serif; }
+        body { background-color: #050a12; color: #cbd5e1; font-family: 'Inter', sans-serif; scroll-behavior: smooth; }
         .gradient-text { background: linear-gradient(90deg, #00D1FF, #9D50BB); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         .glass { background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
+        .btn-kofi { background-color: #29abe0; transition: all 0.3s; }
+        .btn-kofi:hover { background-color: #2492bc; transform: translateY(-2px); box-shadow: 0 10px 20px -5px rgba(41, 171, 224, 0.4); }
+        .screen-card { transition: all 0.4s; border: 1px solid #1e293b; }
+        .screen-card:hover { border-color: #3b82f6; transform: scale(1.02); }
     </style>
 </head>
 <body>
 
-    <!-- Hero Section -->
-    <header class="py-20 px-6 text-center">
-        <div class="max-w-4xl mx-auto">
-            <div class="w-32 h-32 mx-auto mb-8">
-                <!-- LOGO SVG -->
-                <svg viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <defs>
-                        <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#00D1FF"/><stop offset="100%" style="stop-color:#9D50BB"/></linearGradient>
-                    </defs>
-                    <rect x="40" y="40" width="432" height="432" rx="100" fill="#0F172A" stroke="url(#g)" stroke-width="4"/>
-                    <path d="M100 256H160L190 140L256 380L322 140L352 256H412" stroke="url(#g)" stroke-width="25" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
+    <!-- Navbar -->
+    <nav class="fixed w-full z-50 glass py-4 px-6">
+        <div class="max-w-6xl mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8">
+                    <svg viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="40" y="40" width="432" height="432" rx="100" fill="#0F172A"/>
+                        <path d="M100 256H160L190 140L256 380L322 140L352 256H412" stroke="#00D1FF" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+                <span class="font-bold tracking-tighter text-xl">Sync<span class="text-cyan-400">Pulse</span></span>
             </div>
-            <h1 class="text-5xl font-black mb-4 uppercase tracking-tighter">Sync<span class="gradient-text">Pulse</span></h1>
-            <p class="text-xl text-slate-400 mb-10">Sincronização Cloud em tempo real, desenhada exclusivamente para o <b>ZimaOS</b>.</p>
-            <div class="flex justify-center gap-4">
-                <a href="https://ko-fi.com/TEU_USER" class="bg-blue-600 hover:bg-blue-500 text-white px-8 py-4 rounded-full font-bold transition-all shadow-lg shadow-blue-500/20">Apoiar Projeto & Obter Licença</a>
-                <a href="#install" class="bg-slate-800 hover:bg-slate-700 text-white px-8 py-4 rounded-full font-bold transition-all">Ver Tutorial</a>
+            <div class="hidden md:flex gap-8 text-sm font-medium">
+                <a href="#features" class="hover:text-cyan-400 transition">Funcionalidades</a>
+                <a href="#screens" class="hover:text-cyan-400 transition">Screenshots</a>
+                <a href="#install" class="hover:text-cyan-400 transition">Instalação</a>
+            </div>
+            <a href="https://ko-fi.com/TEU_USER" target="_blank" class="btn-kofi text-white px-5 py-2 rounded-full text-sm font-bold flex items-center gap-2">
+                <i class="fas fa-heart"></i> Apoiar
+            </a>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <header class="pt-40 pb-20 px-6 text-center">
+        <div class="max-w-4xl mx-auto">
+            <span class="bg-blue-500/10 text-blue-400 text-[10px] font-black uppercase tracking-[0.3em] px-4 py-2 rounded-full border border-blue-500/20">ZimaOS Edition</span>
+            <h1 class="text-6xl md:text-7xl font-black mt-8 mb-6 uppercase tracking-tighter">O Teu ZimaOS,<br><span class="gradient-text">Em Sincronia.</span></h1>
+            <p class="text-lg text-slate-400 mb-10 max-w-2xl mx-auto">SyncPulse é o motor de sincronização cloud definitivo. Bisync nativo, monitorização em tempo real e privacidade total.</p>
+            
+            <div class="flex flex-col md:flex-row justify-center gap-4">
+                <a href="https://ko-fi.com/TEU_USER/subscriptions" target="_blank" class="bg-white text-black px-10 py-4 rounded-full font-black transition-all hover:bg-cyan-400">OBTER LICENÇA PRO</a>
+                <a href="#install" class="bg-slate-800 text-white px-10 py-4 rounded-full font-black transition-all hover:bg-slate-700">GUIA DE INSTALAÇÃO</a>
             </div>
         </div>
     </header>
 
-    <!-- Features -->
-    <section class="py-20 bg-slate-900/50">
-        <div class="max-w-6xl mx-auto px-6 grid md:grid-cols-3 gap-8">
-            <div class="glass p-8 rounded-3xl">
-                <i class="fas fa-bolt text-3xl text-cyan-400 mb-6"></i>
-                <h3 class="text-xl font-bold mb-2">Tempo Real</h3>
-                <p class="text-sm text-slate-400">Deteta alterações instantaneamente e sincroniza sem intervenção manual.</p>
+    <!-- Screenshots Section -->
+    <section id="screens" class="py-20 px-6">
+        <div class="max-w-6xl mx-auto">
+            <h2 class="text-center text-sm font-black text-cyan-500 uppercase tracking-widest mb-12">Interface do Utilizador</h2>
+            <div class="grid md:grid-cols-2 gap-8">
+                <!-- Screen 1 -->
+                <div class="screen-card rounded-2xl overflow-hidden bg-slate-900 shadow-2xl">
+                    <img src="https://via.placeholder.com/1200x800/0f172a/3b82f6?text=Dashboard+Tarefas" alt="Dashboard SyncPulse" class="w-full">
+                    <div class="p-6">
+                        <h4 class="font-bold text-white">Dashboard Intuitivo</h4>
+                        <p class="text-xs text-slate-500 mt-1">Gere múltiplas nuvens e tarefas com feedback visual imediato.</p>
+                    </div>
+                </div>
+                <!-- Screen 2 -->
+                <div class="screen-card rounded-2xl overflow-hidden bg-slate-900 shadow-2xl">
+                    <img src="https://via.placeholder.com/1200x800/0f172a/9333ea?text=Fila+de+Ficheiros" alt="Fila de Ficheiros" class="w-full">
+                    <div class="p-6">
+                        <h4 class="font-bold text-white">Monitorização de Ficheiros</h4>
+                        <p class="text-xs text-slate-500 mt-1">Acompanha cada transferência e progresso em tempo real.</p>
+                    </div>
+                </div>
             </div>
-            <div class="glass p-8 rounded-3xl">
-                <i class="fas fa-cloud text-3xl text-purple-400 mb-6"></i>
-                <h3 class="text-xl font-bold mb-2">Multi-Cloud</h3>
-                <p class="text-sm text-slate-400">Suporte nativo para Google Drive, OneDrive, Mega, Dropbox e muito mais.</p>
-            </div>
-            <div class="glass p-8 rounded-3xl">
-                <i class="fas fa-shield-halved text-3xl text-blue-400 mb-6"></i>
-                <h3 class="text-xl font-bold mb-2">Privacidade Total</h3>
-                <p class="text-sm text-slate-400">As tuas chaves nunca saem do teu ZimaOS. Comunicação direta entre o teu hardware e a cloud.</p>
+        </div>
+    </section>
+
+    <!-- Ko-fi Memberships / Support -->
+    <section class="py-20 bg-blue-600/5 border-y border-blue-500/10 px-6 text-center">
+        <div class="max-w-4xl mx-auto text-center">
+            <i class="fab fa-ko-fi text-5xl text-[#29abe0] mb-6"></i>
+            <h2 class="text-3xl font-black text-white mb-4">Apoia o Desenvolvimento</h2>
+            <p class="text-slate-400 mb-12">O SyncPulse é um projeto independente. O teu apoio ajuda a manter os servidores e a adicionar novas funcionalidades.</p>
+            
+            <div class="grid md:grid-cols-3 gap-6">
+                <!-- Tier 1 -->
+                <div class="glass p-8 rounded-3xl border-slate-800">
+                    <h3 class="font-bold text-white uppercase text-xs tracking-widest mb-2">Supporter</h3>
+                    <div class="text-3xl font-black text-white mb-6">2€ <span class="text-sm text-slate-500 font-normal">/mês</span></div>
+                    <ul class="text-left text-xs space-y-3 mb-8 text-slate-400">
+                        <li><i class="fas fa-check text-cyan-500 mr-2"></i> Crachá de Apoiante</li>
+                        <li><i class="fas fa-check text-cyan-500 mr-2"></i> Acesso antecipado</li>
+                    </ul>
+                    <a href="https://ko-fi.com/TEU_USER" class="block w-full py-3 rounded-xl border border-slate-700 font-bold hover:bg-slate-800 transition">Doar</a>
+                </div>
+                <!-- Tier 2 (Popular) -->
+                <div class="glass p-8 rounded-3xl border-cyan-500/50 relative">
+                    <div class="absolute -top-3 left-1/2 -translate-x-1/2 bg-cyan-500 text-black text-[9px] font-black px-3 py-1 rounded-full uppercase">Mais Popular</div>
+                    <h3 class="font-bold text-white uppercase text-xs tracking-widest mb-2 font-bold">Pro License</h3>
+                    <div class="text-3xl font-black text-white mb-6">5€ <span class="text-sm text-slate-500 font-normal">/mês</span></div>
+                    <ul class="text-left text-xs space-y-3 mb-8">
+                        <li><i class="fas fa-check text-cyan-500 mr-2"></i> <b>Licença Full SyncPulse</b></li>
+                        <li><i class="fas fa-check text-cyan-500 mr-2"></i> Suporte Prioritário</li>
+                        <li><i class="fas fa-check text-cyan-500 mr-2"></i> Todas as Clouds</li>
+                    </ul>
+                    <a href="https://ko-fi.com/TEU_USER" class="block w-full py-3 rounded-xl bg-cyan-500 text-black font-bold hover:bg-cyan-400 transition">Subscrever</a>
+                </div>
+                <!-- Tier 3 -->
+                <div class="glass p-8 rounded-3xl border-slate-800">
+                    <h3 class="font-bold text-white uppercase text-xs tracking-widest mb-2 font-bold">Lifetime</h3>
+                    <div class="text-3xl font-black text-white mb-6">50€</div>
+                    <ul class="text-left text-xs space-y-3 mb-8 text-slate-400">
+                        <li><i class="fas fa-check text-cyan-500 mr-2"></i> Pagamento Único</li>
+                        <li><i class="fas fa-check text-cyan-500 mr-2"></i> Licença Vitalícia</li>
+                    </ul>
+                    <a href="https://ko-fi.com/TEU_USER" class="block w-full py-3 rounded-xl border border-slate-700 font-bold hover:bg-slate-800 transition">Comprar</a>
+                </div>
             </div>
         </div>
     </section>
 
     <!-- Installation -->
     <section id="install" class="py-20 px-6">
-        <div class="max-w-4xl mx-auto">
-            <h2 class="text-3xl font-black mb-8 text-center uppercase tracking-widest">Instalação <span class="text-blue-500">Express</span></h2>
-            <div class="bg-black p-6 rounded-2xl border border-slate-800 font-mono text-sm overflow-x-auto shadow-2xl">
-                <p class="text-slate-500 mb-4"># Copia este YAML para o Custom Install da tua App Store</p>
-                <pre class="text-blue-300">
+        <div class="max-w-3xl mx-auto">
+            <h2 class="text-3xl font-black mb-8 text-center uppercase tracking-widest">Instalação</h2>
+            <div class="bg-black p-8 rounded-3xl border border-slate-800 font-mono text-sm shadow-2xl relative">
+                <div class="absolute top-4 right-6 flex gap-2">
+                    <div class="w-3 h-3 rounded-full bg-red-500/20"></div>
+                    <div class="w-3 h-3 rounded-full bg-yellow-500/20"></div>
+                    <div class="w-3 h-3 rounded-full bg-green-500/20"></div>
+                </div>
+                <p class="text-slate-500 mb-4 italic"># No ZimaOS App Store > Custom Install > Import</p>
+                <pre class="text-cyan-400 leading-relaxed overflow-x-auto">
 name: syncpulse-beta
 services:
   syncpulse:
@@ -87,8 +160,9 @@ services:
         </div>
     </section>
 
-    <footer class="py-10 text-center text-slate-500 text-xs">
-        <p>SyncPulse &copy; 2026 - Desenvolvido para a comunidade IceWhale.</p>
+    <footer class="py-20 text-center border-t border-slate-900">
+        <p class="text-slate-600 text-xs uppercase tracking-widest">SyncPulse &copy; 2026</p>
+        <p class="text-slate-700 text-[10px] mt-2">Desenvolvido com <i class="fas fa-heart text-red-900"></i> para a comunidade ZimaOS.</p>
     </footer>
 
 </body>
