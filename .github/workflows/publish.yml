@@ -3,7 +3,7 @@ name: Build and Publish Docker Image
 on:
   push:
     branches:
-      - main  # O robô trabalha sempre que enviares código para a branch 'main'
+      - main
 
 jobs:
   build-and-push:
@@ -23,19 +23,12 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/${{ github.repository }}
-          tags: |
-            type=raw,value=latest
-            type=raw,value=beta-1.1
-
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          # Força o nome da imagem para minúsculas para evitar erros do GitHub
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/syncpulse:latest
+            ghcr.io/${{ github.repository_owner }}/syncpulse:beta-1.1
