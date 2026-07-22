@@ -6,7 +6,15 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from datetime import datetime
 from contextlib import asynccontextmanager
 
-# --- 1. CONFIGURAÇÕES DE CAMINHOS ---
+# --- 1. DETEÇÃO DE DEPENDÊNCIAS (WATCHDOG) ---
+try:
+    from watchdog.observers import Observer
+    from watchdog.events import FileSystemEventHandler
+    HAS_WATCHDOG = True
+except ImportError:
+    HAS_WATCHDOG = False
+
+# --- 2. CONFIGURAÇÕES DE CAMINHOS ---
 WWW_PATH = "/www"
 CONFIG_DIR = "/config"
 CONFIG_FILE = os.path.join(CONFIG_DIR, "tasks.json")
@@ -20,7 +28,7 @@ LICENSE_FILE = os.path.join(CONFIG_DIR, "license.json")
 for p in [LOGS_DIR, BISYNC_WORKDIR, CONFIG_DIR]:
     os.makedirs(p, exist_ok=True)
 
-# --- 2. FUNÇÕES DE SUPORTE (DEFINIDAS ANTES DO USO) ---
+# --- 3. FUNÇÕES DE SUPORTE ---
 
 def get_hardware_id():
     """Lê o ID único do hardware do ZimaOS."""
@@ -42,19 +50,6 @@ def load_settings():
                 defaults.update(data)
         except: pass
     return defaults
-    
-def load_tasks():
-    if os.path.exists(CONFIG_FILE):
-        try:
-            with open(CONFIG_FILE, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                print(f">>> {len(data)} tarefas carregadas de {CONFIG_FILE}")
-                return data
-        except Exception as e:
-            print(f">>> Erro ao ler tasks.json: {e}")
-            return []
-    print(f">>> Ficheiro {CONFIG_FILE} não encontrado.")
-    return []    
 
 def get_initial_state():
     s = load_settings()
@@ -69,31 +64,25 @@ def get_initial_state():
         "hwid": get_hardware_id()
     }
 
-# --- 3. INICIALIZAÇÃO DO ESTADO E BOOTSTRAP ---
-
+# --- 4. INICIALIZAÇÃO DO ESTADO ---
 STATE = get_initial_state()
 
+# --- 5. LÓGICA DE AUTO-INSTALAÇÃO (BOOTSTRAP) ---
 def bootstrap():
-    """Sincroniza os ficheiros da imagem para o volume do host no arranque."""
     src_app, src_www = "/app_dist", "/www_dist"
     dst_app, dst_www, dst_config = "/app", "/www", "/config"
     try:
         for p in [dst_app, dst_www, dst_config]:
             os.makedirs(p, exist_ok=True)
-        
         print(">>> Sincronizando motor e interface...")
-        # Copiar código (ignora a pasta www para não duplicar)
         if os.path.exists(src_app):
             for item in os.listdir(src_app):
                 if item == "www": continue
                 s, d = os.path.join(src_app, item), os.path.join(dst_app, item)
                 if os.path.isdir(s): shutil.copytree(s, d, dirs_exist_ok=True)
                 else: shutil.copy2(s, d)
-        
-        # Copiar frontend
         if os.path.exists(src_www):
             shutil.copytree(src_www, dst_www, dirs_exist_ok=True)
-            
         os.system(f"chmod -R 777 {dst_app} {dst_www} {dst_config}")
         print(">>> Bootstrap concluído.")
     except Exception as e:
@@ -101,8 +90,7 @@ def bootstrap():
 
 bootstrap()
 
-# --- 4. GESTÃO DE CICLO DE VIDA (LIFESPAN) ---
-
+# --- 6. GESTÃO DE CICLO DE VIDA E AGENDADOR ---
 app_scheduler = AsyncIOScheduler()
 PROCESSES = {}
 TASK_LOCKS = {}
@@ -114,52 +102,31 @@ CLOUD_STATE_CACHE = {}
 HEALTH_CACHE = []
 
 def load_license_status():
-    """Carrega licença do disco se existir."""
     if os.path.exists(LICENSE_FILE):
         try:
             with open(LICENSE_FILE, "r") as f:
                 data = json.load(f)
                 STATE["licensed"] = True
                 STATE["license_info"] = data
-                print(f">>> Licença carregada para: {data.get('email')}")
         except: pass
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global APP_LOOP
     APP_LOOP = asyncio.get_running_loop()
-    
-    # Carrega estado da licença
     load_license_status()
-    
-    # Inicia serviços
     sync_realtime_watchers(load_tasks())
     asyncio.create_task(poll_realtime_download_tasks())
     asyncio.create_task(update_health_cache())
-    
     app_scheduler.add_job(update_health_cache, 'interval', minutes=2)
-    app_scheduler.add_job(
-        poll_realtime_download_tasks,
-        'interval',
-        seconds=REMOTE_POLL_SECONDS,
-        id='remote-realtime-poll',
-        replace_existing=True,
-        max_instances=1,
-        coalesce=True
-    )
+    app_scheduler.add_job(poll_realtime_download_tasks, 'interval', seconds=REMOTE_POLL_SECONDS)
     app_scheduler.start()
-    
     yield
-    
-    # Shutdown
-    for handle in REALTIME_HANDLES.values(): handle.cancel()
-    for tid in list(WATCHERS): stop_realtime_watcher(tid)
     if app_scheduler.running: app_scheduler.shutdown(wait=False)
 
 app = FastAPI(lifespan=lifespan)
 
-# --- 5. LÓGICA DE SINCRONIZAÇÃO E COMUNICAÇÃO ---
-
+# --- 7. COMUNICAÇÃO (WS) ---
 class ConnectionManager:
     def __init__(self): self.active_connections = []
     async def connect(self, websocket: WebSocket):
