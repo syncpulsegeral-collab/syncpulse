@@ -10,7 +10,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write
+      packages: write  # Permissão crítica aqui
+      id-token: write
 
     steps:
       - name: Checkout code
@@ -28,7 +29,7 @@ jobs:
         with:
           context: .
           push: true
-          # Força o nome da imagem para minúsculas para evitar erros do GitHub
+          # Usamos letras minúsculas para o owner para evitar erros
           tags: |
             ghcr.io/${{ github.repository_owner }}/syncpulse:latest
             ghcr.io/${{ github.repository_owner }}/syncpulse:beta-1.1
