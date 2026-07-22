@@ -50,6 +50,19 @@ def load_settings():
                 defaults.update(data)
         except: pass
     return defaults
+    
+def load_tasks():
+    if os.path.exists(CONFIG_FILE):
+        try:
+            with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                print(f">>> {len(data)} tarefas carregadas de {CONFIG_FILE}")
+                return data
+        except Exception as e:
+            print(f">>> Erro ao ler tasks.json: {e}")
+            return []
+    print(f">>> Ficheiro {CONFIG_FILE} não encontrado.")
+    return []    
 
 def get_initial_state():
     s = load_settings()
