@@ -1429,3 +1429,5 @@ async def get_health(): return HEALTH_CACHE
 @app.get("/")
 async def serve_index(): return FileResponse(os.path.join(WWW_PATH, "index.html"))
 app.mount("/", StaticFiles(directory=WWW_PATH), name="static")
+
+# force update
