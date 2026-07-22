@@ -154,6 +154,25 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 
+@app.get("/api/tasks")
+async def get_tasks_endpoint():
+    return load_tasks()
+    
+@app.post("/api/tasks")
+async def save_tasks_endpoint(request: Request):
+    try:
+        tasks_data = await request.json()
+        if save_tasks(tasks_data):
+            # Notifica todos os browsers abertos da mudança
+            await manager.broadcast({"type": "init", "tasks": tasks_data, "state": STATE})
+            # Atualiza os vigias de tempo real
+            sync_realtime_watchers(tasks_data)
+            return {"status": "ok"}
+    except Exception as e:
+        return JSONResponse(status_code=400, content={"message": str(e)})
+
+        
+
 # --- WATCHDOG / TAREFAS EM TEMPO REAL ---
 
 if HAS_WATCHDOG:
@@ -1309,8 +1328,9 @@ async def post_settings(request: Request):
     except Exception as e:
         return JSONResponse(status_code=500, content={"message": str(e)})
 
-#@app.get("/api/settings")
-#def get_settings(): return load_settings()
+@app.get("/api/settings")
+def get_settings_endpoint():
+    return load_settings()
 
 @app.post("/api/settings")
 async def update_settings_endpoint(request: Request):
