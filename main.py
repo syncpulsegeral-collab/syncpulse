@@ -6,15 +6,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from datetime import datetime
 from contextlib import asynccontextmanager
 
-# --- 1. DETEÇÃO DE DEPENDÊNCIAS (WATCHDOG) ---
-try:
-    from watchdog.observers import Observer
-    from watchdog.events import FileSystemEventHandler
-    HAS_WATCHDOG = True
-except ImportError:
-    HAS_WATCHDOG = False
-
-# --- 2. CONFIGURAÇÕES DE CAMINHOS ---
+# --- 1. CONFIGURAÇÕES DE CAMINHOS E CONSTANTES ---
 WWW_PATH = "/www"
 CONFIG_DIR = "/config"
 CONFIG_FILE = os.path.join(CONFIG_DIR, "tasks.json")
@@ -25,20 +17,18 @@ SETTINGS_FILE = os.path.join(CONFIG_DIR, "settings.json")
 BISYNC_WORKDIR = os.path.join(CONFIG_DIR, "bisync")
 LICENSE_FILE = os.path.join(CONFIG_DIR, "license.json")
 
+# Garantir que as pastas existem no arranque
 for p in [LOGS_DIR, BISYNC_WORKDIR, CONFIG_DIR]:
     os.makedirs(p, exist_ok=True)
 
-# --- 3. FUNÇÕES DE SUPORTE ---
+# --- 2. FUNÇÕES DE SUPORTE (DEFINIDAS ANTES DO ESTADO) ---
 
 def get_hardware_id():
-    """Lê o ID único do hardware do ZimaOS."""
     try:
         if os.path.exists("/etc/machine-id"):
             with open("/etc/machine-id", "r") as f:
-                content = f.read().strip()
-                return hashlib.sha256(content.encode()).hexdigest()
-    except Exception as e:
-        print(f"Erro ao obter HWID: {e}")
+                return hashlib.sha256(f.read().strip().encode()).hexdigest()
+    except: pass
     return "dev_mode_id"
 
 def load_settings():
@@ -46,10 +36,22 @@ def load_settings():
     if os.path.exists(SETTINGS_FILE):
         try:
             with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                defaults.update(data)
+                return {**defaults, **json.load(f)}
         except: pass
     return defaults
+
+def load_tasks():
+    if os.path.exists(CONFIG_FILE):
+        try:
+            with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                print(f">>> {len(data)} tarefas carregadas de {CONFIG_FILE}")
+                return data
+        except Exception as e:
+            print(f">>> Erro ao ler tasks.json: {e}")
+            return []
+    print(f">>> Ficheiro {CONFIG_FILE} não encontrado.")
+    return []
 
 def get_initial_state():
     s = load_settings()
@@ -64,69 +66,66 @@ def get_initial_state():
         "hwid": get_hardware_id()
     }
 
-# --- 4. INICIALIZAÇÃO DO ESTADO ---
+# --- 3. INICIALIZAÇÃO DO ESTADO ---
 STATE = get_initial_state()
+app_scheduler = AsyncIOScheduler()
+PROCESSES, TASK_LOCKS, WATCHERS, REALTIME_HANDLES = {}, {}, {}, {}
+APP_LOOP = None
+REMOTE_POLL_SECONDS = 30
+HEALTH_CACHE = []
 
-# --- 5. LÓGICA DE AUTO-INSTALAÇÃO (BOOTSTRAP) ---
+# --- 4. LÓGICA DE AUTO-INSTALAÇÃO (BOOTSTRAP) ---
 def bootstrap():
     src_app, src_www = "/app_dist", "/www_dist"
-    dst_app, dst_www, dst_config = "/app", "/www", "/config"
+    dst_app, dst_www = "/app", "/www"
     try:
-        for p in [dst_app, dst_www, dst_config]:
-            os.makedirs(p, exist_ok=True)
-        print(">>> Sincronizando motor e interface...")
+        print(">>> Bootstrap: Sincronizando motor e interface...")
         if os.path.exists(src_app):
             for item in os.listdir(src_app):
-                if item == "www": continue
+                if item == "www": continue # Evita duplicar pasta www
                 s, d = os.path.join(src_app, item), os.path.join(dst_app, item)
                 if os.path.isdir(s): shutil.copytree(s, d, dirs_exist_ok=True)
                 else: shutil.copy2(s, d)
+        
         if os.path.exists(src_www):
             shutil.copytree(src_www, dst_www, dirs_exist_ok=True)
-        os.system(f"chmod -R 777 {dst_app} {dst_www} {dst_config}")
-        print(">>> Bootstrap concluído.")
+            
+        os.system(f"chmod -R 777 {dst_app} {dst_www} {CONFIG_DIR}")
     except Exception as e:
         print(f">>> Erro no Bootstrap: {e}")
 
 bootstrap()
 
-# --- 6. GESTÃO DE CICLO DE VIDA E AGENDADOR ---
-app_scheduler = AsyncIOScheduler()
-PROCESSES = {}
-TASK_LOCKS = {}
-WATCHERS = {}
-REALTIME_HANDLES = {}
-APP_LOOP = None
-REMOTE_POLL_SECONDS = 30
-CLOUD_STATE_CACHE = {}
-HEALTH_CACHE = []
-
-def load_license_status():
-    if os.path.exists(LICENSE_FILE):
-        try:
-            with open(LICENSE_FILE, "r") as f:
-                data = json.load(f)
-                STATE["licensed"] = True
-                STATE["license_info"] = data
-        except: pass
+# --- 5. GESTÃO DE CICLO DE VIDA (LIFESPAN) ---
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global APP_LOOP
     APP_LOOP = asyncio.get_running_loop()
-    load_license_status()
+    
+    # Carregar licença local
+    if os.path.exists(LICENSE_FILE):
+        try:
+            with open(LICENSE_FILE, "r") as f:
+                STATE["licensed"] = True
+                STATE["license_info"] = json.load(f)
+        except: pass
+
+    # Iniciar tarefas de segundo plano
     sync_realtime_watchers(load_tasks())
-    asyncio.create_task(poll_realtime_download_tasks())
     asyncio.create_task(update_health_cache())
+    
     app_scheduler.add_job(update_health_cache, 'interval', minutes=2)
     app_scheduler.add_job(poll_realtime_download_tasks, 'interval', seconds=REMOTE_POLL_SECONDS)
     app_scheduler.start()
+    
     yield
     if app_scheduler.running: app_scheduler.shutdown(wait=False)
 
 app = FastAPI(lifespan=lifespan)
 
-# --- 7. COMUNICAÇÃO (WS) ---
+# --- 6. WEBSOCKET E COMUNICAÇÃO ---
+
 class ConnectionManager:
     def __init__(self): self.active_connections = []
     async def connect(self, websocket: WebSocket):
@@ -140,6 +139,19 @@ class ConnectionManager:
             except: pass
 
 manager = ConnectionManager()
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await manager.connect(websocket)
+    try:
+        # Envia as tarefas reais carregadas do disco logo no início
+        current_tasks = load_tasks()
+        await websocket.send_json({"type": "init", "tasks": current_tasks, "state": STATE})
+        while True: await websocket.receive_text()
+    except: manager.disconnect(websocket)
+
+# --- 7. DAQUI PARA BAIXO ADICIONA AS TUAS FUNÇÕES (rclone_worker, sync_realtime_watchers, etc.) ---
+# MANTÉM OS ENDPOINTS @app.post("/api/tasks"), @app.get("/api/health"), etc.
 
 # --- WATCHDOG / TAREFAS EM TEMPO REAL ---
 
@@ -1236,14 +1248,6 @@ async def update_health_cache():
         HEALTH_CACHE = await asyncio.gather(*[check_single_remote(r) for r in remotes])
         await manager.broadcast({"type": "health_update", "health": HEALTH_CACHE})
     except: pass
-
-@app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
-    await manager.connect(websocket)
-    try:
-        await websocket.send_json({"type": "init", "tasks": load_tasks(), "state": STATE})
-        while True: await websocket.receive_text()
-    except: manager.disconnect(websocket)
 
 @app.post("/api/tasks")
 async def post_tasks(request: Request):
