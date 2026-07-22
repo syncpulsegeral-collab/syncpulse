@@ -1,0 +1,1514 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartSync - ZimaOS Edition</title>
+    <link rel="icon" type="image/svg+xml" href="logo.svg">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        :root { --bg-dark: #050a12; --bg-sidebar: #0b111d; --bg-card: #16202c; --border: #1e293b; --text-dim: #94a3b8; }
+        body { background: #242424; font-family: 'Inter', sans-serif; height: 100vh; display: flex; overflow: hidden; margin:0; }
+        
+        .sidebar { width: 280px; background: var(--bg-sidebar); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 20px; flex-shrink: 0; }
+        /* Configuração da Sidebar Colapsável */
+        .sidebar {
+            width: 280px;
+            transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+        }
+        
+        .sidebar.collapsed {
+            width: 80px;
+        }
+        
+        /* Esconder texto e logótipo grande quando fechado */
+        .sidebar.collapsed .nav-text, 
+        .sidebar.collapsed .logo-img,
+        .sidebar.collapsed .prog-label,
+        .sidebar.collapsed select,
+        .sidebar.collapsed .support-label {
+            display: none;
+        }
+        
+        /* Mostrar apenas um mini-logo ou ícone quando fechado */
+        .sidebar.collapsed .logo-box {
+            padding: 20px 0;
+        }
+        
+        /* Ajustar botões da navegação */
+        .nav-btn {
+            justify-content: flex-start;
+            overflow: hidden;
+            white-space: nowrap;
+        }
+        
+        .sidebar.collapsed .nav-btn {
+            justify-content: center;
+            padding: 12px 0;
+        }
+        
+        .sidebar.collapsed .nav-btn i {
+            margin: 0;
+            font-size: 1.2rem;
+        }
+        
+        /* Botão de Toggle (O "Gatilho") */
+        .side-toggle-btn {
+            position: absolute;
+            right: -12px;
+            top: 25px;
+            width: 24px;
+            height: 24px;
+            background: #3b82f6;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 100;
+            border: 3px solid var(--bg-dark);
+            transition: transform 0.3s;
+        }
+        
+        .sidebar.collapsed .side-toggle-btn {
+            transform: rotate(180deg);
+        }
+        /* Container da Logo */
+		.logo-box {
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			width: 100%;
+		}
+		/* Garante que o logo nunca ultrapassa o contentor */
+		.logo-full svg, .logo-mini svg {
+			width: 100%;
+			height: auto;
+			display: block;
+		}
+		/* Comportamento quando a sidebar fecha (.collapsed) */
+		.sidebar.collapsed .logo-box {
+			padding: 20px 0;
+		}
+
+		/* Quando a sidebar encolhe */
+		.sidebar.collapsed .logo-full {
+			display: none;
+		}
+
+		.sidebar.collapsed .logo-mini {
+			display: block;
+		}
+		/* Esconder o botão de toggle para não ficar em cima da borda da logo */
+		.side-toggle-btn {
+			right: -12px;
+			z-index: 110;
+		}
+		
+		
+        .logo-img { max-height: 85px; width: auto; object-fit: contain; }
+        .nav-btn { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px; border-radius: 8px; font-size: 13px; font-weight: 600; color: #cbd5e1; transition: 0.2s; margin-bottom: 8px; cursor: pointer; border:none; background:transparent; text-align: left; }
+        .nav-btn:hover { background: #1e293b; color: white; }
+        .nav-btn i { color: #3b82f6; width: 20px; text-align: center; }
+
+        .main-content { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+        .tasks-area { 
+            height: 40%; /* Altura inicial */
+            min-height: 150px; 
+            padding: 25px 35px; 
+            overflow-y: auto; 
+        }
+        .grid-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; }
+
+		.card { 
+			background: #111d29; border: 1px solid #1e293b; border-radius: 12px; padding: 20px; 
+			position: relative; cursor: pointer; transition: 0.2s; border-left: 3px solid transparent;
+		}
+		.card.selected-card { border-left-color: #3b82f6; border-color: #3b82f6; background: #162635; }
+		.card.active-border { border-left-color: #3b82f6; }
+
+		.card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+		.card-title { font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 10px; color: #fff; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #475569; }
+        .status-dot.active { background: #22c55e; box-shadow: 0 0 8px #22c55e; }
+
+		.badge-status { font-size: 11px; background: rgba(30, 41, 59, 0.8); padding: 3px 12px; border-radius: 15px; color: #94a3b8; font-weight: 700; }
+
+		.card-paths { margin-bottom: 15px; }
+		.path-line { font-size: 11px; color: #64748b; margin-bottom: 4px; font-family: monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+		.path-line b { color: #475569; min-width: 20px; display: inline-block; }
+		.path-line span { color: #94a3b8; }
+
+		.card-meta-row { color: #00d4ff; font-size: 12px; font-weight: 700; display: flex; align-items: center; gap: 15px; margin: 15px 0; }
+		.card-footer { padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center; }
+		.btn-action { font-size: 11px; font-weight: 800; cursor: pointer; display: flex; align-items: center; gap: 6px; text-transform: uppercase; }
+		.btn-sim { color: #f97316; }
+		.btn-play { color: #3b82f6; }
+		.card-icons-right { display: flex; gap: 12px; color: #475569; font-size: 14px; }
+		.card-icons-right i:hover { color: #fff; cursor: pointer; }
+		
+        .bottom-section { 
+            flex: 1; /* Ocupa o resto do espaço */
+            display: flex; 
+            flex-direction: column; 
+            background: #070e1e; 
+            min-height: 200px;
+        }
+
+        /* A Barra de Redimensionamento */
+        .h-resizer {
+            height: 4px;
+            background: var(--border);
+            cursor: row-resize;
+            transition: background 0.2s;
+            z-index: 10;
+        }
+        
+        .h-resizer:hover, .h-resizer.is-dragging {
+            background: #3b82f6; /* Azul SmartSync ao arrastar */
+        }
+        
+        .panel-split { flex: 1; display: flex; overflow: hidden; }
+        .col-queue { width: 55%; border-right: 1px solid var(--border); padding: 20px 35px; display: flex; flex-direction: column; }
+        .col-log { width: 45%; padding: 20px 30px; font-family: 'Fira Code', monospace; font-size: 11px; color: #037024; overflow-y: auto; background: rgba(0,0,0,0.1); }
+        .prog-label { font-size: 10px; font-weight: 800; color: #475569; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; display: block; }
+        .prog-bg { background: #0f172a; height: 8px; border-radius: 4px; overflow: hidden; width: 100%; position: relative; border: 1px solid #1e293b; }
+        #g-bar { 
+            background: #3b82f6 !important; 
+            height: 100%; 
+            width: 0%; 
+            /* Esta linha faz a barra "deslizar" em vez de saltar */
+            transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1); 
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+            border-radius: 4px;
+        }
+
+        .modal-overlay { background: rgba(0,0,0,0.95); backdrop-filter: blur(5px); position: fixed; inset:0; z-index: 50; display:flex; align-items:center; justify-content:center; }
+        .input-box { background: #0f172a !important; border: 1px solid #1e293b !important; color: white !important; padding: 10px !important; border-radius: 8px !important; width: 100%; font-size: 12px; }
+        .explorer-popup { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 100; display: none; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
+		.explorer-content { background: #0b111d; border: 1px solid #334155; width: 480px; border-radius: 15px; padding: 25px; }
+		.explorer-list { height: 320px; overflow-y: auto; background: #050a12; border: 1px solid #1e293b; border-radius: 8px; margin: 15px 0; }
+		.exp-item { padding: 10px; border-bottom: 1px solid #1e293b; cursor: pointer; display: flex; align-items: center; gap: 10px; font-size: 12px; color: #cbd5e1; }
+		.exp-item:hover { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
+        .lang-select { background: #1e293b; border: 1px solid var(--border); color: #94a3b8; padding: 8px; border-radius: 8px; width: 100%; font-size: 11px; cursor: pointer; }
+
+        /* Estilização moderna para o seletor de hora */
+        input[type="time"]::-webkit-calendar-picker-indicator {
+            filter: invert(48%) sepia(13%) saturate(3207%) hue-rotate(185deg) brightness(95%) contrast(80%);
+            cursor: pointer;
+        }
+        
+        .input-box {
+            color-scheme: dark; /* Força o picker do browser a ser dark mode */
+        }
+        
+        /* Camadas de sobreposição */
+        .overlay-screen {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #050a12;
+            transition: opacity 0.8s ease, visibility 0.8s;
+        }
+
+        .welcome-card {
+            background: #0b111d;
+            border: 1px solid #1e293b;
+            width: 90%;
+            max-width: 550px;
+            padding: 40px;
+            border-radius: 24px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            text-align: center;
+        }
+
+        .hidden-overlay {
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        /* Animação do Splash */
+        @keyframes pulse-logo {
+            0% { transform: scale(0.95); opacity: 0.8; }
+            50% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(0.95); opacity: 0.8; }
+        }
+
+        /* Quando a sidebar está normal (aberta) */
+        .sidebar .logo-full { display: block; }
+        .sidebar .logo-mini { display: none; }
+        
+        /* Quando a sidebar tem a classe .collapsed */
+        .sidebar.collapsed .logo-full { display: none; }
+        .sidebar.collapsed .logo-mini { 
+            display: block; 
+            animation: fadeIn 0.3s ease; 
+        }
+        
+        /* Ajuste da logo-box quando fechada */
+        .sidebar.collapsed .logo-box {
+            padding: 20px 0;
+            display: flex;
+            justify-content: center;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.8); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        
+        
+    </style>
+</head>
+<body>
+    
+    <!-- ECRÃ DE SPLASH (Alinhamento Corrigido) -->
+    <div id="splash-screen" class="overlay-screen flex flex-col items-center justify-center">
+        <div class="flex flex-col items-center justify-center text-center">
+            <!-- Contentor do Logo com tamanho fixo e centralização -->
+            <div class="w-48 h-48 mb-6 flex items-center justify-center">
+                <!-- COLA O TEU SVG AQUI -->
+                <svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <defs>
+                    <!-- Gradiente Principal -->
+                    <linearGradient id="mainGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" style="stop-color:#00D1FF;stop-opacity:1" />
+                      <stop offset="100%" style="stop-color:#9D50BB;stop-opacity:1" />
+                    </linearGradient>
+                    
+                    <!-- Gradiente Sutil para as Bordas -->
+                    <linearGradient id="borderGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%" style="stop-color:#475569;stop-opacity:1" />
+                      <stop offset="100%" style="stop-color:#1E293B;stop-opacity:1" />
+                    </linearGradient>
+                
+                    <!-- Efeito de Brilho (Glow) -->
+                    <filter id="neonGlow" x="-20%" y="-20%" width="140%" height="140%">
+                      <feGaussianBlur stdDeviation="12" result="blur" />
+                      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                    </filter>
+                  </defs>
+                
+                  <!-- Fundo: Corpo do Ícone -->
+                  <rect x="40" y="40" width="432" height="432" rx="100" fill="#050A12" />
+                  <rect x="42" y="42" width="428" height="428" rx="98" stroke="url(#borderGrad)" stroke-width="4" fill="none" />
+                
+                  <!-- Detalhes de Fundo (Grelha de Dados) -->
+                  <circle cx="256" cy="256" r="180" stroke="#1E293B" stroke-width="1" stroke-dasharray="10 10" />
+                  <circle cx="256" cy="256" r="120" stroke="#1E293B" stroke-width="1" />
+                
+                  <!-- Arcos de Sincronização Estilizados -->
+                  <path d="M140 200C110 240 110 300 140 340M372 312C402 272 402 212 372 172" 
+                        stroke="url(#mainGrad)" stroke-width="15" stroke-linecap="round" filter="url(#neonGlow)" />
+                  
+                  <!-- "Nós" de Dados (Círculos nas pontas dos arcos) -->
+                  <circle cx="140" cy="200" r="8" fill="#00D1FF" />
+                  <circle cx="372" cy="172" r="8" fill="#9D50BB" />
+                
+                  <!-- O Pulso Central Elevado -->
+                  <path d="M100 256H160L190 140L256 380L322 140L352 256H412" 
+                        stroke="url(#mainGrad)" stroke-width="25" stroke-linecap="round" stroke-linejoin="round" />
+                  
+                  <!-- Linha de Brilho Branco no centro do Pulso (Dá profundidade 3D) -->
+                  <path d="M100 256H160L190 140L256 380L322 140L352 256H412" 
+                        stroke="white" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" opacity="0.4" />
+                
+                  <!-- Ponto de Atividade Central (O "Coração" do Pulse) -->
+                  <circle cx="256" cy="256" r="40" fill="#050A12" stroke="url(#mainGrad)" stroke-width="4" />
+                  <circle cx="256" cy="256" r="15" fill="white" filter="url(#neonGlow)">
+                    <animate attributeName="opacity" values="1;0.4;1" dur="2s" repeatCount="indefinite" />
+                  </circle>
+                
+                </svg>
+            </div>
+            
+            <!-- Texto de Carregamento -->
+            <div class="text-blue-500 font-bold tracking-widest text-[10px] uppercase animate-pulse">
+                A iniciar SyncPulse...
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ECRÃ DE BOAS-VINDAS (Primeiro Arranque) -->
+    <div id="welcome-screen" class="overlay-screen hidden-overlay" style="background: rgba(5, 10, 18, 0.95); backdrop-filter: blur(10px);">
+        <div class="welcome-card">
+            <img src="logo_splash.png" class="max-h-20 mx-auto mb-8" alt="Logo">
+            <h2 class="text-2xl font-black text-white mb-4" data-key="welcome_title">Bem-vindo ao SmartSync</h2>
+            
+            <div class="bg-slate-900/50 border border-slate-800 rounded-xl p-6 text-left mb-8 space-y-4">
+                <p class="text-xs text-slate-400 leading-relaxed" data-key="disclaimer_text">
+                    Esta é uma <b>versão Beta</b>. O programador não se responsabiliza por quaisquer erros, bugs ou perda de dados decorrentes do uso desta aplicação. Use por sua conta e risco.
+                </p>
+                <p class="text-xs text-blue-400/80 font-medium" data-key="privacy_text">
+                    <i class="fas fa-shield-alt mr-2"></i>Privacidade: Todas as informações e chaves das suas Clouds ficam guardadas localmente no seu ZimaOS. O programador não tem acesso aos seus dados.
+                </p>
+            </div>
+
+            <div class="space-y-4">
+                <button onclick="acceptTerms()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-4 rounded-xl transition-all uppercase text-xs tracking-widest" data-key="accept_btn">
+                    Aceitar e Continuar
+                </button>
+                <button onclick="toggleModal('mCloud', true)" class="text-slate-500 hover:text-white text-[10px] uppercase font-bold tracking-tight">
+                    <i class="fas fa-book mr-2"></i>Tutorial de Configuração
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <aside class="sidebar" id="sidebar">
+        <!-- Botão de Colapsar -->
+        <div class="side-toggle-btn" onclick="toggleSidebar()">
+            <i class="fas fa-chevron-left fa-xs"></i>
+        </div>
+    
+        <div class="logo-box flex justify-center items-center py-6 w-full overflow-hidden">
+			<!-- Contentor com largura máxima de 140px (perfeito para uma sidebar de 280px) -->
+			<div class="logo-full w-[100px] transition-all duration-300">
+                <!-- COLA O TEU SVG AQUI -->
+                <svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <defs>
+                    <!-- Gradiente Principal -->
+                    <linearGradient id="mainGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" style="stop-color:#00D1FF;stop-opacity:1" />
+                      <stop offset="100%" style="stop-color:#9D50BB;stop-opacity:1" />
+                    </linearGradient>
+                    
+                    <!-- Gradiente Sutil para as Bordas -->
+                    <linearGradient id="borderGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%" style="stop-color:#475569;stop-opacity:1" />
+                      <stop offset="100%" style="stop-color:#1E293B;stop-opacity:1" />
+                    </linearGradient>
+                
+                    <!-- Efeito de Brilho (Glow) -->
+                    <filter id="neonGlow" x="-20%" y="-20%" width="140%" height="140%">
+                      <feGaussianBlur stdDeviation="12" result="blur" />
+                      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                    </filter>
+                  </defs>
+                
+                  <!-- Fundo: Corpo do Ícone -->
+                  <rect x="40" y="40" width="432" height="432" rx="100" fill="#050A12" />
+                  <rect x="42" y="42" width="428" height="428" rx="98" stroke="url(#borderGrad)" stroke-width="4" fill="none" />
+                
+                  <!-- Detalhes de Fundo (Grelha de Dados) -->
+                  <circle cx="256" cy="256" r="180" stroke="#1E293B" stroke-width="1" stroke-dasharray="10 10" />
+                  <circle cx="256" cy="256" r="120" stroke="#1E293B" stroke-width="1" />
+                
+                  <!-- Arcos de Sincronização Estilizados -->
+                  <path d="M140 200C110 240 110 300 140 340M372 312C402 272 402 212 372 172" 
+                        stroke="url(#mainGrad)" stroke-width="15" stroke-linecap="round" filter="url(#neonGlow)" />
+                  
+                  <!-- "Nós" de Dados (Círculos nas pontas dos arcos) -->
+                  <circle cx="140" cy="200" r="8" fill="#00D1FF" />
+                  <circle cx="372" cy="172" r="8" fill="#9D50BB" />
+                
+                  <!-- O Pulso Central Elevado -->
+                  <path d="M100 256H160L190 140L256 380L322 140L352 256H412" 
+                        stroke="url(#mainGrad)" stroke-width="25" stroke-linecap="round" stroke-linejoin="round" />
+                  
+                  <!-- Linha de Brilho Branco no centro do Pulso (Dá profundidade 3D) -->
+                  <path d="M100 256H160L190 140L256 380L322 140L352 256H412" 
+                        stroke="white" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" opacity="0.4" />
+                
+                  <!-- Ponto de Atividade Central (O "Coração" do Pulse) -->
+                  <circle cx="256" cy="256" r="40" fill="#050A12" stroke="url(#mainGrad)" stroke-width="4" />
+                  <circle cx="256" cy="256" r="15" fill="white" filter="url(#neonGlow)">
+                    <animate attributeName="opacity" values="1;0.4;1" dur="2s" repeatCount="indefinite" />
+                  </circle>
+                
+                </svg>
+            </div>
+        
+            <!-- LOGO MINI / ÍCONE (Visível quando colapsada) -->
+            <div class="logo-mini hidden w-10">
+                <!-- Deixa apenas o viewBox, apaga o width e o height daqui -->
+				<svg viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+                     <!-- Versão simplificada (apenas o pulso central) para poupar espaço -->
+                     <path d="M100 256H160L190 140L256 380L322 140L352 256H412" 
+                           stroke="#3b82f6" stroke-width="35" stroke-linecap="round" stroke-linejoin="round" />
+                     <circle cx="256" cy="256" r="30" fill="#3b82f6" />
+                </svg>
+            </div>
+        </div>
+    
+        <nav class="flex-1">
+            <button onclick="openNewTaskModal()" class="nav-btn">
+                <i class="fas fa-plus-square"></i> 
+                <span class="nav-text" data-key="new_task">Nova Tarefa</span>
+            </button>
+            <button onclick="toggleModal('mCloud', true)" class="nav-btn">
+                <i class="fas fa-cloud"></i> 
+                <span class="nav-text" data-key="manage_clouds">Gerir Clouds</span>
+            </button>
+            <button onclick="toggleModal('mPrefs', true)" class="nav-btn">
+                <i class="fas fa-cog"></i> 
+                <span class="nav-text" data-key="preferences">Preferências</span>
+            </button>
+            
+            <div class="mt-8 px-2">
+                <span class="prog-label" data-key="cloud_health">Saúde das Ligações</span>
+                <div id="health-list" class="space-y-4"></div>
+            </div>
+        </nav>
+    
+        <!-- LINKS DE SUPORTE -->
+        <div class="mt-4 px-2 pb-4 space-y-2 border-b border-slate-800 mb-4">
+            <a href="https://www.patreon.com/teu-link" target="_blank" class="nav-btn !text-pink-500 hover:!bg-pink-500/10">
+                <i class="fas fa-heart"></i> <span class="nav-text" data-key="support_project">Apoiar Projeto</span>
+            </a>
+            <a href="https://www.smartsync.pt" target="_blank" class="nav-btn">
+                <i class="fas fa-globe"></i> <span class="nav-text" data-key="official_site">Site Oficial</span>
+            </a>
+        </div>
+    
+        <div class="pt-6 border-t border-slate-800">
+            <select id="lPick" class="lang-select" onchange="setLang(this.value)">
+                <option value="pt">PT Português</option>
+                <option value="en">EN English</option>
+                <option value="fr">FR Français</option>
+                <option value="es">ES Español</option>
+                <option value="de">DE Deutche</option>
+            </select>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <!-- Secção Superior -->
+        <section id="top-panel" class="tasks-area">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-extrabold text-white" data-key="active_tasks">Tarefas Ativas</h2>
+                <span id="t-count" class="bg-slate-800 text-slate-400 px-3 py-1 rounded-full text-[10px] font-bold">0</span>
+            </div>
+            <div id="tasks-grid" class="grid-cards"></div>
+        </section>
+    
+        <!-- BARRA DE REDIMENSIONAMENTO -->
+        <div id="h-resizer" class="h-resizer"></div>
+    
+        <!-- Secção Inferior -->
+        <section id="bottom-panel" class="bottom-section">
+            <div class="panel-split flex flex-1 overflow-hidden">
+                <div class="col-queue">
+                    <span class="prog-label" data-key="files_queue">Fila de Ficheiros</span>
+                    <div class="mb-5">
+                        <div class="flex justify-between text-[10px] font-bold text-slate-500 uppercase mb-2"><span data-key="global_progress">Progresso</span><span id="g-perc">0%</span></div>
+                        <div class="prog-bg"><div id="g-bar"></div></div>
+                    </div>
+                    <div id="file-scroll" class="flex-1 overflow-y-auto"></div>
+                </div>
+                <div id="log-content" class="col-log"></div>
+            </div>
+        </section>
+    </main>
+
+
+    <!-- MODAL TAREFA -->
+    <div id="mTask" class="modal-overlay hidden">
+        <div class="bg-slate-900 border border-slate-700 w-full max-w-2xl rounded-2xl p-10">
+            <h3 id="modalTitle" class="text-2xl font-black mb-8 text-white" data-key="config_task">Configurar Tarefa</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 text-sm">
+                <div class="space-y-4 text-slate-300">
+                    <label class="block"><span data-key="task_name">Nome</span><input id="in-name" type="text" class="input-box mt-1"></label>
+                    <label class="block"><span data-key="local_folder">Pasta Local</span><div class="flex gap-2 mt-1"><input id="in-loc" type="text" class="input-box" readonly><button onclick="openExp('local')" class="bg-blue-600 px-3 rounded text-white"><i class="fas fa-folder"></i></button></div></label>
+                    <label class="block"><span data-key="remote_folder">Pasta Cloud</span><div class="flex gap-2 mt-1"><input id="in-rem" type="text" class="input-box" readonly><button onclick="openExp('cloud')" class="bg-blue-600 px-3 rounded text-white"><i class="fas fa-cloud"></i></button></div></label>
+                </div>
+                <div class="space-y-4 text-slate-300">
+                    <label class="block"><span data-key="sync_type">Modo</span><select id="in-typ" class="input-box mt-1"><option value="upload">Local->Cloud</option><option value="download">Cloud->Local</option><option value="bisync">Bisync</option></select></label>
+                    <label class="block"><span data-key="trigger">Trigger</span>
+						<select id="in-trig" class="input-box mt-2" onchange="toggleTriggerFields(this.value)">
+							<option value="sched">Agendado</option>
+							<option value="real">Tempo Real</option>
+						</select>
+					</label>
+                    <div id="interval-wrap" class="mt-4">
+						<label class="block"><span data-key="interval">Intervalo</span>
+							<select id="in-int" class="input-box mt-2" onchange="toggleTimeField(this.value)">
+								<option value="1m">1 min</option>
+								<option value="5m">5 min</option>
+								<option value="15m">15 min</option>
+								<option value="30m">30 min</option>
+								<option value="1h">1 hora</option>
+								<option value="daily">Diário</option>
+							</select>
+						</label>
+					</div>
+					<!-- Contentor da Hora (Aparece se for Daily) -->
+					<div id="time-wrap" class="hidden mt-4 space-y-2">
+						<label class="block">
+							<span data-key="start_time" class="text-slate-400 text-xs font-bold uppercase tracking-wider">Hora de Início (24h)</span>
+							<input id="in-time" type="time" class="input-box mt-2" step="60" value="03:00">
+						</label>
+					</div>
+                </div>
+            </div>
+            <div class="mt-8 flex justify-end gap-4">
+                <button onclick="toggleModal('mTask', false)" class="text-slate-400 font-bold uppercase text-xs" data-key="cancel">Cancelar</button>
+                <button onclick="saveTask()" class="bg-blue-600 px-8 py-2 rounded font-black text-white text-xs uppercase" data-key="save">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- EXPLORADOR -->
+    <div id="expPop" class="explorer-popup">
+        <div class="explorer-content">
+            <div class="flex justify-between items-center mb-4"><h4 id="expTitle" class="text-white font-bold text-sm uppercase">Explorar</h4><button onclick="closeExp()" class="text-white text-xl">&times;</button></div>
+            <div class="flex gap-2 mb-4">
+                <select id="cloudSelect" class="input-box" style="display:none;" onchange="selRem(this.value)"></select>
+                <button onclick="navUp()" class="bg-slate-800 px-4 py-2 rounded text-[10px] text-white">RECUA</button>
+            </div>
+            <div id="expList" class="explorer-list"></div>
+            <div id="expPath" class="text-[10px] text-slate-500 font-mono mb-4 truncate"></div>
+            <button onclick="confExp()" class="w-full bg-blue-600 p-3 rounded font-bold text-white text-xs uppercase">Confirmar Seleção</button>
+        </div>
+    </div>
+
+    <!-- GESTOR DE CLOUDS -->
+    <div id="mCloud" class="fixed inset-0 modal-overlay hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-700 w-full max-w-2xl rounded-2xl p-10 shadow-2xl overflow-y-auto max-h-[90vh]">
+            <div class="flex justify-between items-center mb-8"><h3 class="text-2xl font-black text-white" data-key="manage_clouds">Gerir Clouds</h3><button onclick="toggleModal('mCloud', false)" class="text-slate-500 hover:text-white text-2xl">&times;</button></div>
+            <div id="cloud-manager-list" class="space-y-3 mb-8"></div>
+            <div class="bg-blue-900/10 border border-blue-500/20 rounded-xl p-6 text-[11px] text-slate-400 leading-relaxed">
+                <h4 class="text-blue-400 font-bold mb-4 uppercase" data-key="tut_title">Tutorial de Configuração</h4>
+                <div class="space-y-3">
+                    <p data-key="tut_s1">1. Terminal ZimaOS: <code class="bg-black p-1 text-blue-300">sudo docker exec -it SyncPulse env -u RCLONE_VERSION rclone --config /config/rclone.conf config</code></p>
+                    <p data-key="tut_s2">2. Digita <b class="text-white">n</b> (New Remote) e dá um nome.</p>
+                    <p data-key="tut_s3">3. Seleciona o serviço (Google Drive ou OneDrive).</p>
+                    <p data-key="tut_s4">4. Quando perguntar <i class="text-white">"Use auto config?"</i>, responde <b class="text-white">n</b>.</p>
+                    <p data-key="tut_s5">5. Autoriza no browser do teu PC e cola o código no terminal.</p>
+                    <p data-key="tut_s6">6. Termina e as clouds aparecerão aqui automaticamente.</p>
+                </div>
+            </div>
+            <div class="mt-8 text-center"><button onclick="toggleModal('mCloud', false)" class="text-slate-500 font-bold text-xs uppercase tracking-widest">Fechar</button></div>
+        </div>
+    </div>
+    
+    <!-- MODAL HISTÓRICO -->
+    <div id="mHistory" class="modal-overlay hidden">
+        <div class="bg-slate-900 border border-slate-700 w-full max-w-3xl rounded-2xl p-8 shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-black text-white uppercase tracking-wider">
+					<i class="fas fa-history mr-3 text-blue-500"></i><span data-key="hist_title">Histórico de Atividade</span>
+				</h3>
+                <button onclick="toggleModal('mHistory', false)" class="text-slate-500 hover:text-white text-2xl">&times;</button>
+            </div>
+            <div id="history-list" class="flex-1 overflow-y-auto space-y-3 pr-2">
+                <!-- As entradas aparecem aqui -->
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL PREFERÊNCIAS ATUALIZADO -->
+    <div id="mPrefs" class="modal-overlay hidden">
+        <div class="bg-slate-900 border border-slate-700 w-full max-w-md rounded-2xl p-8 shadow-2xl">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-black text-white uppercase tracking-wider">
+                    <i class="fas fa-cog mr-3 text-slate-500"></i><span data-key="preferences">Preferências</span>
+                </h3>
+                <button onclick="toggleModal('mPrefs', false)" class="text-slate-500 hover:text-white text-2xl">&times;</button>
+            </div>
+
+            <div class="space-y-6">
+                <!-- Opção: Simulação Automática -->
+                <div class="flex items-center justify-between p-4 bg-slate-800/40 rounded-xl border border-slate-700/50">
+                    <div class="pr-4">
+                        <h4 class="text-sm font-bold text-slate-200" data-key="pref_sim_title">Simulação Prévia</h4>
+                        <p class="text-[11px] text-slate-500 leading-tight mt-1" data-key="pref_sim_desc">Executar simulação antes de sincronizar.</p>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="pref-auto-sim" class="sr-only peer">
+                        <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
+                </div>
+                <p class="text-[11px] text-slate-600 italic px-2" data-key="pref_sim_note">
+                    Nota: Desativar a simulação prévia torna o início da sincronização instantâneo, mas remove a previsão de alterações na fila.
+                </p>
+                <!-- SECÇÃO DE LINKS -->
+                <div class="pt-4 border-t border-slate-800">
+                    <span class="prog-label mb-4 block" data-key="useful_links">Links Úteis</span>
+                    <div class="grid grid-cols-2 gap-3">
+                        <a href="https://www.patreon.com/teu-link" target="_blank" class="bg-slate-800 hover:bg-slate-700 p-3 rounded-xl text-center transition-colors">
+                            <i class="fab fa-patreon text-pink-500 mb-1 block text-lg"></i>
+                            <span class="text-[9px] font-bold text-white uppercase">Patreon</span>
+                        </a>
+                        <a href="https://www.smartsync.pt" target="_blank" class="bg-slate-800 hover:bg-slate-700 p-3 rounded-xl text-center transition-colors">
+                            <i class="fas fa-external-link-alt text-blue-500 mb-1 block text-lg"></i>
+                            <span class="text-[9px] font-bold text-white uppercase" data-key="official_site">Website</span>
+                        </a>
+                    </div>
+                </div>
+                <!-- Adiciona isto dentro do div class="space-y-6" do mPrefs -->
+				<div class="pt-4 border-t border-slate-800">
+					<span class="prog-label mb-4 block" data-key="account_title">Conta & Licença</span>
+					
+					<div id="license-status-area" class="p-4 rounded-xl border border-slate-700/50 mb-4 bg-slate-900/50">
+						<!-- O JS vai preencher isto dinamicamente -->
+						<div class="flex justify-between items-center">
+							<span class="text-[10px] text-slate-500 uppercase font-bold">Estado:</span>
+							<span id="lic-status-badge" class="text-[9px] font-black px-2 py-0.5 rounded uppercase">Inativo</span>
+						</div>
+					</div>
+
+					<div id="activation-fields" class="space-y-3">
+						<input id="lic-email" type="email" placeholder="E-mail da compra" class="input-box">
+						<input id="lic-key" type="text" placeholder="Chave (Ex: XXXX-XXXX)" class="input-box">
+						<button onclick="attemptActivation()" id="btn-activate" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-3 rounded-xl transition-all uppercase text-[10px] tracking-widest">
+							Ativar Licença Pro
+						</button>
+					</div>
+				</div>
+                <div class="text-center opacity-70 text-[11px] font-mono text-slate-500 pt-2">
+                    SMARTSYNC ZIMAOS EDITION<br>VERSION 1.0.0-BETA
+                </div>
+            </div>
+
+            <div class="mt-8 flex justify-end">
+                <button onclick="toggleModal('mPrefs', false)" class="bg-slate-800 hover:bg-slate-700 px-6 py-2 rounded font-black text-white text-xs uppercase tracking-widest transition-colors" data-key="save">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+
+
+    <script>
+        const i18n = {
+    pt: { 
+        new_task: "Nova Tarefa", manage_clouds: "Gerir Clouds", cloud_health: "Saúde das Ligações", active_tasks: "Tarefas Ativas", global_progress: "Progresso Geral", files_queue: "Fila de Ficheiros", config_task: "Configurar Tarefa", edit_task: "Editar Tarefa", task_name: "Nome", local_folder: "Pasta Local", remote_folder: "Pasta Cloud", sync_type: "Modo", trigger: "Trigger", interval: "Intervalo", cancel: "Cancelar", save: "Guardar", btn_stop: "Parar", btn_start: "Iniciar", mode_bi: "Bisync", mode_up: "Local->Cloud", mode_down: "Cloud->Local", opt_real: "Tempo Real", status_inactive: "Inativo", status_active: "Ativo", status_sim: "Simulando", status_done: "Concluído", last_sync: "Última Sync", start_time: "Hora de Início (24h)", daily: "Diário",
+        // Tutorial
+        tut_title: "Tutorial de Configuração",
+        tut_s1: "1. Terminal ZimaOS: sudo docker exec -it SyncPulse env -u RCLONE_VERSION rclone --config /config/rclone.conf config",
+        tut_s2: "2. Digita 'n' (New Remote) e dá um nome à cloud.",
+        tut_s3: "3. Seleciona o serviço (Google Drive ou OneDrive).",
+        tut_s4: "4. Quando perguntar 'Use auto config?', responde 'n'.",
+        tut_s5: "5. Autoriza no browser do teu PC e cola o código no terminal.",
+        tut_s6: "6. Termina e as clouds aparecerão aqui automaticamente.",
+        // Histórico
+        hist_title: "Histórico de Atividade",
+        hist_empty: "Sem registos para esta tarefa.",
+        hist_view_err: "Ver Erro",
+        hist_success: "Sucesso",
+        hist_error: "Erro",
+        hist_sim: "Simulação",
+        hist_sync: "Sincronização",
+        preferences: "Preferências",
+        pref_sim_title: "Simulação Automática",
+        pref_sim_desc: "Executa uma simulação (Dry-run) antes de iniciar a transferência real para validar a fila de ficheiros.",
+        pref_sim_note: "Nota: Desativar a simulação prévia torna o início da sincronização instantâneo, mas remove a previsão de alterações na fila.",
+        welcome_title: "Bem-vindo ao SmartSync Beta",
+        disclaimer_text: "Esta é uma versão experimental. Ao continuar, aceita que o developer não se responsabiliza por eventuais bugs ou perda de dados. O software é fornecido 'como está'.",
+        privacy_text: "Privacidade: Os seus dados e chaves ficam guardados apenas no seu hardware. O developer não tem acesso a nenhuma informação pessoal.",
+        accept_btn: "Aceitar e Começar",
+        support_project: "Apoiar Projeto",
+        official_site: "Site Oficial",
+        useful_links: "Links Úteis",
+        file_pending: "PENDENTE",
+        file_skipped: "SEM ALTERAÇÃO",
+        file_error: "ERRO",
+        file_done: "CONCLUÍDO",
+        view_more: "ver mais"
+    },
+    en: { 
+        new_task: "New Task", manage_clouds: "Manage Clouds", cloud_health: "Cloud Health", active_tasks: "Active Tasks", global_progress: "Global Progress", files_queue: "Files Queue", config_task: "Config Task", edit_task: "Edit Task", task_name: "Name", local_folder: "Local Folder", remote_folder: "Cloud Folder", sync_type: "Mode", trigger: "Trigger", interval: "Interval", cancel: "Cancel", save: "Save", btn_stop: "Stop", btn_start: "Start", mode_bi: "Bisync", mode_up: "Local->Cloud", mode_down: "Cloud->Local", opt_real: "Real-time", status_inactive: "Inactive", status_active: "Active", status_sim: "Simulating", status_done: "Done", last_sync: "Last Sync", start_time: "Start Time (24h)", daily: "Daily",
+        // Tutorial
+        tut_title: "Configuration Tutorial",
+        tut_s1: "1. ZimaOS Terminal: sudo docker exec -it SyncPulse env -u RCLONE_VERSION rclone --config /config/rclone.conf config",
+        tut_s2: "2. Type 'n' (New Remote) and name your cloud.",
+        tut_s3: "3. Select the service (Google Drive or OneDrive).",
+        tut_s4: "4. When asked 'Use auto config?', answer 'n'.",
+        tut_s5: "5. Authorize in your PC browser and paste the code in terminal.",
+        tut_s6: "6. Finish and clouds will appear here automatically.",
+        // History
+        hist_title: "Activity History",
+        hist_empty: "No records for this task.",
+        hist_view_err: "View Error",
+        hist_success: "Success",
+        hist_error: "Error",
+        hist_sim: "Simulation",
+        hist_sync: "Synchronization",
+        preferences: "Preferences",
+        pref_sim_title: "Automatic Simulation",
+        pref_sim_desc: "Runs a simulation (Dry-run) before starting the real transfer to validate the file queue.",
+        pref_sim_note: "Note: Disabling pre-simulation makes the synchronization start instant, but removes the file change preview in the queue.",
+        welcome_title: "Welcome to SmartSync Beta",
+        disclaimer_text: "This is a trial version. By continuing, you accept that the developer is not responsible for any bugs or data loss. The software is provided 'as is'.",
+        privacy_text: "Privacy: Your data and keys are saved only on your hardware. The developer does not have access to any personal information.",
+        accept_btn: "Accept and Begin",
+        support_project: "Support Project",
+        official_site: "Official Site",
+        useful_links: "Useful Links",
+        file_pending: "PENDING",
+        file_skipped: "NO CHANGE",
+        file_error: "ERROR",
+        file_done: "COMPLETED",
+        view_more: "view more"
+    },
+    fr: { 
+        new_task: "Nouvelle Tâche", manage_clouds: "Gérer Clouds", cloud_health: "Santé Cloud", active_tasks: "Tâches Actives", global_progress: "Progrès Global", files_queue: "File d'attente", config_task: "Configurer", edit_task: "Modifier", task_name: "Nom", local_folder: "Dossier Local", remote_folder: "Dossier Cloud", sync_type: "Mode", trigger: "Déclencheur", interval: "Intervalle", cancel: "Annuler", save: "Sauvegarder", btn_stop: "Arrêter", btn_start: "Démarrer", mode_bi: "Bisync", mode_up: "Local->Cloud", mode_down: "Cloud->Local", opt_real: "Temps Réel", status_inactive: "Inactif", status_active: "Actif", status_sim: "Simulation", status_done: "Terminé", last_sync: "Dernière Sync", start_time: "Heure (24h)", daily: "Quotidien",
+        // Tutorial
+        tut_title: "Tutoriel de Configuration",
+        tut_s1: "1. Terminal: sudo docker exec -it SyncPulse env -u RCLONE_VERSION rclone --config /config/rclone.conf config",
+        tut_s2: "2. Tapez 'n' (New Remote) et nommez votre cloud.",
+        tut_s3: "3. Sélectionnez le service (Google Drive ou OneDrive).",
+        tut_s4: "4. Pour 'Use auto config?', répondez 'n'.",
+        tut_s5: "5. Autorisez dans le navigateur et collez le code.",
+        tut_s6: "6. Terminez et les clouds apparaîtront ici.",
+        // History
+        hist_title: "Historique d'Activité",
+        hist_empty: "Aucun enregistrement.",
+        hist_view_err: "Voir Erreur",
+        hist_success: "Succès",
+        hist_error: "Erreur",
+        hist_sim: "Simulation",
+        hist_sync: "Synchronisation",
+        preferences: "Préférences",
+        pref_sim_title: "Simulation Automatique",
+        pref_sim_desc: "Effectue une simulation (Dry-run) avant de lancer le transfert réel afin de valider la file d'attente des fichiers.",
+        pref_sim_note: "Note : Désactiver la simulation préalable rend le démarrage instantané, mais supprime la prévisualisation des changements dans la file.",
+        welcome_title: "Bienvenue dans la version bêta de SmartSync",
+        disclaimer_text: "Ceci est une version d'essai. En continuant, vous acceptez que le développeur ne soit pas responsable des bogues ou des pertes de données. Le logiciel est fourni 'tel quel'.",
+        privacy_text: "Confidentialité : Vos données et clés sont enregistrées uniquement sur votre matériel. Le développeur n’a accès à aucune information personnelle.",
+        accept_btn: "Accepter et Commencer",
+        support_project: "Soutien de Projet",
+        official_site: "Site officiel",
+        useful_links: "Liens utiles",
+        file_pending: "EN ATTENTE",
+        file_skipped: "INCHANGÉ",
+        file_error: "ERREUR",
+        file_done: "TERMINÉ",
+        view_more: "voir plus"
+    },
+    es: { 
+        new_task: "Nueva Tarea", manage_clouds: "Gestionar Nubes", cloud_health: "Estado de Nubes", active_tasks: "Tareas Activas", global_progress: "Progreso Global", files_queue: "Cola de Archivos", config_task: "Configurar", edit_task: "Editar", task_name: "Nombre", local_folder: "Carpeta Local", remote_folder: "Carpeta Cloud", sync_type: "Modo", trigger: "Disparador", interval: "Intervalo", cancel: "Cancelar", save: "Guardar", btn_stop: "Parar", btn_start: "Iniciar", mode_bi: "Bisync", mode_up: "Local->Cloud", mode_down: "Cloud->Local", opt_real: "Tiempo Real", status_inactive: "Inativo", status_active: "Activo", status_sim: "Simulando", status_done: "Completado", last_sync: "Última Sync", start_time: "Hora (24h)", daily: "Diario",
+        // Tutorial
+        tut_title: "Tutorial de Configuración",
+        tut_s1: "1. Terminal: sudo docker exec -it SyncPulse env -u RCLONE_VERSION rclone --config /config/rclone.conf config",
+        tut_s2: "2. Escribe 'n' (New Remote) y da un nombre.",
+        tut_s3: "3. Selecciona el servicio (Google Drive o OneDrive).",
+        tut_s4: "4. En 'Use auto config?', responde 'n'.",
+        tut_s5: "5. Autoriza en el navegador y pega el código.",
+        tut_s6: "6. Termina y las nubes aparecerán aquí.",
+        // History
+        hist_title: "Historial de Actividad",
+        hist_empty: "Sin registros.",
+        hist_view_err: "Ver Error",
+        hist_success: "Éxito",
+        hist_error: "Error",
+        hist_sim: "Simulación",
+        hist_sync: "Sincronización",
+        preferences: "Preferencias",
+        pref_sim_title: "Simulación Automática",
+        pref_sim_desc: "Realiza una simulación (Dry-run) antes de iniciar la transferencia real para validar la cola de archivos.",
+        pref_sim_note: "Nota: Desactivar la simulación previa hace que el inicio sea instantáneo, pero elimina la vista previa de cambios en la cola.",
+        welcome_title: "Bienvenido a la versión beta de SmartSync.",
+        disclaimer_text: "Esta es una versión de prueba. Al continuar, acepta que el desarrollador no se responsabiliza de ningún error ni pérdida de datos. El software se proporciona 'tal cual'.",
+        privacy_text: "Privacidad: Tus datos y claves se guardan únicamente en tu dispositivo. El desarrollador no tiene acceso a ninguna información personal.",
+        accept_btn: "Aceptar y Comenzar",
+        support_project: "Apoyo de Proyecto",
+        official_site: "Sitio web oficial",
+        useful_links: "Enlaces útiles",
+        file_pending: "PENDIENTE",
+        file_skipped: "SIN CAMBIOS",
+        file_error: "ERROR",
+        file_done: "COMPLETADO",
+        view_more: "ver más"
+    },
+    de: { 
+        new_task: "Neue Aufgabe", manage_clouds: "Clouds verwalten", cloud_health: "Cloud-Status", active_tasks: "Aktive Aufgaben", global_progress: "Gesamtfortschritt", files_queue: "Warteschlange", config_task: "Konfigurieren", edit_task: "Bearbeiten", task_name: "Name", local_folder: "Lokaler Ordner", remote_folder: "Cloud-Ordner", sync_type: "Sync-Modus", trigger: "Trigger", interval: "Intervall", cancel: "Abbrechen", save: "Speichern", btn_stop: "Stoppen", btn_start: "Starten", mode_bi: "Bisync", mode_up: "Lokal->Cloud", mode_down: "Cloud->Lokal", opt_real: "Echtzeit", status_inactive: "Inaktiv", status_active: "Aktiv", status_sim: "Simulieren", status_done: "Fertig", last_sync: "Letzte Sync", start_time: "Zeit (24h)", daily: "Täglich",
+        // Tutorial
+        tut_title: "Konfigurations-Tutorial",
+        tut_s1: "1. Terminal: sudo docker exec -it SyncPulse env -u RCLONE_VERSION rclone --config /config/rclone.conf config",
+        tut_s2: "2. Tippen Sie 'n' (New Remote) und vergeben Sie einen Namen.",
+        tut_s3: "3. Wählen Sie den Dienst (Google Drive oder OneDrive).",
+        tut_s4: "4. Bei 'Use auto config?', antworten Sie 'n'.",
+        tut_s5: "5. Im Browser autorisieren und Code einfügen.",
+        tut_s6: "6. Fertigstellen, die Clouds erscheinen hier.",
+        // History
+        hist_title: "Aktivitätsverlauf",
+        hist_empty: "Keine Einträge.",
+        hist_view_err: "Fehler anzeigen",
+        hist_success: "Erfolg",
+        hist_error: "Fehler",
+        hist_sim: "Simulation",
+        hist_sync: "Synchronisation",
+        preferences: "Präferenzen",
+        pref_sim_title: "Automatische Simulation",
+        pref_sim_desc: "Führt vor dem eigentlichen Transfer eine Simulation (Dry-run) durch, um die Dateiwarteschlange zu validieren.",
+        pref_sim_note: "Hinweis: Das Deaktivieren der Vorsimulation ermöglicht einen sofortigen Start, entfernt jedoch die Vorschau der Änderungen in der Warteschlange.",
+        welcome_title: "Willkommen bei SmartSync Beta",
+        disclaimer_text: "Dies ist eine Testversion. Mit der weiteren Nutzung akzeptieren Sie, dass der Entwickler nicht für Fehler oder Datenverlust haftet. Die Software wird ohne Mängelgewähr bereitgestellt.",
+        privacy_text: "Datenschutz: Ihre Daten und Schlüssel werden ausschließlich auf Ihrer Hardware gespeichert. Der Entwickler hat keinen Zugriff auf Ihre persönlichen Daten.",
+        accept_btn: "Akzeptieren und Beginnen",
+        support_project: "Unterstützungsprojekt",
+        official_site: "Offizielle Website",
+        useful_links: "Nützliche Links",
+        file_pending: "AUSSTEHEND",
+        file_skipped: "UNVERÄNDERT",
+        file_error: "FEHLER",
+        file_done: "ABGESCHLOSSEN",
+        view_more: "mehr anzeigen"
+
+    }
+};
+
+        let lang = 'pt', tasks = [], selectedTaskId = null, socket, editingTaskId = null;
+        let STATE = { running: {}, logs: {}, active_files: {}, finished_files: {}, all_files: {}, skipped_files: {}, failed_files: {}, stats: {}, file_sizes: {} };
+        let expPath = '/', expMode = 'local', expRemote = '';
+
+        function setLang(nextLang) {
+            lang = i18n[nextLang] ? nextLang : 'pt';
+            const translations = i18n[lang];
+            const fallback = i18n.pt;
+
+            document.documentElement.lang = lang;
+            const picker = document.getElementById('lPick');
+            if (picker) picker.value = lang;
+
+            document.querySelectorAll('[data-key]').forEach(element => {
+                const key = element.dataset.key;
+                const text = translations[key] ?? fallback[key];
+                if (text !== undefined) element.textContent = text;
+            });
+
+            localStorage.setItem('smartsync_language', lang);
+            refreshUI();
+        }
+
+        let userInteracting = false;
+        let interactionTimer = null;
+        let lastScrollIdx = -1; // Memória do último ficheiro centrado
+
+        let expandedTasks = {}; // Controla o estado de expansão por tarefa
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('collapsed');
+            
+            // Gravar a preferência no localStorage
+            const isCollapsed = sidebar.classList.contains('collapsed');
+            localStorage.setItem('smartsync_sidebar_collapsed', isCollapsed);
+        }
+        
+        // Chamar esta função no window.onload para restaurar o estado
+        function restoreSidebarState() {
+            const isCollapsed = localStorage.getItem('smartsync_sidebar_collapsed') === 'true';
+            if (isCollapsed) {
+                document.getElementById('sidebar').classList.add('collapsed');
+            }
+        }
+        
+        function handleUserInteraction() {
+            userInteracting = true;
+            clearTimeout(interactionTimer);
+            // Retoma o scroll automático após 3 segundos de inatividade
+            interactionTimer = setTimeout(() => { userInteracting = false; }, 3000);
+        }
+
+        async function acceptTerms() {
+			await fetch('/api/terms/accept', { method: 'POST' });
+			// Esconde o ecrã imediatamente no browser
+			document.getElementById('welcome-screen').classList.add('hidden-overlay');
+		}
+        
+        function connectWS() {
+			const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+			socket = new WebSocket(`${protocol}//${window.location.host}/ws`);
+			
+			socket.onmessage = async (event) => {
+				const data = JSON.parse(event.data);
+				
+				if (data.type === 'init') {
+					tasks = data.tasks || [];
+					if (data.state) {
+						STATE = data.state;
+						
+						// --- SINCRONIZAÇÃO DAS PREFERÊNCIAS ---
+						const toggle = document.getElementById('pref-auto-sim');
+						if (toggle) {
+							// Define o estado do interruptor baseado no que veio do servidor
+							toggle.checked = STATE.auto_simulate === true;
+							console.log("Preferência aplicada via WebSocket:", STATE.auto_simulate);
+						}
+
+						// Gestão do ecrã de boas-vindas
+						setTimeout(() => {
+							document.getElementById('splash-screen').classList.add('hidden-overlay');
+							if (!STATE.terms_accepted) {
+								document.getElementById('welcome-screen').classList.remove('hidden-overlay');
+							}
+						}, 1500);
+					}
+
+					if(!selectedTaskId && tasks.length > 0) selectedTaskId = tasks[0].id.toString();
+				} 
+				else if (data.type === 'update') { 
+					STATE = data.state; 
+				}
+				else if (data.type === 'health_update') { renderHealthUI(data.health); }
+				
+				refreshUI();
+			};
+			socket.onclose = () => setTimeout(connectWS, 3000);
+		}
+    
+        function selectTask(id) {
+            selectedTaskId = id.toString();
+            refreshUI();
+        }
+    
+        function refreshUI() {
+            const grid = document.getElementById('tasks-grid');
+            const gBar = document.getElementById('g-bar');
+            const gPerc = document.getElementById('g-perc');
+            if (!grid) return;
+            const lo = i18n[lang] || i18n['pt'];
+            const tidStr = selectedTaskId ? selectedTaskId.toString() : null;
+    
+            grid.innerHTML = tasks.map(t => {
+                const tidKey = t.id.toString();
+                const status = STATE.running[tidKey] || 'idle';
+                const isRunning = status !== 'idle';
+                const isSelected = tidStr && tidKey === tidStr;
+                const hasErrors = STATE.failed_files[tidKey] && STATE.failed_files[tidKey].length > 0;
+				const isLicensed = STATE.licensed;
+				const opacity = isLicensed ? 'opacity-100' : 'opacity-40 grayscale pointer-events-none';
+				const lockIcon = isLicensed ? '' : '<i class="fas fa-lock mr-1"></i>';
+	
+                let syncLabel = t.type === 'bisync' ? lo.mode_bi : (t.type === 'upload' ? lo.mode_up : lo.mode_down);
+                let triggerText = t.trigger === 'real' ? lo.opt_real : (t.interval === 'daily' ? `${lo.daily} às ${t.daily_time || '03:00'}` : t.interval);
+    
+                const stats = STATE.stats[tidKey] || null;
+                let statusText = lo.status_inactive;
+                if (status === 'active') statusText = lo.status_active;
+                if (status === 'simulating') statusText = lo.status_sim;
+                if (status === 'idle' && stats && stats.percent === 100) statusText = lo.status_done;
+    
+                return `
+                <div class="card ${isSelected ? 'selected-card' : ''} ${isRunning ? 'active-border' : ''}" onclick="selectTask('${t.id}')">
+                    <div class="card-header">
+                        <div class="card-title"><div class="status-dot ${isRunning ? 'active' : ''}"></div> ${t.name}</div>
+                        <div class="flex items-center gap-3">
+                            ${hasErrors ? `<i class="fas fa-exclamation-triangle text-yellow-500 text-lg animate-pulse"></i>` : ''}
+                            <div class="badge-status">${statusText}</div>
+                        </div>
+                    </div>
+                    <div class="card-paths"><div class="path-line"><b>L:</b> <span>${t.local}</span></div><div class="path-line"><b>C:</b> <span>${t.remote}</span></div></div>
+                    <div class="card-meta-row">
+                        <span><i class="fas fa-sync"></i> ${syncLabel}</span>
+                        <span><i class="fas fa-clock"></i> ${triggerText}</span>
+                    </div>
+                    <div class="last-sync italic text-[10px] text-slate-500 mb-3">${lo.last_sync}: ${t.last_sync || '---'}</div>
+                    <div class="card-footer">
+                        <div class="flex gap-5">
+                            <div class="btn-action btn-sim ${lockClass}" 
+								 onclick="event.stopPropagation(); selectTask('${t.id}'); startSync('${t.id}', true)">
+								<i class="fas ${simIcon} mr-1"></i> SIMULAR
+							</div>
+                            <div class="btn-action ${isRunning ? 'text-red-500' : 'btn-play'} ${lockClass}" 
+								 onclick="event.stopPropagation(); selectTask('${t.id}'); ${isRunning ? `stopSync('${t.id}')` : `startSync('${t.id}', false)`}">
+								<i class="fas ${playIcon} mr-1"></i> ${isRunning ? lo.btn_stop : lo.btn_start}
+							</div>
+                        </div>
+                        <div class="card-icons-right">
+							<i class="fas fa-history hover:text-blue-400" onclick="event.stopPropagation(); showHistory('${t.id}')"></i>
+                            <i class="fas fa-pen" onclick="event.stopPropagation(); selectTask('${t.id}'); editTask('${t.id}')"></i>
+                            <i class="fas fa-trash-alt hover:text-red-500" onclick="event.stopPropagation(); selectTask('${t.id}'); deleteTask('${t.id}')"></i>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
+    
+            if (tidStr) {
+                // Vai buscar os dados ao STATE ou usa valores padrão se ainda não existirem
+                const stats = STATE.stats[tidStr] || {percent: 0, transferred: "0 B", total: "---"};
+                
+                const gBar = document.getElementById('g-bar');
+                const gPerc = document.getElementById('g-perc');
+                
+                if (gBar) {
+                    // Atualiza a largura da barra azul superior
+                    gBar.style.width = stats.percent + '%';
+                }
+                
+                if (gPerc) {
+                    // Atualiza o texto: ex: "281 MiB / 1.134 GiB (24%)"
+                    gPerc.innerText = `${stats.transferred} / ${stats.total} (${stats.percent}%)`;
+                }
+                
+                updateFilaELogs(tidStr);
+            }
+            document.getElementById('t-count').innerText = tasks.length;
+        }
+    
+        // 1. Variáveis de controlo de memória (fora da função)
+        let taskOffsets = {}; // Guarda a posição do scroll individual por tarefa
+
+        function updateFilaELogs(tidStr) {
+            const fSc = document.getElementById('file-scroll');
+            const logArea = document.getElementById('log-content');
+            const lo = i18n[lang];
+            if (!fSc || !logArea) return;
+        
+            if (!fSc.dataset.listenersActive) {
+                fSc.onwheel = handleUserInteraction;
+                fSc.ontouchstart = handleUserInteraction;
+                fSc.onmousedown = handleUserInteraction;
+                fSc.dataset.listenersActive = "true";
+            }
+        
+            const allFiles = [...new Set(STATE.all_files?.[tidStr] || [])];
+            const finished = STATE.finished_files?.[tidStr] || [];
+            const active = STATE.active_files?.[tidStr] || [];
+            const failed = STATE.failed_files?.[tidStr] || [];
+            const skipped = STATE.skipped_files?.[tidStr] || [];
+            const sizes = STATE.file_sizes?.[tidStr] || {};
+        
+            if (allFiles.length > 0) {
+                // --- 1. ORDENAÇÃO FIXA Z -> A ---
+                const sortedFiles = [...allFiles].sort((a, b) => 
+                    b.localeCompare(a, undefined, {numeric: true, sensitivity: 'base'})
+                );
+        
+                // --- 2. LÓGICA DE JANELA OU EXPANSÃO ---
+                const isExpanded = expandedTasks[tidStr] || false;
+                let displayFiles = [];
+                let start = 0;
+        
+                if (isExpanded) {
+                    // MOSTRA TUDO
+                    displayFiles = sortedFiles;
+                } else {
+                    // MOSTRA APENAS 200 (Sliding Window)
+                    const activeIdx = sortedFiles.findIndex(name => active.some(x => x.name === name));
+                    if (activeIdx !== -1) {
+                        start = Math.max(0, activeIdx - 95);
+                        taskOffsets[tidStr] = start;
+                    } else {
+                        start = taskOffsets[tidStr] || 0;
+                    }
+                    if (start >= sortedFiles.length) start = 0;
+                    displayFiles = sortedFiles.slice(start, start + 200);
+                }
+        
+                let htmlContent = displayFiles.map(fullPath => {
+                    const lastSlash = fullPath.lastIndexOf('/');
+                    const displayName = lastSlash !== -1 ? fullPath.substring(lastSlash + 1) : fullPath;
+                    const folderPath = lastSlash !== -1 ? fullPath.substring(0, lastSlash + 1) : "";
+        
+                    const weightValue = sizes[fullPath] || "";
+                    const weightLabel = weightValue ? ` de ${weightValue}` : "";
+        
+                    let color = "text-white", bar = "bg-slate-600", p = 0, icon = "fa-clock", op = "opacity-100", label = lo.file_pending.toLowerCase(), activeClass = "";
+        
+                    if (failed.includes(fullPath)) { 
+                        color = "text-red-500"; bar = "bg-red-600"; p = 100; icon = "fa-times-circle"; label = lo.file_error.toLowerCase();
+                    } 
+                    else if (finished.includes(fullPath)) { 
+                        color = "text-green-500"; bar = "bg-green-500"; p = 100; icon = "fa-check-circle"; label = lo.file_done.toLowerCase();
+                    }
+                    else if (active.some(x => x.name === fullPath)) { 
+                        const a = active.find(x => x.name === fullPath);
+                        p = a.progress; // AQUI: o valor 13, 45, 100 vindo do Python
+                        color = "text-blue-400"; 
+                        bar = "bg-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.6)]"; 
+                        icon = "fa-sync fa-spin"; 
+                        label = p + "%"; // Mostra a percentagem ao lado do peso
+                        activeClass = "target-scroll";
+                    }
+                    else if (skipped.includes(fullPath)) { 
+                        color = "text-orange-500"; bar = "bg-orange-600"; p = 100; icon = "fa-equals"; label = lo.file_skipped.toLowerCase(); 
+                    }
+        
+                    return `
+                    <div class="mb-3 p-4 border border-slate-800 rounded-lg bg-black/30 ${op} ${activeClass}">
+                        <div class="flex justify-between items-start ${color} text-[11px] mb-1 font-bold tracking-tight gap-4">
+                            <div class="truncate flex-1">
+                                <div class="flex items-center gap-2">
+                                    <i class="fas ${icon} opacity-80 text-[10px]"></i>
+                                    <span class="text-[13px] font-bold">${displayName}</span>
+                                </div>
+                                ${folderPath ? `<div class="text-[13px] ${color} font-black ml-6 mt-1 block tracking-tight opacity-80 italic">${folderPath}</div>` : ''}
+                            </div>
+                            <div class="flex-shrink-0 text-right whitespace-nowrap pt-0.5 min-w-[180px]">
+                                <span class="font-black">${label}</span>${weightLabel}
+                            </div>
+                        </div>
+                        <div class="w-full bg-slate-900/50 rounded-full h-1.5 overflow-hidden mt-3">
+                            <div class="${bar} h-full transition-all duration-300" style="width: ${p}%;"></div>
+                        </div>
+                    </div>`;
+                }).join('');
+        
+                // --- 3. BOTÃO "VER MAIS" ---
+                if (!isExpanded && sortedFiles.length > 200) {
+                    const totalRestantes = sortedFiles.length - 200;
+                    htmlContent += `
+                        <div class="py-6 text-center">
+                            <button onclick="toggleExpandList('${tidStr}')" class="bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border border-slate-700">
+                                <i class="fas fa-chevron-down mr-2"></i>${lo.view_more} (+${totalRestantes})
+                            </button>
+                        </div>`;
+                } else if (isExpanded) {
+                    // Botão para recolher a lista (Opcional, mas útil)
+                    htmlContent += `
+                        <div class="py-6 text-center">
+                            <button onclick="toggleExpandList('${tidStr}')" class="bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border border-blue-500/30">
+                                <i class="fas fa-chevron-up mr-2"></i>Recolher Lista
+                            </button>
+                        </div>`;
+                }
+        
+                fSc.innerHTML = htmlContent;
+        
+                // --- 4. AUTO-SCROLL (Apenas se NÃO estiver expandido e houver um ativo) ---
+                if (!isExpanded && !userInteracting) {
+                    const activeEl = fSc.querySelector('.target-scroll');
+                    if (activeEl) {
+                        activeEl.scrollIntoView({ behavior: 'auto', block: 'center' });
+                    }
+                }
+            } else {
+                fSc.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-slate-700 italic text-[10px] p-10 opacity-40 text-center"><i class="fas fa-folder-open mb-2 text-2xl"></i><span>${lo.hist_empty}</span></div>`;
+            }
+        
+            // Logs (Mantidos)
+            // --- 5. GESTÃO DOS LOGS (LIMPEZA GARANTIDA) ---
+            if (logArea) {
+                // Verificamos se existem logs para a tarefa selecionada
+                if (STATE.logs && STATE.logs[tidStr] && STATE.logs[tidStr].length > 0) {
+                    // Se existirem, mostra os últimos 50
+                    const recentLogs = STATE.logs[tidStr].slice(0, 50);
+                    logArea.innerHTML = recentLogs.map(l => `<div class="mb-1 text-emerald-600 font-mono text-[10px]">> ${l}</div>`).join('');
+                } else {
+                    // SE O CARTÃO ESTIVER VAZIO: Limpa a consola e mostra mensagem de espera
+                    logArea.innerHTML = `
+                        <div class="flex flex-col items-start p-4 opacity-40 font-mono text-[10px] text-slate-700">
+                            <div class="mb-1">> Consola pronta...</div>
+                            <div class="mb-1">> Aguardando atividade para a tarefa ${tidStr}...</div>
+                        </div>`;
+                }
+            }
+        }
+
+        // Carregar definições ao abrir a página
+        // Função central para carregar e aplicar as definições
+        // 1. Função apenas para CARREGAR o estado inicial do ficheiro para o ecrã
+        async function loadSettingsUI() {
+            try {
+                const r = await fetch('/api/settings');
+                const settings = await r.json();
+                const toggle = document.getElementById('pref-auto-sim');
+                if (toggle) {
+                    // Define a posição do interruptor baseada no ficheiro
+                    toggle.checked = settings.auto_simulate === true;
+                    console.log("Estado carregado do servidor:", settings.auto_simulate);
+                }
+            } catch (e) {
+                console.error("Erro ao carregar settings:", e);
+            }
+        }
+        
+        // 2. Evento global para GRAVAR sempre que clicas no interruptor
+        // Este código deve estar solto dentro da tag <script>
+        document.addEventListener('change', async function(e) {
+            if (e.target && e.target.id === 'pref-auto-sim') {
+                const newValue = e.target.checked;
+                try {
+                    const response = await fetch('/api/settings', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ auto_simulate: newValue })
+                    });
+                    if (response.ok) {
+                        console.log("Gravado com sucesso:", newValue);
+                    }
+                } catch (err) {
+                    console.error("Erro ao gravar:", err);
+                }
+            }
+        });
+        
+        // 3. Garante que o carregamento visual acontece no arranque
+        window.onload = () => { 
+            connectWS(); 
+            updateHealth(); 
+            setLang(localStorage.getItem('smartsync_language') || 'pt'); 
+            loadSettingsUI(); // Chama a função de carregar
+            restoreSidebarState();
+            setInterval(updateHealth, 30000); 
+        };
+        
+        
+        async function startSync(id, sim) { await fetch(`/api/sync/${id.toString()}?simulate=${sim}`, { method: 'POST' }); }
+        async function stopSync(id) { await fetch(`/api/sync/stop/${id.toString()}`, { method: 'POST' }); }
+        async function deleteTask(id) { if(confirm("Apagar?")) { tasks = tasks.filter(t => t.id.toString() !== id.toString()); await fetch('/api/tasks', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(tasks)}); } }
+        function toggleModal(id, s) { document.getElementById(id).classList.toggle('hidden', !s); if(id==='mCloud' && s) renderCloudManager(); }
+        
+        function openNewTaskModal() { 
+            editingTaskId = null; 
+            document.getElementById('modalTitle').innerText = i18n[lang].config_task; 
+            ['in-name','in-loc','in-rem'].forEach(id=>document.getElementById(id).value=''); 
+            toggleTriggerFields("sched"); 
+            toggleModal('mTask', true); 
+        }
+    
+        function editTask(id) { 
+            const t = tasks.find(x => x.id.toString() === id.toString());
+            if(!t) return;
+            editingTaskId = t.id;
+            document.getElementById('modalTitle').innerText = i18n[lang].edit_task;
+            document.getElementById('in-name').value = t.name;
+            document.getElementById('in-loc').value = t.local;
+            document.getElementById('in-rem').value = t.remote;
+            document.getElementById('in-typ').value = t.type;
+            document.getElementById('in-trig').value = t.trigger;
+            document.getElementById('in-int').value = t.interval;
+            document.getElementById('in-time').value = t.daily_time || "03:00";
+            toggleTriggerFields(t.trigger);
+            toggleModal('mTask', true);
+        }
+    
+        async function saveTask() {
+            const existingTask = editingTaskId ? tasks.find(t => t.id.toString() === editingTaskId.toString()) : {};
+            const nt = { ...existingTask, id: editingTaskId || Date.now(), name: document.getElementById('in-name').value, local: document.getElementById('in-loc').value, remote: document.getElementById('in-rem').value, type: document.getElementById('in-typ').value, trigger: document.getElementById('in-trig').value, interval: document.getElementById('in-int').value, daily_time: document.getElementById('in-time').value };
+            let ut = editingTaskId ? tasks.map(t=>t.id.toString()===editingTaskId.toString()?nt:t) : [...tasks, nt];
+            try {
+                const response = await fetch('/api/tasks', { method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(ut) });
+                if (!response.ok) throw new Error('Não foi possível gravar a tarefa.');
+                tasks = ut;
+                refreshUI();
+                toggleModal('mTask', false);
+            } catch (error) {
+                console.error('Erro ao gravar tarefa:', error);
+                alert('Não foi possível gravar a tarefa. Tenta novamente.');
+            }
+        }
+    
+        async function openExp(mode) { 
+            expMode = mode; expPath = mode === 'local' ? '/mnt' : ''; expRemote = ''; 
+            const list = document.getElementById('expList');
+            if (list) list.innerHTML = '<div class="p-10 text-center text-slate-600 text-xs italic">A carregar...</div>';
+            document.getElementById('expPop').style.display = 'flex'; 
+            if(mode === 'cloud') {
+                const r = await fetch('/api/browse/remotes');
+                const rems = await r.json();
+                const sel = document.getElementById('cloudSelect');
+                sel.style.display = 'block';
+                sel.innerHTML = '<option value="">-- Selecione --</option>' + rems.map(r => `<option value="${r}">${r}</option>`).join('');
+            } else { document.getElementById('cloudSelect').style.display = 'none'; renderExp(); }
+        }
+    
+        async function renderExp() { 
+			if (expMode === 'cloud' && !expRemote) return;
+			
+			const list = document.getElementById('expList');
+			list.innerHTML = '<div class="p-8 text-center text-blue-500 animate-pulse text-xs italic">A ler pastas...</div>';
+			
+			let url = expMode === 'local' 
+				? `/api/browse/local?path=${encodeURIComponent(expPath)}` 
+				: `/api/browse/cloud?remote=${encodeURIComponent(expRemote)}&path=${encodeURIComponent(expPath)}`;
+			
+			try {
+				const r = await fetch(url);
+				const data = await r.json();
+				
+				if (data.length === 0) {
+					list.innerHTML = '<div class="p-10 text-center text-slate-600 text-xs italic">Pasta vazia ou sem permissão</div>';
+				} else {
+					// Mapeia os itens garantindo que clicamos no nome correto
+					list.innerHTML = data.map(i => {
+						const name = typeof i === 'string' ? i : i.name;
+						return `
+							<div class="exp-item" onclick="goExp('${name.replace(/'/g, "\\'")}')">
+								<i class="fas fa-folder text-yellow-500 mr-2"></i>
+								<span>${name}</span>
+							</div>`;
+					}).join('');
+				}
+			} catch (e) {
+				list.innerHTML = '<div class="p-10 text-center text-red-500 text-xs">Erro ao carregar pasta.</div>';
+			}
+			
+			document.getElementById('expPath').innerText = expPath;
+		}
+    
+        function goExp(f) { expPath = expPath.endsWith('/') ? expPath + f : expPath + (expPath===''?'':'/') + f; renderExp(); }
+        function selRem(r) { expRemote = r; expPath = ''; renderExp(); }
+        function navUp() { if(expPath==='/' || expPath==='/mnt' || expPath==='') return; let p = expPath.split('/').filter(x=>x); p.pop(); expPath = (expMode==='local'?'/':'') + p.join('/'); renderExp(); }
+        function confExp() { let val = expMode === 'local' ? expPath : expRemote + ":" + expPath.replace(/^\//, ''); document.getElementById(expMode === 'local' ? 'in-loc' : 'in-rem').value = val; closeExp(); }
+        function closeExp() { document.getElementById('expPop').style.display = 'none'; }
+        
+        async function renderCloudManager() { 
+            const r = await fetch('/api/browse/remotes'); const rems = await r.json(); 
+            document.getElementById('cloud-manager-list').innerHTML = rems.map(rem => `<div class="flex justify-between bg-slate-800/40 p-4 rounded-xl border border-slate-800"><span class="text-white font-bold">${rem}</span><button onclick="removeCloud('${rem}')" class="text-red-500 text-[10px] font-black">APAGAR</button></div>`).join(''); 
+        }
+        
+        async function remove_cloud_config(n) { 
+            if(confirm('Tens a certeza que queres apagar esta ligação Cloud?')) { 
+                const response = await fetch(`/api/clouds/remove/${n}`, { method: 'DELETE' }); 
+                if (response.ok) {
+                    renderCloudManager(); // Recarrega a lista no modal
+                    updateHealth();      // Atualiza a barra lateral
+                } else {
+                    alert("Erro ao apagar a cloud.");
+                }
+            } 
+        }
+        
+        async function updateHealth() { 
+            try { 
+                const r = await fetch('/api/health'); 
+                const rems = await r.json(); 
+                renderHealthUI(rems);
+            } catch(e) {} 
+        }
+
+        function renderHealthUI(rems) {
+            if (!rems || rems.length === 0) {
+                document.getElementById('health-list').innerHTML = '<div class="text-[10px] text-slate-600 italic">A verificar ligações...</div>';
+                return;
+            }
+            
+            document.getElementById('health-list').innerHTML = rems.map(c => {
+                const color = c.status === 'online' ? '#22c55e' : '#ef4444';
+                const iconClass = c.status === 'online' ? 'fa-wifi' : 'fa-exclamation-circle';
+                
+                return `
+                    <div class="flex justify-between items-center text-slate-400 font-medium py-1 border-b border-white/5 group">
+                        <span class="truncate w-32" style="font-size: 11px;">${c.name}</span>
+                        <i class="fas ${iconClass} cursor-help transition-colors duration-500" 
+                           style="color:${color}; font-size: 12px;" 
+                           title="${c.message}"></i>
+                    </div>
+                `;
+            }).join(''); 
+        }
+        
+        function toggleTriggerFields(val) { document.getElementById('interval-wrap').classList.toggle('hidden', val==='real'); document.getElementById('time-wrap').classList.toggle('hidden', val==='real'||document.getElementById('in-int').value!=='daily'); }
+        function toggleTimeField(val) { document.getElementById('time-wrap').classList.toggle('hidden', val!=='daily'||document.getElementById('in-trig').value==='real'); }
+        
+		async function showHistory(id) {
+            const list = document.getElementById('history-list');
+            const lo = i18n[lang];
+            
+            // 1. Feedback visual imediato
+            list.innerHTML = `<div class="text-center p-10 text-slate-500 animate-pulse">${lo.status_active}...</div>`;
+            toggleModal('mHistory', true);
+        
+            try {
+                // 2. Faz o fetch (garantindo que o ID é string limpa)
+                const r = await fetch(`/api/history/${id.toString()}`);
+                const data = await r.json();
+        
+                // 3. Verificação de segurança: se data não existe ou não é array
+                if (!data || !Array.isArray(data) || data.length === 0) {
+                    list.innerHTML = `<div class="text-center p-10 text-slate-600 italic text-sm">${lo.hist_empty}</div>`;
+                    return;
+                }
+        
+                // 4. Desenha a lista
+                list.innerHTML = data.map((h, index) => {
+                    const typeLabel = h.type === 'Simulação' ? lo.hist_sim : lo.hist_sync;
+                    const typeClass = h.type === 'Simulação' 
+                        ? 'bg-orange-500/20 text-orange-500 border border-orange-500/30' 
+                        : 'bg-blue-500/20 text-blue-400 border border-blue-500/30';
+                    
+                    const modeLabel = h.mode === 'upload' ? 'Local->Cloud' : (h.mode === 'download' ? 'Cloud->Local' : 'Bisync');
+                    const statusLabel = h.status === 'Sucesso' ? lo.hist_success : lo.hist_error;
+                    const statusColor = h.status === 'Sucesso' ? 'text-green-500' : 'text-red-500';
+                    const statusIcon = h.status === 'Sucesso' ? 'fa-check-circle' : 'fa-exclamation-triangle';
+        
+                    return `
+                    <div class="bg-slate-800/40 border border-slate-700/50 rounded-xl overflow-hidden text-[11px] mb-3">
+                        <div class="p-4 flex items-center justify-between">
+                            <div class="flex items-center gap-4">
+                                <span class="text-slate-500 font-mono">${h.date}</span>
+                                <span class="px-2 py-0.5 rounded font-bold uppercase text-[9px] ${typeClass}">${typeLabel}</span>
+                                <span class="text-slate-400 font-medium"><i class="fas fa-exchange-alt mx-1 text-slate-600"></i> ${modeLabel}</span>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <span class="font-black ${statusColor} tracking-tighter">
+                                    <i class="fas ${statusIcon} mr-1"></i> ${statusLabel.toUpperCase()}
+                                </span>
+                                ${h.status === 'Erro' ? `
+                                    <button onclick="toggleHistoryLog(${index})" class="bg-red-500/10 hover:bg-red-500/20 text-red-400 px-2 py-1 rounded border border-red-500/20 font-bold uppercase text-[8px]">
+                                        ${lo.hist_view_err}
+                                    </button>` : ''}
+                            </div>
+                        </div>
+                        ${h.log ? `<div id="hist-log-${index}" class="hidden bg-black/60 p-4 border-t border-slate-700/30 text-red-400 font-mono text-[10px] whitespace-pre-wrap">${h.log}</div>` : ''}
+                    </div>`;
+                }).join('');
+        
+            } catch (error) {
+                console.error("Erro ao carregar histórico:", error);
+                list.innerHTML = `<div class="text-center p-10 text-red-500 italic text-sm">Erro ao comunicar com o servidor.</div>`;
+            }
+        }
+
+		function toggleHistoryLog(index) {
+			const el = document.getElementById(`hist-log-${index}`);
+			el.classList.toggle('hidden');
+		}
+
+        // LÓGICA DE REDIMENSIONAMENTO (RESIZE)
+        const resizer = document.getElementById('h-resizer');
+        const topPanel = document.getElementById('top-panel');
+        
+        resizer.addEventListener('mousedown', function(e) {
+            e.preventDefault();
+            resizer.classList.add('is-dragging');
+            
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', function() {
+                resizer.classList.remove('is-dragging');
+                document.removeEventListener('mousemove', handleMouseMove);
+                // Opcional: Guardar a altura no localStorage para o próximo arranque
+                localStorage.setItem('smartsync_top_height', topPanel.style.height);
+            });
+        });
+        
+        function handleMouseMove(e) {
+            const mainContent = document.querySelector('.main-content');
+            const containerHeight = mainContent.getBoundingClientRect().height;
+            // Calculamos a nova altura com base na posição do rato
+            let newHeight = e.clientY; 
+            
+            // Limites de segurança (mínimo 150px, máximo 80% do ecrã)
+            if (newHeight > 150 && newHeight < containerHeight * 0.8) {
+                topPanel.style.height = newHeight + 'px';
+                topPanel.style.flex = 'none'; // Desativa o flex para respeitar a altura exata
+            }
+        }
+        
+        // Recuperar a última altura guardada ao carregar
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedHeight = localStorage.getItem('smartsync_top_height');
+            if (savedHeight) {
+                topPanel.style.height = savedHeight;
+                topPanel.style.flex = 'none';
+            }
+        });
+
+        function toggleExpandList(tidStr) {
+            expandedTasks[tidStr] = !expandedTasks[tidStr];
+            refreshUI(); // Força a atualização da lista
+        }
+        
+        window.onload = () => { 
+            connectWS(); 
+            updateHealth(); 
+            setLang(localStorage.getItem('smartsync_language') || 'pt'); 
+            loadSettingsUI(); // Chama a função de carregar
+            restoreSidebarState();
+            setInterval(updateHealth, 30000); 
+        };
+    </script>
+</body>
+</html>\

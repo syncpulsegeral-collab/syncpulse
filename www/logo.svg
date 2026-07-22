@@ -1,0 +1,52 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Gradiente Principal -->
+    <linearGradient id="mainGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#00D1FF;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#9D50BB;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Gradiente Sutil para as Bordas -->
+    <linearGradient id="borderGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#475569;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1E293B;stop-opacity:1" />
+    </linearGradient>
+
+    <!-- Efeito de Brilho (Glow) -->
+    <filter id="neonGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="12" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Fundo: Corpo do Ícone -->
+  <rect x="40" y="40" width="432" height="432" rx="100" fill="#050A12" />
+  <rect x="42" y="42" width="428" height="428" rx="98" stroke="url(#borderGrad)" stroke-width="4" fill="none" />
+
+  <!-- Detalhes de Fundo (Grelha de Dados) -->
+  <circle cx="256" cy="256" r="180" stroke="#1E293B" stroke-width="1" stroke-dasharray="10 10" />
+  <circle cx="256" cy="256" r="120" stroke="#1E293B" stroke-width="1" />
+
+  <!-- Arcos de Sincronização Estilizados -->
+  <path d="M140 200C110 240 110 300 140 340M372 312C402 272 402 212 372 172" 
+        stroke="url(#mainGrad)" stroke-width="15" stroke-linecap="round" filter="url(#neonGlow)" />
+  
+  <!-- "Nós" de Dados (Círculos nas pontas dos arcos) -->
+  <circle cx="140" cy="200" r="8" fill="#00D1FF" />
+  <circle cx="372" cy="172" r="8" fill="#9D50BB" />
+
+  <!-- O Pulso Central Elevado -->
+  <path d="M100 256H160L190 140L256 380L322 140L352 256H412" 
+        stroke="url(#mainGrad)" stroke-width="25" stroke-linecap="round" stroke-linejoin="round" />
+  
+  <!-- Linha de Brilho Branco no centro do Pulso (Dá profundidade 3D) -->
+  <path d="M100 256H160L190 140L256 380L322 140L352 256H412" 
+        stroke="white" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" opacity="0.4" />
+
+  <!-- Ponto de Atividade Central (O "Coração" do Pulse) -->
+  <circle cx="256" cy="256" r="40" fill="#050A12" stroke="url(#mainGrad)" stroke-width="4" />
+  <circle cx="256" cy="256" r="15" fill="white" filter="url(#neonGlow)">
+    <animate attributeName="opacity" values="1;0.4;1" dur="2s" repeatCount="indefinite" />
+  </circle>
+
+</svg>
