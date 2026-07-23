@@ -553,37 +553,17 @@ def save_settings(data):
         print(f"Erro ao gravar settings: {e}")
 
 def get_initial_state():
-    """Inicializa o estado carregando as definições e a licença do disco."""
+    """Inicializa o estado global com os valores reais do disco."""
     s = load_settings()
-    
-    # Verificar licença local antes de criar o estado
-    is_licensed = False
-    lic_info = {"email": "", "key": "", "slots": 0}
-    
-    if os.path.exists(LICENSE_FILE):
-        try:
-            with open(LICENSE_FILE, "r") as f:
-                lic_info = json.load(f)
-                is_licensed = True
-                print(f">>> [STARTUP] Licença persistente detectada: {lic_info.get('email')}")
-        except Exception as e:
-            print(f">>> [STARTUP] Erro ao ler licença: {e}")
-
+    license_data = load_license()
     return {
-        "running": {}, 
-        "logs": {}, 
-        "active_files": {}, 
-        "finished_files": {},
-        "all_files": {}, 
-        "skipped_files": {}, 
-        "stats": {}, 
-        "failed_files": {},
+        "running": {}, "logs": {}, "active_files": {}, "finished_files": {},
+        "all_files": {}, "skipped_files": {}, "stats": {}, "failed_files": {},
         "file_sizes": {},
-        "auto_simulate": s.get("auto_simulate", True),
-        "terms_accepted": s.get("terms_accepted", False),
-        "licensed": is_licensed,  # Agora carrega o valor real do disco
-        "license_info": lic_info,
-        "hwid": get_hardware_id()
+        "auto_simulate": s["auto_simulate"],
+        "terms_accepted": s["terms_accepted"],
+        "license_active": is_license_active(),
+        "license_info": {"email": license_data.get("email"), "plan": license_data.get("plan"), "device_name": license_data.get("device_name"), "activated_at": license_data.get("activated_at")}
     }
 
 # Única definição de STATE no topo do ficheiro
