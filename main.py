@@ -58,10 +58,19 @@ async def lifespan(app: FastAPI):
     APP_LOOP = asyncio.get_running_loop()
     
     # Inicia as tuas tarefas (Watchdogs, Health Cache, etc.)
-    sync_realtime_watchers(load_tasks())
-    asyncio.create_task(poll_realtime_download_tasks())
+    if is_license_active():
+        sync_realtime_watchers(load_tasks())
+        asyncio.create_task(poll_realtime_download_tasks())
     asyncio.create_task(update_health_cache())
     
+    # O polling periódico só existe enquanto houver licença ativa.
+    if is_license_active():
+        app_scheduler.add_job(
+            poll_realtime_download_tasks, 'interval', seconds=REMOTE_POLL_SECONDS,
+            id='remote-realtime-poll', replace_existing=True,
+            max_instances=1, coalesce=True
+        )
+
     # Agendamentos
     app_scheduler.start()
     
@@ -110,26 +119,77 @@ REMOTE_POLL_SECONDS = 30
 CLOUD_STATE_CACHE = {}
 HEALTH_CACHE = []
 
+# --- LICENCIAMENTO ---------------------------------------------------------
+# A validação foi isolada nesta função para, quando a base de dados estiver
+# disponível, trocar apenas o seu conteúdo por uma consulta segura à API/BD.
+# Nunca confies apenas no bloqueio feito no browser: todos os processos reais
+# passam por is_license_active() antes de arrancarem.
+TEST_LICENSE_EMAIL = "syncpulsegeral@gmail.com"
+TEST_LICENSE_KEY = "SYNC-TEST-2026-UNLOCK"
+
+def validate_license(email, license_key):
+    """Validação temporária local; substituir por consulta à base de dados."""
+    return (
+        str(email or "").strip().lower() == TEST_LICENSE_EMAIL
+        and str(license_key or "").strip() == TEST_LICENSE_KEY
+    )
+
+def is_license_active():
+    settings = load_settings()
+    return validate_license(settings.get("license_email"), settings.get("license_key"))
+
+def stop_all_realtime_watchers():
+    for tid in list(WATCHERS):
+        stop_realtime_watcher(tid)
+    for handle in REALTIME_HANDLES.values():
+        handle.cancel()
+    REALTIME_HANDLES.clear()
+
+async def refresh_automation_services():
+    """Aplica imediatamente uma alteração de licença aos processos automáticos."""
+    if is_license_active():
+        sync_realtime_watchers(load_tasks())
+        asyncio.create_task(poll_realtime_download_tasks())
+        if app_scheduler.running and not app_scheduler.get_job("remote-realtime-poll"):
+            app_scheduler.add_job(
+                poll_realtime_download_tasks, 'interval', seconds=REMOTE_POLL_SECONDS,
+                id='remote-realtime-poll', max_instances=1, coalesce=True
+            )
+    else:
+        stop_all_realtime_watchers()
+        if app_scheduler.get_job("remote-realtime-poll"):
+            app_scheduler.remove_job("remote-realtime-poll")
+        # Se a licença for removida durante uma cópia, termina-a também.
+        for tid, proc in list(PROCESSES.items()):
+            try:
+                proc.terminate()
+                STATE["running"][tid] = "idle"
+                STATE["active_files"][tid] = []
+            except ProcessLookupError:
+                pass
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Lógica de Startup
     global APP_LOOP
     APP_LOOP = asyncio.get_running_loop()
     
-    sync_realtime_watchers(load_tasks())
-    asyncio.create_task(poll_realtime_download_tasks())
+    if is_license_active():
+        sync_realtime_watchers(load_tasks())
+        asyncio.create_task(poll_realtime_download_tasks())
     asyncio.create_task(update_health_cache())
     
     app_scheduler.add_job(update_health_cache, 'interval', minutes=2)
-    app_scheduler.add_job(
-        poll_realtime_download_tasks,
-        'interval',
-        seconds=REMOTE_POLL_SECONDS,
-        id='remote-realtime-poll',
-        replace_existing=True,
-        max_instances=1,
-        coalesce=True
-    )
+    if is_license_active():
+        app_scheduler.add_job(
+            poll_realtime_download_tasks,
+            'interval',
+            seconds=REMOTE_POLL_SECONDS,
+            id='remote-realtime-poll',
+            replace_existing=True,
+            max_instances=1,
+            coalesce=True
+        )
     app_scheduler.start()
     
     yield # A aplicação corre aqui
@@ -201,7 +261,7 @@ if HAS_WATCHDOG:
 
 def schedule_realtime_sync(task):
     """Recebe eventos da thread do watchdog e agenda-os no loop FastAPI."""
-    if not APP_LOOP or APP_LOOP.is_closed():
+    if not is_license_active() or not APP_LOOP or APP_LOOP.is_closed():
         return
     APP_LOOP.call_soon_threadsafe(_debounce_realtime_sync, dict(task))
 
@@ -216,6 +276,8 @@ def _debounce_realtime_sync(task):
     )
 
 async def _run_realtime_sync(task):
+    if not is_license_active():
+        return
     tid = str(task["id"])
     REALTIME_HANDLES.pop(tid, None)
     task_lock = TASK_LOCKS.get(tid)
@@ -235,6 +297,9 @@ def stop_realtime_watcher(tid):
 
 def sync_realtime_watchers(tasks):
     """Recria os observers de acordo com as tarefas configuradas em Tempo Real."""
+    if not is_license_active():
+        stop_all_realtime_watchers()
+        return
     # Uma tarefa editada deve criar uma nova referência remota no próximo polling.
     CLOUD_STATE_CACHE.clear()
     if not HAS_WATCHDOG:
@@ -301,6 +366,8 @@ async def get_remote_snapshot(remote):
         return None
 
 async def poll_remote_task(task):
+    if not is_license_active():
+        return
     """Deteta alterações na cloud de uma tarefa Cloud→Local e agenda a sincronização."""
     tid = str(task["id"])
     snapshot = await get_remote_snapshot(task["remote"])
@@ -316,6 +383,8 @@ async def poll_remote_task(task):
         schedule_realtime_sync(task)
 
 async def poll_realtime_download_tasks():
+    if not is_license_active():
+        return
     # Agora incluímos tanto o tipo "download" como o "bisync"
     tasks = [
         task for task in load_tasks()
@@ -346,7 +415,10 @@ def save_tasks(tasks):
 
 def load_settings():
     """Carrega as definições do ficheiro garantindo que todas as chaves existem."""
-    defaults = {"auto_simulate": True, "terms_accepted": False}
+    defaults = {
+        "auto_simulate": True, "terms_accepted": False,
+        "license_email": "", "license_key": ""
+    }
     if os.path.exists(SETTINGS_FILE):
         try:
             with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
@@ -374,7 +446,8 @@ def get_initial_state():
         "all_files": {}, "skipped_files": {}, "stats": {}, "failed_files": {},
         "file_sizes": {},
         "auto_simulate": s["auto_simulate"],
-        "terms_accepted": s["terms_accepted"]
+        "terms_accepted": s["terms_accepted"],
+        "license_active": is_license_active()
     }
 
 # Única definição de STATE no topo do ficheiro
@@ -1091,6 +1164,11 @@ async def real_copy_step(src, dst, tid, sorted_files, r_type, phase_label, offse
     return return_code == 0
 
 async def rclone_worker(task, manual_simulate=False):
+    # Simulações são permitidas sem licença; qualquer cópia/sincronização real
+    # (incluindo chamadas vindas de watchdog/polling) exige ativação válida.
+    if not manual_simulate and not is_license_active():
+        print("Sincronização bloqueada: licença inativa.")
+        return
     tid = str(task['id'])
     if tid not in TASK_LOCKS: TASK_LOCKS[tid] = asyncio.Lock()
     if TASK_LOCKS[tid].locked(): return
@@ -1290,7 +1368,7 @@ async def post_tasks(request: Request):
     await manager.broadcast({"type": "init", "tasks": tasks, "state": STATE})
     return {"status": "ok", "tasks": tasks}
 
-@app.post("/api/settings")
+@app.post("/api/settings/legacy")
 async def post_settings(request: Request):
     try:
         data = await request.json()
@@ -1308,15 +1386,23 @@ async def post_settings(request: Request):
     except Exception as e:
         return JSONResponse(status_code=500, content={"message": str(e)})
 
-#@app.get("/api/settings")
-#def get_settings(): return load_settings()
+@app.get("/api/settings")
+def get_settings():
+    settings = load_settings()
+    return {
+        "auto_simulate": settings["auto_simulate"],
+        "terms_accepted": settings["terms_accepted"],
+        "license_email": settings.get("license_email", ""),
+        "license_active": is_license_active()
+    }
 
 @app.post("/api/settings")
 async def update_settings_endpoint(request: Request):
     try:
         new_data = await request.json()
         current = load_settings()
-        current.update(new_data)
+        allowed = {"auto_simulate", "terms_accepted", "license_email", "license_key"}
+        current.update({key: value for key, value in new_data.items() if key in allowed})
         save_settings(current)
         
         # Sincroniza a memória global para o próximo sinal de WebSocket
@@ -1324,8 +1410,11 @@ async def update_settings_endpoint(request: Request):
             STATE["auto_simulate"] = new_data["auto_simulate"]
         if "terms_accepted" in new_data:
             STATE["terms_accepted"] = new_data["terms_accepted"]
+        STATE["license_active"] = is_license_active()
+        await refresh_automation_services()
+        await manager.broadcast({"type": "update", "state": STATE})
             
-        return {"status": "ok"}
+        return {"status": "ok", "license_active": STATE["license_active"]}
     except Exception as e:
         return JSONResponse(status_code=500, content={"message": str(e)})
 
@@ -1347,10 +1436,17 @@ async def get_history(task_id: str):
 @app.post("/api/sync/{task_id}")
 async def start_sync(task_id: str, bt: BackgroundTasks, simulate: bool = False):
     t = next((x for x in load_tasks() if str(x['id']) == task_id), None)
-    if t: bt.add_task(rclone_worker, t, simulate); return {"status": "ok"}
+    if not t:
+        return JSONResponse(status_code=404, content={"message": "Tarefa não encontrada."})
+    if not simulate and not is_license_active():
+        return JSONResponse(status_code=403, content={"message": "Ative a licença para iniciar sincronizações."})
+    bt.add_task(rclone_worker, t, simulate)
+    return {"status": "ok"}
 
 @app.post("/api/sync/stop/{task_id}")
 async def stop_sync(task_id: str):
+    if not is_license_active():
+        return JSONResponse(status_code=403, content={"message": "Ative a licença para controlar sincronizações."})
     """Pára a execução do Rclone de forma imediata."""
     if task_id in PROCESSES:
         try:

@@ -616,6 +616,20 @@
             </div>
 
             <div class="space-y-6">
+                <!-- Ativação: os dados são validados pelo servidor, não apenas pela interface. -->
+                <div class="p-4 bg-slate-800/40 rounded-xl border border-slate-700/50 space-y-3">
+                    <div class="flex items-center justify-between gap-3">
+                        <div>
+                            <h4 class="text-sm font-bold text-slate-200">Ativação da licença</h4>
+                            <p class="text-[11px] text-slate-500 mt-1">A licença desbloqueia sincronização e automatismos.</p>
+                        </div>
+                        <span id="license-status" class="text-[10px] font-black uppercase tracking-wide text-amber-400">Inativa</span>
+                    </div>
+                    <input id="license-email" type="email" autocomplete="email" placeholder="Email da licença" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-blue-500">
+                    <input id="license-key" type="password" autocomplete="off" placeholder="Chave de licença" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-blue-500">
+                    <button onclick="activateLicense()" class="w-full bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider text-white">Ativar licença</button>
+                    <p class="text-[10px] text-slate-500">Sem licença, pode simular, mas não iniciar/parar sincronizações nem usar processos automáticos.</p>
+                </div>
                 <!-- Opção: Simulação Automática -->
                 <div class="flex items-center justify-between p-4 bg-slate-800/40 rounded-xl border border-slate-700/50">
                     <div class="pr-4">
@@ -949,6 +963,7 @@
             const gPerc = document.getElementById('g-perc');
             if (!grid) return;
             const lo = i18n[lang] || i18n['pt'];
+            const licenseActive = STATE.license_active === true;
             const tidStr = selectedTaskId ? selectedTaskId.toString() : null;
     
             grid.innerHTML = tasks.map(t => {
@@ -985,7 +1000,7 @@
                     <div class="card-footer">
                         <div class="flex gap-5">
                             <div class="btn-action btn-sim" onclick="event.stopPropagation(); selectTask('${t.id}'); startSync('${t.id}', true)"><i class="fas fa-flask"></i> SIMULAR</div>
-                            <div class="btn-action ${isRunning ? 'text-red-500' : 'btn-play'}" onclick="event.stopPropagation(); selectTask('${t.id}'); ${isRunning ? `stopSync('${t.id}')` : `startSync('${t.id}', false)`}"><i class="fas ${isRunning ? 'fa-stop' : 'fa-play'}"></i> ${isRunning ? lo.btn_stop : lo.btn_start}</div>
+                            <div class="btn-action ${isRunning ? 'text-red-500' : 'btn-play'} ${!licenseActive ? 'opacity-40 cursor-not-allowed' : ''}" title="${!licenseActive ? 'Ative a licença para sincronizar' : ''}" onclick="event.stopPropagation(); selectTask('${t.id}'); ${licenseActive ? (isRunning ? `stopSync('${t.id}')` : `startSync('${t.id}', false)`) : ''}"><i class="fas ${isRunning ? 'fa-stop' : 'fa-play'}"></i> ${isRunning ? lo.btn_stop : lo.btn_start}</div>
                         </div>
                         <div class="card-icons-right">
 							<i class="fas fa-history hover:text-blue-400" onclick="event.stopPropagation(); showHistory('${t.id}')"></i>
@@ -1176,11 +1191,20 @@
                 const r = await fetch('/api/settings');
                 const settings = await r.json();
                 const toggle = document.getElementById('pref-auto-sim');
+                const email = document.getElementById('license-email');
+                const status = document.getElementById('license-status');
                 if (toggle) {
                     // Define a posição do interruptor baseada no ficheiro
                     toggle.checked = settings.auto_simulate === true;
                     console.log("Estado carregado do servidor:", settings.auto_simulate);
                 }
+                if (email) email.value = settings.license_email || '';
+                if (status) {
+                    status.textContent = settings.license_active ? 'Ativa' : 'Inativa';
+                    status.className = `text-[10px] font-black uppercase tracking-wide ${settings.license_active ? 'text-emerald-400' : 'text-amber-400'}`;
+                }
+                STATE.license_active = settings.license_active === true;
+                refreshUI();
             } catch (e) {
                 console.error("Erro ao carregar settings:", e);
             }
@@ -1205,6 +1229,25 @@
                 }
             }
         });
+
+        async function activateLicense() {
+            const email = document.getElementById('license-email').value.trim();
+            const key = document.getElementById('license-key').value.trim();
+            try {
+                const response = await fetch('/api/settings', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ license_email: email, license_key: key })
+                });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.message || 'Não foi possível validar a licença.');
+                STATE.license_active = result.license_active === true;
+                document.getElementById('license-key').value = '';
+                await loadSettingsUI();
+                alert(STATE.license_active ? 'Licença ativada. Todos os recursos estão disponíveis.' : 'Licença inválida ou inativa. A simulação continua disponível.');
+            } catch (error) {
+                alert(error.message || 'Não foi possível validar a licença.');
+            }
+        }
         
         // 3. Garante que o carregamento visual acontece no arranque
         window.onload = () => { 
@@ -1217,8 +1260,14 @@
         };
         
         
-        async function startSync(id, sim) { await fetch(`/api/sync/${id.toString()}?simulate=${sim}`, { method: 'POST' }); }
-        async function stopSync(id) { await fetch(`/api/sync/stop/${id.toString()}`, { method: 'POST' }); }
+        async function startSync(id, sim) {
+            const response = await fetch(`/api/sync/${id.toString()}?simulate=${sim}`, { method: 'POST' });
+            if (!response.ok) { const result = await response.json(); alert(result.message || 'Operação indisponível.'); }
+        }
+        async function stopSync(id) {
+            const response = await fetch(`/api/sync/stop/${id.toString()}`, { method: 'POST' });
+            if (!response.ok) { const result = await response.json(); alert(result.message || 'Operação indisponível.'); }
+        }
         async function deleteTask(id) { if(confirm("Apagar?")) { tasks = tasks.filter(t => t.id.toString() !== id.toString()); await fetch('/api/tasks', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(tasks)}); } }
         function toggleModal(id, s) { document.getElementById(id).classList.toggle('hidden', !s); if(id==='mCloud' && s) renderCloudManager(); }
         
