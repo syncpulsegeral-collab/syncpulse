@@ -161,12 +161,15 @@ def get_device_name():
     return f"Dispositivo SyncPulse ({suffix})"
 
 def load_license():
-    try:
-        with open(LICENSE_FILE, "r", encoding="utf-8") as source:
-            data = json.load(source)
-        return data if isinstance(data, dict) else {}
-    except (OSError, json.JSONDecodeError):
-        return {}
+    """Lê o ficheiro de licença do disco de forma segura."""
+    if os.path.exists(LICENSE_FILE):
+        try:
+            with open(LICENSE_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception as e:
+            print(f">>> Erro ao ler license.json: {e}")
+            return {}
+    return {}
 
 def save_license(data):
     with open(LICENSE_FILE, "w", encoding="utf-8") as target:
@@ -553,17 +556,30 @@ def save_settings(data):
         print(f"Erro ao gravar settings: {e}")
 
 def get_initial_state():
-    """Inicializa o estado global com os valores reais do disco."""
+    """Inicializa o estado global com segurança e persistência."""
+    # Carrega definições e licença
     s = load_settings()
-    license_data = load_license()
+    lic = load_license()
+    
+    # Verifica se a licença é válida (tem e-mail e chave)
+    # Usamos .get() para evitar que o Python crash se a chave não existir
+    is_active = bool(lic.get("email") and lic.get("key"))
+
     return {
         "running": {}, "logs": {}, "active_files": {}, "finished_files": {},
         "all_files": {}, "skipped_files": {}, "stats": {}, "failed_files": {},
         "file_sizes": {},
-        "auto_simulate": s["auto_simulate"],
-        "terms_accepted": s["terms_accepted"],
-        "license_active": is_license_active(),
-        "license_info": {"email": license_data.get("email"), "plan": license_data.get("plan"), "device_name": license_data.get("device_name"), "activated_at": license_data.get("activated_at")}
+        # Usamos .get(chave, valor_padrao) para evitar o erro de "KeyError"
+        "auto_simulate": s.get("auto_simulate", True),
+        "terms_accepted": s.get("terms_accepted", False),
+        "licensed": is_active, # Mantemos "licensed" para bater certo com o teu Javascript
+        "license_info": {
+            "email": lic.get("email", ""),
+            "plan": lic.get("plan", 1),
+            "device_name": lic.get("device_name", ""),
+            "activated_at": lic.get("activated_at", "")
+        },
+        "hwid": get_hardware_id()
     }
 
 # Única definição de STATE no topo do ficheiro
