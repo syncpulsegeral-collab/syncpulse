@@ -573,7 +573,7 @@ def get_initial_state():
             "device_name": lic.get("device_name", ""),
             "activated_at": lic.get("activated_at", "")
         },
-        "hwid": get_hardware_id()
+        "hwid": get_secure_hwid()
     }
 
 # Única definição de STATE no topo do ficheiro
