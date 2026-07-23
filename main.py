@@ -152,7 +152,13 @@ def get_secure_hwid():
 
 def get_device_name():
     """Nome legível do dispositivo para a gestão no portal de licenças."""
-    return (os.getenv("SYNCPULSE_DEVICE_NAME") or platform.node() or "SyncPulse device").strip()[:120]
+    configured_name = os.getenv("SYNCPULSE_DEVICE_NAME", "").strip()
+    if configured_name:
+        return configured_name[:120]
+    host_name = (platform.node() or "").strip()
+    # Em Docker, o hostname costuma ser um ID hexadecimal pouco legível.
+    suffix = host_name[:6].upper() if host_name else "LOCAL"
+    return f"Dispositivo SyncPulse ({suffix})"
 
 def load_license():
     try:
@@ -557,7 +563,7 @@ def get_initial_state():
         "auto_simulate": s["auto_simulate"],
         "terms_accepted": s["terms_accepted"],
         "license_active": is_license_active(),
-        "license_info": {"email": license_data.get("email"), "plan": license_data.get("plan"), "activated_at": license_data.get("activated_at")}
+        "license_info": {"email": license_data.get("email"), "plan": license_data.get("plan"), "device_name": license_data.get("device_name"), "activated_at": license_data.get("activated_at")}
     }
 
 # Única definição de STATE no topo do ficheiro
@@ -1506,7 +1512,7 @@ def get_settings():
         "terms_accepted": settings["terms_accepted"],
         "license_email": license_data.get("email", ""),
         "license_active": is_license_active(),
-        "license_info": {"plan": license_data.get("plan"), "activated_at": license_data.get("activated_at")}
+        "license_info": {"plan": license_data.get("plan"), "device_name": license_data.get("device_name"), "activated_at": license_data.get("activated_at")}
     }
 
 @app.post("/api/license/activate")
@@ -1516,7 +1522,7 @@ async def activate_license_local(request: Request):
         data = await request.json()
         email = str(data.get("email") or "").strip().lower()
         license_key = str(data.get("key") or "").strip()
-        device_name = get_device_name()
+        device_name = str(data.get("device_name") or get_device_name()).strip()[:120]
         if not email or not license_key:
             return JSONResponse(status_code=400, content={"message": "Email e chave de licença são obrigatórios.", "code": "invalid"})
 
@@ -1538,7 +1544,7 @@ async def activate_license_local(request: Request):
         }
         save_license(license_data)
         STATE["license_active"] = True
-        STATE["license_info"] = {"email": email, "plan": license_data["plan"], "activated_at": license_data["activated_at"]}
+        STATE["license_info"] = {"email": email, "plan": license_data["plan"], "device_name": device_name, "activated_at": license_data["activated_at"]}
         await refresh_automation_services()
         await manager.broadcast({"type": "update", "state": STATE})
         return {"status": "ok", "license_active": True, "message": auth_result.get("message"), "plan": auth_result.get("plan"), "code": auth_result.get("code", "activated")}
