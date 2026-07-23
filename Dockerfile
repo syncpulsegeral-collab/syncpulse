@@ -26,7 +26,8 @@ RUN pip install --no-cache-dir \
     "uvicorn[standard]" \
     watchdog \
     apscheduler \
-    websockets
+    websockets \
+	httpx
 
 # 6. Criar estrutura de pastas
 # /app_dist e /www_dist são as fontes "protegidas" dentro da imagem

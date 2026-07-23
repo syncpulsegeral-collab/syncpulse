@@ -660,7 +660,7 @@
                 </div>
                 
                 <div class="text-center opacity-70 text-[11px] font-mono text-slate-500 pt-2">
-                    SyncPulse ZIMAOS EDITION<br>VERSION 1.1.0-BETA
+                    SyncPulse ZIMAOS EDITION<br>VERSION 1.2.0-BETA
                 </div>
             </div>
 
@@ -1264,9 +1264,9 @@
             const email = document.getElementById('license-email').value.trim();
             const key = document.getElementById('license-key').value.trim();
             try {
-                const response = await fetch('/api/settings', {
+                const response = await fetch('/api/license/activate', {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ license_email: email, license_key: key })
+                    body: JSON.stringify({ email, key })
                 });
                 const result = await response.json();
                 if (!response.ok) throw new Error(result.message || (licenseI18n[lang] || licenseI18n.pt).unavailable);

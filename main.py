@@ -106,6 +106,7 @@ RCLONE_CONFIG = os.path.join(CONFIG_DIR, "rclone.conf")
 LOGS_DIR = os.path.join(CONFIG_DIR, "logs")
 HISTORY_FILE = os.path.join(CONFIG_DIR, "history.json")
 SETTINGS_FILE = os.path.join(CONFIG_DIR, "settings.json")
+LICENSE_FILE = os.path.join(CONFIG_DIR, "license.json")
 BISYNC_WORKDIR = os.path.join(CONFIG_DIR, "bisync")
 
 for p in [LOGS_DIR, BISYNC_WORKDIR, "/config"]:
@@ -123,13 +124,15 @@ CLOUD_STATE_CACHE = {}
 HEALTH_CACHE = []
 
 # --- LICENCIAMENTO ---------------------------------------------------------
-# A validação foi isolada nesta função para, quando a base de dados estiver
-# disponível, trocar apenas o seu conteúdo por uma consulta segura à API/BD.
-# Nunca confies apenas no bloqueio feito no browser: todos os processos reais
-# passam por is_license_active() antes de arrancarem.
+# O Railway é a fonte de verdade para licenças e limite de dispositivos.
+# A aplicação guarda localmente apenas uma ativação já validada para que não
+# seja necessário consultar a API a cada sincronização.
 TEST_LICENSE_EMAIL = "syncpulsegeral@gmail.com"
 TEST_LICENSE_KEY = "SYNC-TEST-2026-UNLOCK"
-LICENSE_API_URL = os.getenv("SYNCPULSE_LICENSE_API_URL", "").strip()
+AUTH_SERVER_URL = os.getenv(
+    "SYNCPULSE_AUTH_SERVER_URL", "https://syncpulse-auth-production.up.railway.app"
+).rstrip("/")
+LICENSE_API_URL = f"{AUTH_SERVER_URL}/api/licenses/activate"
 HWID_SALT = os.getenv("SYNCPULSE_HWID_SALT", "syncpulse-hwid-v1")
 
 def get_secure_hwid():
@@ -146,6 +149,20 @@ def get_secure_hwid():
                 pass
     raw = "|".join([machine_id, str(uuid.getnode()), platform.node()])
     return hashlib.sha256(f"{HWID_SALT}|{raw}".encode("utf-8")).hexdigest()
+
+def load_license():
+    try:
+        with open(LICENSE_FILE, "r", encoding="utf-8") as source:
+            data = json.load(source)
+        return data if isinstance(data, dict) else {}
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+def save_license(data):
+    with open(LICENSE_FILE, "w", encoding="utf-8") as target:
+        json.dump(data, target, indent=2, ensure_ascii=False)
+        target.flush()
+        os.fsync(target.fileno())
 
 def validate_license_with_api(email, license_key):
     """Consulta a API/BD de licenças; a BD decide e regista os limites 1/3/5."""
@@ -174,21 +191,9 @@ def validate_license_with_api(email, license_key):
         print(f"Erro ao validar licença na API: {error}")
         return {"valid": False, "message": "Não foi possível contactar o servidor de licenças."}
 
-def validate_license(email, license_key):
-    """Mantém a licença de teste e usa a API/BD quando configurada."""
-    is_test_license = (
-        str(email or "").strip().lower() == TEST_LICENSE_EMAIL
-        and str(license_key or "").strip() == TEST_LICENSE_KEY
-    )
-    if is_test_license:
-        return True
-    if not LICENSE_API_URL:
-        return False
-    return validate_license_with_api(email, license_key).get("valid") is True
-
 def is_license_active():
-    settings = load_settings()
-    return validate_license(settings.get("license_email"), settings.get("license_key"))
+    license_data = load_license()
+    return license_data.get("active") is True and license_data.get("hwid") == get_secure_hwid()
 
 def stop_all_realtime_watchers():
     for tid in list(WATCHERS):
@@ -539,13 +544,15 @@ def save_settings(data):
 def get_initial_state():
     """Inicializa o estado global com os valores reais do disco."""
     s = load_settings()
+    license_data = load_license()
     return {
         "running": {}, "logs": {}, "active_files": {}, "finished_files": {},
         "all_files": {}, "skipped_files": {}, "stats": {}, "failed_files": {},
         "file_sizes": {},
         "auto_simulate": s["auto_simulate"],
         "terms_accepted": s["terms_accepted"],
-        "license_active": is_license_active()
+        "license_active": is_license_active(),
+        "license_info": {"email": license_data.get("email"), "plan": license_data.get("plan"), "activated_at": license_data.get("activated_at")}
     }
 
 # Única definição de STATE no topo do ficheiro
@@ -1488,31 +1495,58 @@ async def post_settings(request: Request):
 @app.get("/api/settings")
 def get_settings():
     settings = load_settings()
+    license_data = load_license()
     return {
         "auto_simulate": settings["auto_simulate"],
         "terms_accepted": settings["terms_accepted"],
-        "license_email": settings.get("license_email", ""),
-        "license_active": is_license_active()
+        "license_email": license_data.get("email", ""),
+        "license_active": is_license_active(),
+        "license_info": {"plan": license_data.get("plan"), "activated_at": license_data.get("activated_at")}
     }
+
+@app.post("/api/license/activate")
+async def activate_license_local(request: Request):
+    """Valida a licença no Railway e persiste a ativação associada ao HWID."""
+    try:
+        data = await request.json()
+        email = str(data.get("email") or "").strip().lower()
+        license_key = str(data.get("key") or "").strip()
+        if not email or not license_key:
+            return JSONResponse(status_code=400, content={"message": "Email e chave de licença são obrigatórios.", "code": "invalid"})
+
+        if email == TEST_LICENSE_EMAIL and license_key == TEST_LICENSE_KEY:
+            auth_result = {"valid": True, "message": "Licença temporária de teste ativada.", "plan": "test", "code": "activated"}
+        else:
+            auth_result = await asyncio.to_thread(validate_license_with_api, email, license_key)
+
+        if not auth_result.get("valid"):
+            return JSONResponse(
+                status_code=401,
+                content={"message": auth_result.get("message", "Erro na validação."), "code": auth_result.get("code", "invalid")}
+            )
+
+        license_data = {
+            "active": True, "email": email, "key": license_key,
+            "hwid": get_secure_hwid(), "plan": auth_result.get("plan"),
+            "activated_at": datetime.now().isoformat()
+        }
+        save_license(license_data)
+        STATE["license_active"] = True
+        STATE["license_info"] = {"email": email, "plan": license_data["plan"], "activated_at": license_data["activated_at"]}
+        await refresh_automation_services()
+        await manager.broadcast({"type": "update", "state": STATE})
+        return {"status": "ok", "license_active": True, "message": auth_result.get("message"), "plan": auth_result.get("plan"), "code": auth_result.get("code", "activated")}
+    except Exception as error:
+        print(f"Erro na ativação da licença: {error}")
+        return JSONResponse(status_code=500, content={"message": "Não foi possível contactar o servidor de ativação.", "code": "unavailable"})
 
 @app.post("/api/settings")
 async def update_settings_endpoint(request: Request):
     try:
         new_data = await request.json()
         current = load_settings()
-        allowed = {"auto_simulate", "terms_accepted", "license_email", "license_key"}
+        allowed = {"auto_simulate", "terms_accepted"}
         current.update({key: value for key, value in new_data.items() if key in allowed})
-        license_result = None
-        if "license_email" in new_data or "license_key" in new_data:
-            if (
-                str(current.get("license_email", "")).strip().lower() == TEST_LICENSE_EMAIL
-                and str(current.get("license_key", "")).strip() == TEST_LICENSE_KEY
-            ):
-                license_result = {"valid": True, "message": "Licença temporária de teste ativada.", "plan": "test", "code": "activated"}
-            elif LICENSE_API_URL:
-                license_result = validate_license_with_api(current.get("license_email"), current.get("license_key"))
-            else:
-                license_result = {"valid": False, "message": "Licença inválida ou servidor de licenças não configurado.", "code": "invalid"}
         save_settings(current)
         
         # Sincroniza a memória global para o próximo sinal de WebSocket
@@ -1520,15 +1554,13 @@ async def update_settings_endpoint(request: Request):
             STATE["auto_simulate"] = new_data["auto_simulate"]
         if "terms_accepted" in new_data:
             STATE["terms_accepted"] = new_data["terms_accepted"]
-        STATE["license_active"] = license_result["valid"] if license_result else is_license_active()
+        STATE["license_active"] = is_license_active()
         await refresh_automation_services()
         await manager.broadcast({"type": "update", "state": STATE})
             
         return {
             "status": "ok", "license_active": STATE["license_active"],
-            "message": (license_result or {}).get("message"),
-            "plan": (license_result or {}).get("plan"),
-            "code": (license_result or {}).get("code")
+            "message": None, "plan": None, "code": None
         }
     except Exception as e:
         return JSONResponse(status_code=500, content={"message": str(e)})
