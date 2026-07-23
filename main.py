@@ -150,6 +150,10 @@ def get_secure_hwid():
     raw = "|".join([machine_id, str(uuid.getnode()), platform.node()])
     return hashlib.sha256(f"{HWID_SALT}|{raw}".encode("utf-8")).hexdigest()
 
+def get_device_name():
+    """Nome legível do dispositivo para a gestão no portal de licenças."""
+    return (os.getenv("SYNCPULSE_DEVICE_NAME") or platform.node() or "SyncPulse device").strip()[:120]
+
 def load_license():
     try:
         with open(LICENSE_FILE, "r", encoding="utf-8") as source:
@@ -169,7 +173,8 @@ def validate_license_with_api(email, license_key):
     payload = json.dumps({
         "email": str(email or "").strip().lower(),
         "license_key": str(license_key or "").strip(),
-        "hwid": get_secure_hwid()
+        "hwid": get_secure_hwid(),
+        "device_name": get_device_name()
     }).encode("utf-8")
     request = UrlRequest(
         LICENSE_API_URL, data=payload,
