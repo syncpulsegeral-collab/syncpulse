@@ -163,11 +163,11 @@ def validate_license_with_api(email, license_key):
             result = json.loads(response.read().decode("utf-8"))
         if not isinstance(result, dict):
             return {"valid": False, "message": "Resposta inválida do servidor de licenças."}
-        return {"valid": result.get("valid") is True, "message": result.get("message", "Licença inválida."), "plan": result.get("plan")}
+        return {"valid": result.get("valid") is True, "message": result.get("message", "Licença inválida."), "plan": result.get("plan"), "code": result.get("code")}
     except HTTPError as error:
         try:
             result = json.loads(error.read().decode("utf-8"))
-            return {"valid": False, "message": result.get("message", "Licença recusada.")}
+            return {"valid": False, "message": result.get("message", "Licença recusada."), "code": result.get("code")}
         except Exception:
             return {"valid": False, "message": "Licença recusada pelo servidor."}
     except (URLError, TimeoutError, ValueError) as error:
@@ -1508,11 +1508,11 @@ async def update_settings_endpoint(request: Request):
                 str(current.get("license_email", "")).strip().lower() == TEST_LICENSE_EMAIL
                 and str(current.get("license_key", "")).strip() == TEST_LICENSE_KEY
             ):
-                license_result = {"valid": True, "message": "Licença temporária de teste ativada.", "plan": "test"}
+                license_result = {"valid": True, "message": "Licença temporária de teste ativada.", "plan": "test", "code": "activated"}
             elif LICENSE_API_URL:
                 license_result = validate_license_with_api(current.get("license_email"), current.get("license_key"))
             else:
-                license_result = {"valid": False, "message": "Licença inválida ou servidor de licenças não configurado."}
+                license_result = {"valid": False, "message": "Licença inválida ou servidor de licenças não configurado.", "code": "invalid"}
         save_settings(current)
         
         # Sincroniza a memória global para o próximo sinal de WebSocket
@@ -1527,7 +1527,8 @@ async def update_settings_endpoint(request: Request):
         return {
             "status": "ok", "license_active": STATE["license_active"],
             "message": (license_result or {}).get("message"),
-            "plan": (license_result or {}).get("plan")
+            "plan": (license_result or {}).get("plan"),
+            "code": (license_result or {}).get("code")
         }
     except Exception as e:
         return JSONResponse(status_code=500, content={"message": str(e)})

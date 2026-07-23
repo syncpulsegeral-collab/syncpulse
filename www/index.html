@@ -620,15 +620,15 @@
                 <div class="p-4 bg-slate-800/40 rounded-xl border border-slate-700/50 space-y-3">
                     <div class="flex items-center justify-between gap-3">
                         <div>
-                            <h4 class="text-sm font-bold text-slate-200">Ativação da licença</h4>
-                            <p class="text-[11px] text-slate-500 mt-1">A licença desbloqueia sincronização e automatismos.</p>
+                            <h4 class="text-sm font-bold text-slate-200" data-key="license_title">Ativação da licença</h4>
+                            <p class="text-[11px] text-slate-500 mt-1" data-key="license_desc">A licença desbloqueia sincronização e automatismos.</p>
                         </div>
-                        <span id="license-status" class="text-[10px] font-black uppercase tracking-wide text-amber-400">Inativa</span>
+                        <span id="license-status" data-key="license_inactive" class="text-[10px] font-black uppercase tracking-wide text-amber-400">Inativa</span>
                     </div>
-                    <input id="license-email" type="email" autocomplete="email" placeholder="Email da licença" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-blue-500">
-                    <input id="license-key" type="password" autocomplete="off" placeholder="Chave de licença" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-blue-500">
-                    <button onclick="activateLicense()" class="w-full bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider text-white">Ativar licença</button>
-                    <p class="text-[10px] text-slate-500">Sem licença, pode simular, mas não iniciar/parar sincronizações nem usar processos automáticos.</p>
+                    <input id="license-email" type="email" autocomplete="email" data-placeholder-key="license_email_placeholder" placeholder="Email da licença" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-blue-500">
+                    <input id="license-key" type="password" autocomplete="off" data-placeholder-key="license_key_placeholder" placeholder="Chave de licença" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-blue-500">
+                    <button onclick="activateLicense()" data-key="license_activate" class="w-full bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider text-white">Ativar licença</button>
+                    <p class="text-[10px] text-slate-500" data-key="license_note">Sem licença, pode simular, mas não iniciar/parar sincronizações nem usar processos automáticos.</p>
                 </div>
                 <!-- Opção: Simulação Automática -->
                 <div class="flex items-center justify-between p-4 bg-slate-800/40 rounded-xl border border-slate-700/50">
@@ -660,7 +660,7 @@
                 </div>
                 
                 <div class="text-center opacity-70 text-[11px] font-mono text-slate-500 pt-2">
-                    SMARTSYNC ZIMAOS EDITION<br>VERSION 1.0.0-BETA
+                    SMARTSYNC ZIMAOS EDITION<br>VERSION 1.1.0-BETA
                 </div>
             </div>
 
@@ -852,6 +852,33 @@
     }
 };
 
+        const licenseI18n = {
+            pt: { title: 'Ativação da licença', desc: 'A licença desbloqueia sincronização e automatismos.', active: 'Ativa', inactive: 'Inativa', email: 'Email da licença', key: 'Chave de licença', activate: 'Ativar licença', note: 'Sem licença, pode simular, mas não iniciar/parar sincronizações nem usar processos automáticos.', success: 'Licença ativada. Todos os recursos estão disponíveis.', invalid: 'Licença inválida ou inativa. A simulação continua disponível.', unavailable: 'Não foi possível validar a licença.', maxDevices: 'Número máximo de dispositivos atingido. Efetue a gestão dos dispositivos no portal.', blocked: 'Ative a licença para sincronizar.' },
+            en: { title: 'License activation', desc: 'The license unlocks synchronization and automation.', active: 'Active', inactive: 'Inactive', email: 'License email', key: 'License key', activate: 'Activate license', note: 'Without a license, you can simulate, but cannot start/stop synchronizations or use automated processes.', success: 'License activated. All features are available.', invalid: 'License is invalid or inactive. Simulation remains available.', unavailable: 'The license could not be validated.', maxDevices: 'Maximum number of devices reached. Manage your devices in the portal.', blocked: 'Activate the license to synchronize.' },
+            fr: { title: 'Activation de la licence', desc: 'La licence déverrouille la synchronisation et les automatisations.', active: 'Active', inactive: 'Inactive', email: 'E-mail de la licence', key: 'Clé de licence', activate: 'Activer la licence', note: 'Sans licence, vous pouvez simuler, mais pas démarrer/arrêter les synchronisations ni utiliser les processus automatiques.', success: 'Licence activée. Toutes les fonctionnalités sont disponibles.', invalid: 'La licence est invalide ou inactive. La simulation reste disponible.', unavailable: 'Impossible de valider la licence.', maxDevices: 'Nombre maximal d’appareils atteint. Gérez vos appareils dans le portail.', blocked: 'Activez la licence pour synchroniser.' },
+            es: { title: 'Activación de licencia', desc: 'La licencia desbloquea la sincronización y las automatizaciones.', active: 'Activa', inactive: 'Inactiva', email: 'Correo de la licencia', key: 'Clave de licencia', activate: 'Activar licencia', note: 'Sin licencia puede simular, pero no iniciar/detener sincronizaciones ni usar procesos automáticos.', success: 'Licencia activada. Todas las funciones están disponibles.', invalid: 'La licencia no es válida o está inactiva. La simulación sigue disponible.', unavailable: 'No se pudo validar la licencia.', maxDevices: 'Se alcanzó el número máximo de dispositivos. Gestione sus dispositivos en el portal.', blocked: 'Active la licencia para sincronizar.' },
+            de: { title: 'Lizenzaktivierung', desc: 'Die Lizenz schaltet Synchronisierung und Automatisierungen frei.', active: 'Aktiv', inactive: 'Inaktiv', email: 'Lizenz-E-Mail', key: 'Lizenzschlüssel', activate: 'Lizenz aktivieren', note: 'Ohne Lizenz können Sie simulieren, aber keine Synchronisierungen starten/stoppen oder automatische Prozesse verwenden.', success: 'Lizenz aktiviert. Alle Funktionen sind verfügbar.', invalid: 'Die Lizenz ist ungültig oder inaktiv. Die Simulation bleibt verfügbar.', unavailable: 'Die Lizenz konnte nicht überprüft werden.', maxDevices: 'Die maximale Anzahl von Geräten wurde erreicht. Verwalten Sie Ihre Geräte im Portal.', blocked: 'Aktivieren Sie die Lizenz zum Synchronisieren.' }
+        };
+
+        function applyLicenseTranslations() {
+            const text = licenseI18n[lang] || licenseI18n.pt;
+            const fields = {
+                'license-title': text.title, 'license-desc': text.desc,
+                'license-activate': text.activate, 'license-note': text.note
+            };
+            document.querySelectorAll('[data-key^="license_"]').forEach(element => {
+                if (element.id === 'license-status') return;
+                const key = element.dataset.key.replace('license_', '');
+                if (text[key] !== undefined) element.textContent = text[key];
+            });
+            document.querySelectorAll('[data-placeholder-key]').forEach(element => {
+                const key = element.dataset.placeholderKey.replace('license_', '').replace('_placeholder', '');
+                if (text[key] !== undefined) element.placeholder = text[key];
+            });
+            const status = document.getElementById('license-status');
+            if (status) status.textContent = STATE?.license_active ? text.active : text.inactive;
+        }
+
         let lang = 'pt', tasks = [], selectedTaskId = null, socket, editingTaskId = null;
         let STATE = { running: {}, logs: {}, active_files: {}, finished_files: {}, all_files: {}, skipped_files: {}, failed_files: {}, stats: {}, file_sizes: {} };
         let expPath = '/', expMode = 'local', expRemote = '';
@@ -870,6 +897,7 @@
                 const text = translations[key] ?? fallback[key];
                 if (text !== undefined) element.textContent = text;
             });
+            applyLicenseTranslations();
 
             localStorage.setItem('smartsync_language', lang);
             refreshUI();
@@ -963,6 +991,7 @@
             const gPerc = document.getElementById('g-perc');
             if (!grid) return;
             const lo = i18n[lang] || i18n['pt'];
+            const licenseText = licenseI18n[lang] || licenseI18n.pt;
             const licenseActive = STATE.license_active === true;
             const tidStr = selectedTaskId ? selectedTaskId.toString() : null;
     
@@ -1000,7 +1029,7 @@
                     <div class="card-footer">
                         <div class="flex gap-5">
                             <div class="btn-action btn-sim" onclick="event.stopPropagation(); selectTask('${t.id}'); startSync('${t.id}', true)"><i class="fas fa-flask"></i> SIMULAR</div>
-                            <div class="btn-action ${isRunning ? 'text-red-500' : 'btn-play'} ${!licenseActive ? 'opacity-40 cursor-not-allowed' : ''}" title="${!licenseActive ? 'Ative a licença para sincronizar' : ''}" onclick="event.stopPropagation(); selectTask('${t.id}'); ${licenseActive ? (isRunning ? `stopSync('${t.id}')` : `startSync('${t.id}', false)`) : ''}"><i class="fas ${isRunning ? 'fa-stop' : 'fa-play'}"></i> ${isRunning ? lo.btn_stop : lo.btn_start}</div>
+                            <div class="btn-action ${isRunning ? 'text-red-500' : 'btn-play'} ${!licenseActive ? 'opacity-40 cursor-not-allowed' : ''}" title="${!licenseActive ? licenseText.blocked : ''}" onclick="event.stopPropagation(); selectTask('${t.id}'); ${licenseActive ? (isRunning ? `stopSync('${t.id}')` : `startSync('${t.id}', false)`) : ''}"><i class="fas ${isRunning ? 'fa-stop' : 'fa-play'}"></i> ${isRunning ? lo.btn_stop : lo.btn_start}</div>
                         </div>
                         <div class="card-icons-right">
 							<i class="fas fa-history hover:text-blue-400" onclick="event.stopPropagation(); showHistory('${t.id}')"></i>
@@ -1200,7 +1229,8 @@
                 }
                 if (email) email.value = settings.license_email || '';
                 if (status) {
-                    status.textContent = settings.license_active ? 'Ativa' : 'Inativa';
+                    const licenseText = licenseI18n[lang] || licenseI18n.pt;
+                    status.textContent = settings.license_active ? licenseText.active : licenseText.inactive;
                     status.className = `text-[10px] font-black uppercase tracking-wide ${settings.license_active ? 'text-emerald-400' : 'text-amber-400'}`;
                 }
                 STATE.license_active = settings.license_active === true;
@@ -1239,13 +1269,17 @@
                     body: JSON.stringify({ license_email: email, license_key: key })
                 });
                 const result = await response.json();
-                if (!response.ok) throw new Error(result.message || 'Não foi possível validar a licença.');
+                if (!response.ok) throw new Error(result.message || (licenseI18n[lang] || licenseI18n.pt).unavailable);
                 STATE.license_active = result.license_active === true;
                 document.getElementById('license-key').value = '';
                 await loadSettingsUI();
-                alert(result.message || (STATE.license_active ? 'Licença ativada. Todos os recursos estão disponíveis.' : 'Licença inválida ou inativa. A simulação continua disponível.'));
+                const text = licenseI18n[lang] || licenseI18n.pt;
+                const message = result.code === 'max_devices'
+                    ? text.maxDevices
+                    : (STATE.license_active ? text.success : (result.code ? text.invalid : (result.message || text.invalid)));
+                alert(message);
             } catch (error) {
-                alert(error.message || 'Não foi possível validar a licença.');
+                alert(error.message || (licenseI18n[lang] || licenseI18n.pt).unavailable);
             }
         }
         
