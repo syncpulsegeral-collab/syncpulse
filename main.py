@@ -1,20 +1,92 @@
-import os, json, asyncio, subprocess, re, typing, time, signal, shutil, hashlib
+import os, json, asyncio, subprocess, re, typing, time, signal, shutil
 from fastapi import FastAPI, BackgroundTasks, Request, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from datetime import datetime
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager # <--- Garante este import
 
-# --- 1. DETEÇÃO DE DEPENDÊNCIAS (WATCHDOG) ---
+# --- 1. LÓGICA DE AUTO-INSTALAÇÃO (BOOTSTRAP) ---
+# Deve correr logo no início
+def bootstrap():
+    src_app, src_www = "/app_dist", "/www_dist"
+    dst_app, dst_www, dst_config = "/app", "/www", "/config"
+
+    try:
+        # 1. Garantir que as pastas de destino existem
+        for p in [dst_app, dst_www, dst_config]:
+            os.makedirs(p, exist_ok=True)
+
+        # 2. Copiar/Atualizar CÓDIGO (/app) - SEMPRE sobrecreve
+        print(">>> A atualizar motor (main.py) no ZimaOS...")
+        for item in os.listdir(src_app):
+            # Ignora a pasta www dentro da pasta app para evitar duplicação
+            if item == "www":
+                continue
+            
+            s, d = os.path.join(src_app, item), os.path.join(dst_app, item)
+            if os.path.isdir(s):
+                shutil.copytree(s, d, dirs_exist_ok=True)
+            else:
+                shutil.copy2(s, d)
+
+        # 3. Copiar/Atualizar FRONTEND (/www) - SEMPRE sobrecreve
+        print(">>> A atualizar interface (index.html) no ZimaOS...")
+        if os.path.exists(src_www):
+            shutil.copytree(src_www, dst_www, dirs_exist_ok=True)
+            
+        # 4. Forçar permissões para evitar erros de acesso
+        os.system(f"chmod -R 777 {dst_app} {dst_www} {dst_config}")
+        
+        print(">>> Bootstrap: Ficheiros sincronizados com a versão do PC.")
+
+    except Exception as e:
+        print(f">>> Erro crítico no Bootstrap: {e}")
+
+# Executa o bootstrap logo no arranque
+bootstrap()
+
+# --- 2. CONFIGURAÇÕES E AGENDADOR ---
+app_scheduler = AsyncIOScheduler()
+# (Mantém as tuas variáveis de caminhos como WWW_PATH, etc.)
+
+# --- 3. DEFINIR O LIFESPAN (DEVE VIR ANTES DA APP) ---
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # O que corre ao iniciar
+    global APP_LOOP
+    APP_LOOP = asyncio.get_running_loop()
+    
+    # Inicia as tuas tarefas (Watchdogs, Health Cache, etc.)
+    sync_realtime_watchers(load_tasks())
+    asyncio.create_task(poll_realtime_download_tasks())
+    asyncio.create_task(update_health_cache())
+    
+    # Agendamentos
+    app_scheduler.start()
+    
+    yield # A App fica a funcionar aqui
+    
+    # O que corre ao desligar
+    if app_scheduler.running:
+        app_scheduler.shutdown(wait=False)
+
+# --- 4. AGORA SIM, CRIAR A INSTÂNCIA DA APP ---
+app = FastAPI(lifespan=lifespan)
+
+# Importação Watchdog
 try:
     from watchdog.observers import Observer
     from watchdog.events import FileSystemEventHandler
     HAS_WATCHDOG = True
 except ImportError:
     HAS_WATCHDOG = False
+    
+app_scheduler = AsyncIOScheduler() # Renomeado para evitar confusão se necessário 
 
-# --- 2. CONFIGURAÇÕES DE CAMINHOS ---
+# --- CONFIGURAÇÕES DE CAMINHOS ---
+# Agora apontamos SEMPRE para as pastas dos volumes (/app e /www)
+# Assim, se editares no ZimaOS, a alteração é aplicada.
 WWW_PATH = "/www"
 CONFIG_DIR = "/config"
 CONFIG_FILE = os.path.join(CONFIG_DIR, "tasks.json")
@@ -23,123 +95,83 @@ LOGS_DIR = os.path.join(CONFIG_DIR, "logs")
 HISTORY_FILE = os.path.join(CONFIG_DIR, "history.json")
 SETTINGS_FILE = os.path.join(CONFIG_DIR, "settings.json")
 BISYNC_WORKDIR = os.path.join(CONFIG_DIR, "bisync")
-LICENSE_FILE = os.path.join(CONFIG_DIR, "license.json")
 
-for p in [LOGS_DIR, BISYNC_WORKDIR, CONFIG_DIR]:
-    os.makedirs(p, exist_ok=True)
+for p in [LOGS_DIR, BISYNC_WORKDIR, "/config"]:
+    if not os.path.exists(p): os.makedirs(p, exist_ok=True)
 
-# --- 3. FUNÇÕES DE SUPORTE ---
 
-def get_hardware_id():
-    """Lê o ID único do hardware do ZimaOS."""
-    try:
-        if os.path.exists("/etc/machine-id"):
-            with open("/etc/machine-id", "r") as f:
-                content = f.read().strip()
-                return hashlib.sha256(content.encode()).hexdigest()
-    except Exception as e:
-        print(f"Erro ao obter HWID: {e}")
-    return "dev_mode_id"
-
-def load_settings():
-    defaults = {"auto_simulate": True, "terms_accepted": False}
-    if os.path.exists(SETTINGS_FILE):
-        try:
-            with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                defaults.update(data)
-        except: pass
-    return defaults
-    
-def load_tasks():
-    if os.path.exists(CONFIG_FILE):
-        try:
-            with open(CONFIG_FILE, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                print(f">>> {len(data)} tarefas carregadas de {CONFIG_FILE}")
-                return data
-        except Exception as e:
-            print(f">>> Erro ao ler tasks.json: {e}")
-            return []
-    print(f">>> Ficheiro {CONFIG_FILE} não encontrado.")
-    return []    
-
-def get_initial_state():
-    s = load_settings()
-    return {
-        "running": {}, "logs": {}, "active_files": {}, "finished_files": {},
-        "all_files": {}, "skipped_files": {}, "stats": {}, "failed_files": {},
-        "file_sizes": {},
-        "auto_simulate": s.get("auto_simulate", True),
-        "terms_accepted": s.get("terms_accepted", False),
-        "licensed": False,
-        "license_info": {"email": "", "key": "", "slots": 0},
-        "hwid": get_hardware_id()
-    }
-
-# --- 4. INICIALIZAÇÃO DO ESTADO ---
-STATE = get_initial_state()
-
-# --- 5. LÓGICA DE AUTO-INSTALAÇÃO (BOOTSTRAP) ---
-def bootstrap():
-    src_app, src_www = "/app_dist", "/www_dist"
-    dst_app, dst_www, dst_config = "/app", "/www", "/config"
-    try:
-        for p in [dst_app, dst_www, dst_config]:
-            os.makedirs(p, exist_ok=True)
-        print(">>> Sincronizando motor e interface...")
-        if os.path.exists(src_app):
-            for item in os.listdir(src_app):
-                if item == "www": continue
-                s, d = os.path.join(src_app, item), os.path.join(dst_app, item)
-                if os.path.isdir(s): shutil.copytree(s, d, dirs_exist_ok=True)
-                else: shutil.copy2(s, d)
-        if os.path.exists(src_www):
-            shutil.copytree(src_www, dst_www, dirs_exist_ok=True)
-        os.system(f"chmod -R 777 {dst_app} {dst_www} {dst_config}")
-        print(">>> Bootstrap concluído.")
-    except Exception as e:
-        print(f">>> Erro no Bootstrap: {e}")
-
-bootstrap()
-
-# --- 6. GESTÃO DE CICLO DE VIDA E AGENDADOR ---
-app_scheduler = AsyncIOScheduler()
 PROCESSES = {}
 TASK_LOCKS = {}
 WATCHERS = {}
 REALTIME_HANDLES = {}
 APP_LOOP = None
+REALTIME_DEBOUNCE_SECONDS = 2.0
 REMOTE_POLL_SECONDS = 30
 CLOUD_STATE_CACHE = {}
 HEALTH_CACHE = []
 
-def load_license_status():
-    if os.path.exists(LICENSE_FILE):
-        try:
-            with open(LICENSE_FILE, "r") as f:
-                data = json.load(f)
-                STATE["licensed"] = True
-                STATE["license_info"] = data
-        except: pass
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Lógica de Startup
     global APP_LOOP
     APP_LOOP = asyncio.get_running_loop()
-    load_license_status()
+    
     sync_realtime_watchers(load_tasks())
     asyncio.create_task(poll_realtime_download_tasks())
     asyncio.create_task(update_health_cache())
+    
     app_scheduler.add_job(update_health_cache, 'interval', minutes=2)
-    app_scheduler.add_job(poll_realtime_download_tasks, 'interval', seconds=REMOTE_POLL_SECONDS)
+    app_scheduler.add_job(
+        poll_realtime_download_tasks,
+        'interval',
+        seconds=REMOTE_POLL_SECONDS,
+        id='remote-realtime-poll',
+        replace_existing=True,
+        max_instances=1,
+        coalesce=True
+    )
     app_scheduler.start()
-    yield
-    if app_scheduler.running: app_scheduler.shutdown(wait=False)
+    
+    yield # A aplicação corre aqui
+    
+    # Lógica de Shutdown
+    if app_scheduler.running:
+        app_scheduler.shutdown(wait=False)
+        
 
-app = FastAPI(lifespan=lifespan)
 
-# --- 7. COMUNICAÇÃO (WS) ---
+import shutil
+
+def bootstrap_folders():
+    # Pastas onde o código está guardado internamente na imagem
+    SOURCE_APP = "/app_dist"
+    SOURCE_WWW = "/www_dist"
+    
+    # Destinos (Volumes montados no ZimaOS)
+    TARGET_APP = "/app"
+    TARGET_WWW = "/www"
+    TARGET_CONFIG = "/config"
+
+    # Criar pasta config se não existir
+    os.makedirs(TARGET_CONFIG, exist_ok=True)
+
+    # Se a pasta /app estiver vazia (ou sem o main.py), copia os ficheiros
+    if not os.path.exists(os.path.join(TARGET_APP, "main.py")):
+        print("A inicializar pasta /app no host...")
+        os.makedirs(TARGET_APP, exist_ok=True)
+        for item in os.listdir(SOURCE_APP):
+            s = os.path.join(SOURCE_APP, item)
+            d = os.path.join(TARGET_APP, item)
+            if os.path.isfile(s): shutil.copy2(s, d)
+
+    # Isto vai atualizar o frontend em todos os arranques:
+        print(">>> A atualizar frontend no volume do ZimaOS...")
+        shutil.copytree(src_www, dst_www, dirs_exist_ok=True)
+        os.system(f"chmod -R 777 {dst_www}")
+
+# EXECUTAR O BOOTSTRAP ANTES DE QUALQUER OUTRA COISA
+bootstrap_folders()
+
 class ConnectionManager:
     def __init__(self): self.active_connections = []
     async def connect(self, websocket: WebSocket):
@@ -153,25 +185,6 @@ class ConnectionManager:
             except: pass
 
 manager = ConnectionManager()
-
-@app.get("/api/tasks")
-async def get_tasks_endpoint():
-    return load_tasks()
-    
-@app.post("/api/tasks")
-async def save_tasks_endpoint(request: Request):
-    try:
-        tasks_data = await request.json()
-        if save_tasks(tasks_data):
-            # Notifica todos os browsers abertos da mudança
-            await manager.broadcast({"type": "init", "tasks": tasks_data, "state": STATE})
-            # Atualiza os vigias de tempo real
-            sync_realtime_watchers(tasks_data)
-            return {"status": "ok"}
-    except Exception as e:
-        return JSONResponse(status_code=400, content={"message": str(e)})
-
-        
 
 # --- WATCHDOG / TAREFAS EM TEMPO REAL ---
 
@@ -361,10 +374,7 @@ def get_initial_state():
         "all_files": {}, "skipped_files": {}, "stats": {}, "failed_files": {},
         "file_sizes": {},
         "auto_simulate": s["auto_simulate"],
-        "terms_accepted": s["terms_accepted"],
-        "licensed": False,
-        "license_info": {"email": "", "key": "", "slots": 0},
-        "hwid": get_hardware_id()
+        "terms_accepted": s["terms_accepted"]
     }
 
 # Única definição de STATE no topo do ficheiro
@@ -922,12 +932,6 @@ async def real_copy_step_sim(src, dst, tid, sorted_files, r_type, phase_label):
 
 
 async def real_copy_step(src, dst, tid, sorted_files, r_type, phase_label, offset_bytes, grand_total_bytes):
-    # BLOQUEIO DE SEGURANÇA
-    if not STATE.get("licensed", False):
-        STATE["logs"][str(task['id'])].insert(0, "ERROR: Licença não ativada. Por favor, ative a sua conta.")
-        await manager.broadcast({"type": "update", "state": STATE})
-        return
-
     """
     Motor de Sincronização: Processa a cópia e atualiza o estado em tempo real via WebSockets.
     """
@@ -1168,30 +1172,6 @@ async def rclone_worker(task, manual_simulate=False):
             await manager.broadcast({"type": "init", "tasks": load_tasks(), "state": STATE})
 
 # --- ENDPOINTS E SERVICES ---
-# --- ENDPOINT DE ATIVAÇÃO ---
-@app.post("/api/license/activate")
-async def activate_license(request: Request):
-    data = await request.json()
-    email = data.get("email")
-    key = data.get("key")
-    hwid = get_hwid()
-
-    # SIMULAÇÃO DE SUCESSO (Enquanto não temos o Railway pronto)
-    # Aqui faremos um requests.post para o Railway
-    success = True 
-
-    if success:
-        lic_data = {"email": email, "key": key, "hwid": hwid, "activated_at": str(datetime.now())}
-        with open(LICENSE_FILE, "w") as f:
-            json.dump(lic_data, f)
-        
-        STATE["licensed"] = True
-        STATE["license_info"] = lic_data
-        await manager.broadcast({"type": "update", "state": STATE})
-        return {"status": "ok", "message": "Ativado com sucesso!"}
-    
-    return JSONResponse(status_code=400, content={"message": "Chave inválida ou limite atingido."})
-
 
 @app.get("/api/browse/local")
 def browse_local_endpoint(path: str = "/mnt"):
@@ -1328,9 +1308,8 @@ async def post_settings(request: Request):
     except Exception as e:
         return JSONResponse(status_code=500, content={"message": str(e)})
 
-@app.get("/api/settings")
-def get_settings_endpoint():
-    return load_settings()
+#@app.get("/api/settings")
+#def get_settings(): return load_settings()
 
 @app.post("/api/settings")
 async def update_settings_endpoint(request: Request):
@@ -1399,5 +1378,3 @@ async def get_health(): return HEALTH_CACHE
 @app.get("/")
 async def serve_index(): return FileResponse(os.path.join(WWW_PATH, "index.html"))
 app.mount("/", StaticFiles(directory=WWW_PATH), name="static")
-
-# force update

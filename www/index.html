@@ -644,28 +644,9 @@
                         </a>
                     </div>
                 </div>
-                <!-- Adiciona isto dentro do div class="space-y-6" do mPrefs -->
-				<div class="pt-4 border-t border-slate-800">
-					<span class="prog-label mb-4 block" data-key="account_title">Conta & Licença</span>
-					
-					<div id="license-status-area" class="p-4 rounded-xl border border-slate-700/50 mb-4 bg-slate-900/50">
-						<!-- O JS vai preencher isto dinamicamente -->
-						<div class="flex justify-between items-center">
-							<span class="text-[10px] text-slate-500 uppercase font-bold">Estado:</span>
-							<span id="lic-status-badge" class="text-[9px] font-black px-2 py-0.5 rounded uppercase">Inativo</span>
-						</div>
-					</div>
-
-					<div id="activation-fields" class="space-y-3">
-						<input id="lic-email" type="email" placeholder="E-mail da compra" class="input-box">
-						<input id="lic-key" type="text" placeholder="Chave (Ex: XXXX-XXXX)" class="input-box">
-						<button onclick="attemptActivation()" id="btn-activate" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-3 rounded-xl transition-all uppercase text-[10px] tracking-widest">
-							Ativar Licença Pro
-						</button>
-					</div>
-				</div>
+                
                 <div class="text-center opacity-70 text-[11px] font-mono text-slate-500 pt-2">
-                    SMARTSYNC ZIMAOS EDITION<br>VERSION 1.1.0-BETA
+                    SMARTSYNC ZIMAOS EDITION<br>VERSION 1.0.0-BETA
                 </div>
             </div>
 
@@ -976,10 +957,7 @@
                 const isRunning = status !== 'idle';
                 const isSelected = tidStr && tidKey === tidStr;
                 const hasErrors = STATE.failed_files[tidKey] && STATE.failed_files[tidKey].length > 0;
-				const isLicensed = STATE.licensed;
-				const opacity = isLicensed ? 'opacity-100' : 'opacity-40 grayscale pointer-events-none';
-				const lockIcon = isLicensed ? '' : '<i class="fas fa-lock mr-1"></i>';
-	
+    
                 let syncLabel = t.type === 'bisync' ? lo.mode_bi : (t.type === 'upload' ? lo.mode_up : lo.mode_down);
                 let triggerText = t.trigger === 'real' ? lo.opt_real : (t.interval === 'daily' ? `${lo.daily} às ${t.daily_time || '03:00'}` : t.interval);
     
@@ -1006,14 +984,8 @@
                     <div class="last-sync italic text-[10px] text-slate-500 mb-3">${lo.last_sync}: ${t.last_sync || '---'}</div>
                     <div class="card-footer">
                         <div class="flex gap-5">
-                            <div class="btn-action btn-sim ${lockClass}" 
-								 onclick="event.stopPropagation(); selectTask('${t.id}'); startSync('${t.id}', true)">
-								<i class="fas ${simIcon} mr-1"></i> SIMULAR
-							</div>
-                            <div class="btn-action ${isRunning ? 'text-red-500' : 'btn-play'} ${lockClass}" 
-								 onclick="event.stopPropagation(); selectTask('${t.id}'); ${isRunning ? `stopSync('${t.id}')` : `startSync('${t.id}', false)`}">
-								<i class="fas ${playIcon} mr-1"></i> ${isRunning ? lo.btn_stop : lo.btn_start}
-							</div>
+                            <div class="btn-action btn-sim" onclick="event.stopPropagation(); selectTask('${t.id}'); startSync('${t.id}', true)"><i class="fas fa-flask"></i> SIMULAR</div>
+                            <div class="btn-action ${isRunning ? 'text-red-500' : 'btn-play'}" onclick="event.stopPropagation(); selectTask('${t.id}'); ${isRunning ? `stopSync('${t.id}')` : `startSync('${t.id}', false)`}"><i class="fas ${isRunning ? 'fa-stop' : 'fa-play'}"></i> ${isRunning ? lo.btn_stop : lo.btn_start}</div>
                         </div>
                         <div class="card-icons-right">
 							<i class="fas fa-history hover:text-blue-400" onclick="event.stopPropagation(); showHistory('${t.id}')"></i>
