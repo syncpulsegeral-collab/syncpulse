@@ -1,4 +1,6 @@
-import os, json, asyncio, subprocess, re, typing, time, signal, shutil
+import os, json, asyncio, subprocess, re, typing, time, signal, shutil, hashlib, uuid, platform
+from urllib.request import Request as UrlRequest, urlopen
+from urllib.error import URLError, HTTPError
 from fastapi import FastAPI, BackgroundTasks, Request, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
@@ -60,6 +62,7 @@ async def lifespan(app: FastAPI):
     # Inicia as tuas tarefas (Watchdogs, Health Cache, etc.)
     if is_license_active():
         sync_realtime_watchers(load_tasks())
+        sync_scheduled_tasks(load_tasks())
         asyncio.create_task(poll_realtime_download_tasks())
     asyncio.create_task(update_health_cache())
     
@@ -126,13 +129,62 @@ HEALTH_CACHE = []
 # passam por is_license_active() antes de arrancarem.
 TEST_LICENSE_EMAIL = "syncpulsegeral@gmail.com"
 TEST_LICENSE_KEY = "SYNC-TEST-2026-UNLOCK"
+LICENSE_API_URL = os.getenv("SYNCPULSE_LICENSE_API_URL", "").strip()
+HWID_SALT = os.getenv("SYNCPULSE_HWID_SALT", "syncpulse-hwid-v1")
+
+def get_secure_hwid():
+    """Devolve um fingerprint hash; nunca expõe o identificador bruto à API."""
+    machine_id = os.getenv("SYNCPULSE_HWID", "").strip()
+    if not machine_id:
+        for path in ("/etc/machine-id", "/var/lib/dbus/machine-id"):
+            try:
+                with open(path, "r", encoding="utf-8") as source:
+                    machine_id = source.read().strip()
+                if machine_id:
+                    break
+            except OSError:
+                pass
+    raw = "|".join([machine_id, str(uuid.getnode()), platform.node()])
+    return hashlib.sha256(f"{HWID_SALT}|{raw}".encode("utf-8")).hexdigest()
+
+def validate_license_with_api(email, license_key):
+    """Consulta a API/BD de licenças; a BD decide e regista os limites 1/3/5."""
+    payload = json.dumps({
+        "email": str(email or "").strip().lower(),
+        "license_key": str(license_key or "").strip(),
+        "hwid": get_secure_hwid()
+    }).encode("utf-8")
+    request = UrlRequest(
+        LICENSE_API_URL, data=payload,
+        headers={"Content-Type": "application/json", "Accept": "application/json"}, method="POST"
+    )
+    try:
+        with urlopen(request, timeout=8) as response:
+            result = json.loads(response.read().decode("utf-8"))
+        if not isinstance(result, dict):
+            return {"valid": False, "message": "Resposta inválida do servidor de licenças."}
+        return {"valid": result.get("valid") is True, "message": result.get("message", "Licença inválida."), "plan": result.get("plan")}
+    except HTTPError as error:
+        try:
+            result = json.loads(error.read().decode("utf-8"))
+            return {"valid": False, "message": result.get("message", "Licença recusada.")}
+        except Exception:
+            return {"valid": False, "message": "Licença recusada pelo servidor."}
+    except (URLError, TimeoutError, ValueError) as error:
+        print(f"Erro ao validar licença na API: {error}")
+        return {"valid": False, "message": "Não foi possível contactar o servidor de licenças."}
 
 def validate_license(email, license_key):
-    """Validação temporária local; substituir por consulta à base de dados."""
-    return (
+    """Mantém a licença de teste e usa a API/BD quando configurada."""
+    is_test_license = (
         str(email or "").strip().lower() == TEST_LICENSE_EMAIL
         and str(license_key or "").strip() == TEST_LICENSE_KEY
     )
+    if is_test_license:
+        return True
+    if not LICENSE_API_URL:
+        return False
+    return validate_license_with_api(email, license_key).get("valid") is True
 
 def is_license_active():
     settings = load_settings()
@@ -145,10 +197,54 @@ def stop_all_realtime_watchers():
         handle.cancel()
     REALTIME_HANDLES.clear()
 
+SCHEDULE_JOB_PREFIX = "scheduled-sync-"
+SCHEDULE_INTERVALS = {"1m": 1, "5m": 5, "15m": 15, "30m": 30, "1h": 60}
+
+def sync_scheduled_tasks(tasks):
+    """Recria os jobs APScheduler para as tarefas configuradas como Agendado."""
+    for job in app_scheduler.get_jobs():
+        if job.id.startswith(SCHEDULE_JOB_PREFIX):
+            app_scheduler.remove_job(job.id)
+
+    if not is_license_active():
+        return
+
+    for task in tasks:
+        if task.get("trigger") != "sched":
+            continue
+        tid = str(task.get("id", ""))
+        interval = task.get("interval", "1h")
+        if not tid:
+            continue
+        job_id = f"{SCHEDULE_JOB_PREFIX}{tid}"
+        task_copy = dict(task)
+        if interval == "daily":
+            try:
+                hour, minute = map(int, str(task.get("daily_time") or "03:00").split(":"))
+                if not (0 <= hour <= 23 and 0 <= minute <= 59):
+                    raise ValueError
+            except ValueError:
+                print(f"Horário diário inválido para a tarefa {tid}.")
+                continue
+            app_scheduler.add_job(
+                rclone_worker, "cron", hour=hour, minute=minute,
+                id=job_id, args=[task_copy, False], replace_existing=True,
+                max_instances=1, coalesce=True
+            )
+        elif interval in SCHEDULE_INTERVALS:
+            app_scheduler.add_job(
+                rclone_worker, "interval", minutes=SCHEDULE_INTERVALS[interval],
+                id=job_id, args=[task_copy, False], replace_existing=True,
+                max_instances=1, coalesce=True
+            )
+        else:
+            print(f"Intervalo inválido para a tarefa {tid}: {interval}")
+
 async def refresh_automation_services():
     """Aplica imediatamente uma alteração de licença aos processos automáticos."""
     if is_license_active():
         sync_realtime_watchers(load_tasks())
+        sync_scheduled_tasks(load_tasks())
         asyncio.create_task(poll_realtime_download_tasks())
         if app_scheduler.running and not app_scheduler.get_job("remote-realtime-poll"):
             app_scheduler.add_job(
@@ -157,6 +253,7 @@ async def refresh_automation_services():
             )
     else:
         stop_all_realtime_watchers()
+        sync_scheduled_tasks([])
         if app_scheduler.get_job("remote-realtime-poll"):
             app_scheduler.remove_job("remote-realtime-poll")
         # Se a licença for removida durante uma cópia, termina-a também.
@@ -176,6 +273,7 @@ async def lifespan(app: FastAPI):
     
     if is_license_active():
         sync_realtime_watchers(load_tasks())
+        sync_scheduled_tasks(load_tasks())
         asyncio.create_task(poll_realtime_download_tasks())
     asyncio.create_task(update_health_cache())
     
@@ -1365,6 +1463,7 @@ async def post_tasks(request: Request):
         return JSONResponse(status_code=500, content={"message": "Não foi possível gravar as tarefas."})
 
     sync_realtime_watchers(tasks)
+    sync_scheduled_tasks(tasks)
     await manager.broadcast({"type": "init", "tasks": tasks, "state": STATE})
     return {"status": "ok", "tasks": tasks}
 
@@ -1403,6 +1502,17 @@ async def update_settings_endpoint(request: Request):
         current = load_settings()
         allowed = {"auto_simulate", "terms_accepted", "license_email", "license_key"}
         current.update({key: value for key, value in new_data.items() if key in allowed})
+        license_result = None
+        if "license_email" in new_data or "license_key" in new_data:
+            if (
+                str(current.get("license_email", "")).strip().lower() == TEST_LICENSE_EMAIL
+                and str(current.get("license_key", "")).strip() == TEST_LICENSE_KEY
+            ):
+                license_result = {"valid": True, "message": "Licença temporária de teste ativada.", "plan": "test"}
+            elif LICENSE_API_URL:
+                license_result = validate_license_with_api(current.get("license_email"), current.get("license_key"))
+            else:
+                license_result = {"valid": False, "message": "Licença inválida ou servidor de licenças não configurado."}
         save_settings(current)
         
         # Sincroniza a memória global para o próximo sinal de WebSocket
@@ -1410,11 +1520,15 @@ async def update_settings_endpoint(request: Request):
             STATE["auto_simulate"] = new_data["auto_simulate"]
         if "terms_accepted" in new_data:
             STATE["terms_accepted"] = new_data["terms_accepted"]
-        STATE["license_active"] = is_license_active()
+        STATE["license_active"] = license_result["valid"] if license_result else is_license_active()
         await refresh_automation_services()
         await manager.broadcast({"type": "update", "state": STATE})
             
-        return {"status": "ok", "license_active": STATE["license_active"]}
+        return {
+            "status": "ok", "license_active": STATE["license_active"],
+            "message": (license_result or {}).get("message"),
+            "plan": (license_result or {}).get("plan")
+        }
     except Exception as e:
         return JSONResponse(status_code=500, content={"message": str(e)})
 
