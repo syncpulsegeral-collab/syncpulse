@@ -168,13 +168,13 @@ def save_license(data):
         target.flush()
         os.fsync(target.fileno())
 
-def validate_license_with_api(email, license_key):
+def validate_license_with_api(email, license_key, device_name=None):
     """Consulta a API/BD de licenças; a BD decide e regista os limites 1/3/5."""
     payload = json.dumps({
         "email": str(email or "").strip().lower(),
         "license_key": str(license_key or "").strip(),
         "hwid": get_secure_hwid(),
-        "device_name": get_device_name()
+        "device_name": device_name or get_device_name()
     }).encode("utf-8")
     request = UrlRequest(
         LICENSE_API_URL, data=payload,
@@ -1516,13 +1516,14 @@ async def activate_license_local(request: Request):
         data = await request.json()
         email = str(data.get("email") or "").strip().lower()
         license_key = str(data.get("key") or "").strip()
+        device_name = get_device_name()
         if not email or not license_key:
             return JSONResponse(status_code=400, content={"message": "Email e chave de licença são obrigatórios.", "code": "invalid"})
 
         if email == TEST_LICENSE_EMAIL and license_key == TEST_LICENSE_KEY:
             auth_result = {"valid": True, "message": "Licença temporária de teste ativada.", "plan": "test", "code": "activated"}
         else:
-            auth_result = await asyncio.to_thread(validate_license_with_api, email, license_key)
+            auth_result = await asyncio.to_thread(validate_license_with_api, email, license_key, device_name)
 
         if not auth_result.get("valid"):
             return JSONResponse(
@@ -1532,7 +1533,7 @@ async def activate_license_local(request: Request):
 
         license_data = {
             "active": True, "email": email, "key": license_key,
-            "hwid": get_secure_hwid(), "plan": auth_result.get("plan"),
+            "hwid": get_secure_hwid(), "device_name": device_name, "plan": auth_result.get("plan"),
             "activated_at": datetime.now().isoformat()
         }
         save_license(license_data)
