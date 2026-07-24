@@ -8,6 +8,109 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from datetime import datetime
 from contextlib import asynccontextmanager # <--- Garante este import
 
+# --- CONFIGURAÇÕES DE CAMINHOS ---
+# Agora apontamos SEMPRE para as pastas dos volumes (/app e /www)
+# Assim, se editares no ZimaOS, a alteração é aplicada.
+WWW_PATH = "/www"
+CONFIG_DIR = "/config"
+CONFIG_FILE = os.path.join(CONFIG_DIR, "tasks.json")
+RCLONE_CONFIG = os.path.join(CONFIG_DIR, "rclone.conf")
+LOGS_DIR = os.path.join(CONFIG_DIR, "logs")
+HISTORY_FILE = os.path.join(CONFIG_DIR, "history.json")
+SETTINGS_FILE = os.path.join(CONFIG_DIR, "settings.json")
+LICENSE_FILE = os.path.join(CONFIG_DIR, "license.json")
+BISYNC_WORKDIR = os.path.join(CONFIG_DIR, "bisync")
+
+for p in [LOGS_DIR, BISYNC_WORKDIR, "/config"]:
+    if not os.path.exists(p): os.makedirs(p, exist_ok=True)
+
+def get_secure_hwid():
+    """Devolve um fingerprint hash; nunca expõe o identificador bruto à API."""
+    machine_id = os.getenv("SYNCPULSE_HWID", "").strip()
+    if not machine_id:
+        for path in ("/etc/machine-id", "/var/lib/dbus/machine-id"):
+            try:
+                with open(path, "r", encoding="utf-8") as source:
+                    machine_id = source.read().strip()
+                if machine_id:
+                    break
+            except OSError:
+                pass
+    raw = "|".join([machine_id, str(uuid.getnode()), platform.node()])
+    return hashlib.sha256(f"{HWID_SALT}|{raw}".encode("utf-8")).hexdigest()
+
+def load_settings():
+    """Carrega as definições do ficheiro garantindo que todas as chaves existem."""
+    defaults = {
+        "auto_simulate": True, "terms_accepted": False,
+        "license_email": "", "license_key": ""
+    }
+    if os.path.exists(SETTINGS_FILE):
+        try:
+            with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                defaults.update(data) # Junta o que está no disco com os padrões
+        except:
+            pass
+    return defaults
+
+def load_license():
+    try:
+        with open(LICENSE_FILE, "r", encoding="utf-8") as source:
+            data = json.load(source)
+        return data if isinstance(data, dict) else {}
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+def load_tasks():
+    if os.path.exists(CONFIG_FILE):
+        try:
+            with open(CONFIG_FILE, "r") as f: return json.load(f)
+        except: return []
+    return []
+
+def get_initial_state():
+    """Inicializa o estado global lendo a licença do disco de forma rigorosa."""
+    s = load_settings()
+    lic = load_license() # Esta função lê o /config/license.json
+    hwid_atual = get_secure_hwid()
+
+    # Validação Híbrida:
+    # 1. O ficheiro tem de ter "active": true (como no teu print)
+    # 2. O HWID gravado tem de ser IGUAL ao HWID atual do hardware
+    is_valid = lic.get("active") is True and lic.get("hwid") == hwid_atual
+
+    return {
+        "running": {}, "logs": {}, "active_files": {}, "finished_files": {},
+        "all_files": {}, "skipped_files": {}, "stats": {}, "failed_files": {},
+        "file_sizes": {},
+        "auto_simulate": s.get("auto_simulate", True),
+        "terms_accepted": s.get("terms_accepted", False),
+        # Enviamos as duas variantes para garantir que o Frontend e o Backend se entendem
+        "licensed": is_valid,
+        "license_active": is_valid, 
+        "license_info": {
+            "email": lic.get("email", ""),
+            "key": lic.get("key", ""),
+            "device_name": lic.get("device_name", ""),
+            "activated_at": lic.get("activated_at", ""),
+            "plan": lic.get("plan", 1)
+        },
+        "hwid": hwid_atual
+    }
+
+# Única definição de STATE no topo do ficheiro
+STATE = get_initial_state()
+PROCESSES = {}
+TASK_LOCKS = {}
+WATCHERS = {}
+REALTIME_HANDLES = {}
+APP_LOOP = None
+REALTIME_DEBOUNCE_SECONDS = 2.0
+REMOTE_POLL_SECONDS = 30
+CLOUD_STATE_CACHE = {}
+HEALTH_CACHE = []
+    
 # --- 1. LÓGICA DE AUTO-INSTALAÇÃO (BOOTSTRAP) ---
 # Deve correr logo no início
 def bootstrap():
@@ -91,24 +194,6 @@ async def silent_license_check():
     except Exception as e:
         print(f">>> [BACKGROUND] Sem ligação à internet para validar: {e}")
 
-async def revoke_license_local():
-    """Bloqueia a app imediatamente se a validação falhar."""
-    STATE["licensed"] = False
-    if os.path.exists(LICENSE_FILE):
-        os.remove(LICENSE_FILE)
-    
-    # Parar os motores de sincronização para respeitar o bloqueio
-    for tid in list(WATCHERS):
-        stop_realtime_watcher(tid)
-    
-    if app_scheduler.get_job('remote-realtime-poll'):
-        app_scheduler.remove_job('remote-realtime-poll')
-        
-    await manager.broadcast({"type": "update", "state": STATE})
-    print(">>> [LICENSE] Bloqueio Pro aplicado após verificação negativa.")
-
-# --- 3. DEFINIR O LIFESPAN (DEVE VIR ANTES DA APP) ---
-@asynccontextmanager
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global APP_LOOP
@@ -144,6 +229,135 @@ async def lifespan(app: FastAPI):
 # --- 4. AGORA SIM, CRIAR A INSTÂNCIA DA APP ---
 app = FastAPI(lifespan=lifespan)
 
+class ConnectionManager:
+    def __init__(self): self.active_connections = []
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+    def disconnect(self, websocket: WebSocket):
+        if websocket in self.active_connections: self.active_connections.remove(websocket)
+    async def broadcast(self, message: dict):
+        for connection in self.active_connections:
+            try: await connection.send_json(message)
+            except: pass
+
+manager = ConnectionManager()
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await manager.connect(websocket)
+    try:
+        await websocket.send_json({"type": "init", "tasks": load_tasks(), "state": STATE})
+        while True: await websocket.receive_text()
+    except: manager.disconnect(websocket)
+
+@app.post("/api/license/activate")
+async def activate_license_local(request: Request):
+    """
+    Ativação Manual: Comunica com o Railway, regista o HWID e 
+    desbloqueia a App imediatamente.
+    """
+    try:
+        data = await request.json()
+        email = str(data.get("email") or "").strip().lower()
+        key = str(data.get("key") or "").strip()
+        # Se o utilizador não der um nome, usamos o nome do sistema (Zimatest/ZimaBoard)
+        device_name = str(data.get("device_name") or socket.gethostname()).strip()[:120]
+        
+        if not email or not key:
+            return JSONResponse(status_code=400, content={"message": "E-mail e Chave são obrigatórios."})
+
+        hwid = get_secure_hwid()
+
+        # 1. CHAMADA AO SERVIDOR CENTRAL (RAILWAY)
+        print(f">>> [LICENSE] A tentar ativar: {email} em {device_name}")
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{AUTH_SERVER_URL}/api/licenses/activate",
+                json={
+                    "email": email,
+                    "license_key": key,
+                    "hwid": hwid,
+                    "device_name": device_name
+                },
+                timeout=15.0
+            )
+
+        res_data = response.json()
+
+        # 2. SE O SERVIDOR RECUSAR
+        if response.status_code != 200 or not res_data.get("valid"):
+            return JSONResponse(
+                status_code=response.status_code,
+                content={"message": res_data.get("message", "Licença inválida ou limite atingido.")}
+            )
+
+        # 3. SE O SERVIDOR ACEITAR: PREPARAR DADOS PARA O DISCO
+        # Adicionamos 'last_check' para o modo híbrido saber quando foi a última validação online
+        license_data = {
+            "email": email,
+            "key": key,
+            "hwid": hwid,
+            "device_name": device_name,
+            "plan": res_data.get("plan", 1),
+            "activated_at": datetime.now().isoformat(),
+            "last_check": datetime.now().isoformat() 
+        }
+
+        # 4. PERSISTÊNCIA FÍSICA (Garante que sobrevive ao Reboot)
+        with open(LICENSE_FILE, "w", encoding="utf-8") as f:
+            json.dump(license_data, f)
+            f.flush()
+            os.fsync(f.fileno()) # Força o ZimaOS a gravar no disco real
+
+        # 5. ATUALIZAÇÃO DO ESTADO EM MEMÓRIA (Desbloqueio instantâneo)
+        STATE["licensed"] = True
+        STATE["license_info"] = license_data
+
+        # 6. LIGAR MOTORES DE SINCRONIZAÇÃO (Agora que temos licença)
+        sync_realtime_watchers(load_tasks())
+        sync_scheduled_tasks(load_tasks())
+        if not app_scheduler.get_job('remote-realtime-poll'):
+            app_scheduler.add_job(
+                poll_realtime_download_tasks, 'interval', seconds=REMOTE_POLL_SECONDS,
+                id='remote-realtime-poll', replace_existing=True
+            )
+
+        # Avisar o frontend via WebSocket para remover os cadeados
+        await manager.broadcast({"type": "update", "state": STATE})
+
+        return {
+            "status": "ok", 
+            "message": "SyncPulse Pro Ativado com sucesso!", 
+            "plan": license_data["plan"]
+        }
+
+    except Exception as e:
+        print(f">>> [LICENSE] Erro crítico na ativação: {e}")
+        return JSONResponse(
+            status_code=500, 
+            content={"message": "Erro ao contactar servidor de ativação."}
+        )
+
+async def revoke_license_local():
+    """Bloqueia a app imediatamente se a validação falhar."""
+    STATE["licensed"] = False
+    if os.path.exists(LICENSE_FILE):
+        os.remove(LICENSE_FILE)
+    
+    # Parar os motores de sincronização para respeitar o bloqueio
+    for tid in list(WATCHERS):
+        stop_realtime_watcher(tid)
+    
+    if app_scheduler.get_job('remote-realtime-poll'):
+        app_scheduler.remove_job('remote-realtime-poll')
+        
+    await manager.broadcast({"type": "update", "state": STATE})
+    print(">>> [LICENSE] Bloqueio Pro aplicado após verificação negativa.")
+
+# --- 3. DEFINIR O LIFESPAN (DEVE VIR ANTES DA APP) ---
+
+
 # Importação Watchdog
 try:
     from watchdog.observers import Observer
@@ -154,32 +368,10 @@ except ImportError:
     
 app_scheduler = AsyncIOScheduler() # Renomeado para evitar confusão se necessário 
 
-# --- CONFIGURAÇÕES DE CAMINHOS ---
-# Agora apontamos SEMPRE para as pastas dos volumes (/app e /www)
-# Assim, se editares no ZimaOS, a alteração é aplicada.
-WWW_PATH = "/www"
-CONFIG_DIR = "/config"
-CONFIG_FILE = os.path.join(CONFIG_DIR, "tasks.json")
-RCLONE_CONFIG = os.path.join(CONFIG_DIR, "rclone.conf")
-LOGS_DIR = os.path.join(CONFIG_DIR, "logs")
-HISTORY_FILE = os.path.join(CONFIG_DIR, "history.json")
-SETTINGS_FILE = os.path.join(CONFIG_DIR, "settings.json")
-LICENSE_FILE = os.path.join(CONFIG_DIR, "license.json")
-BISYNC_WORKDIR = os.path.join(CONFIG_DIR, "bisync")
-
-for p in [LOGS_DIR, BISYNC_WORKDIR, "/config"]:
-    if not os.path.exists(p): os.makedirs(p, exist_ok=True)
 
 
-PROCESSES = {}
-TASK_LOCKS = {}
-WATCHERS = {}
-REALTIME_HANDLES = {}
-APP_LOOP = None
-REALTIME_DEBOUNCE_SECONDS = 2.0
-REMOTE_POLL_SECONDS = 30
-CLOUD_STATE_CACHE = {}
-HEALTH_CACHE = []
+
+
 
 # --- LICENCIAMENTO ---------------------------------------------------------
 # O Railway é a fonte de verdade para licenças e limite de dispositivos.
@@ -193,20 +385,7 @@ AUTH_SERVER_URL = os.getenv(
 LICENSE_API_URL = f"{AUTH_SERVER_URL}/api/licenses/activate"
 HWID_SALT = os.getenv("SYNCPULSE_HWID_SALT", "syncpulse-hwid-v1")
 
-def get_secure_hwid():
-    """Devolve um fingerprint hash; nunca expõe o identificador bruto à API."""
-    machine_id = os.getenv("SYNCPULSE_HWID", "").strip()
-    if not machine_id:
-        for path in ("/etc/machine-id", "/var/lib/dbus/machine-id"):
-            try:
-                with open(path, "r", encoding="utf-8") as source:
-                    machine_id = source.read().strip()
-                if machine_id:
-                    break
-            except OSError:
-                pass
-    raw = "|".join([machine_id, str(uuid.getnode()), platform.node()])
-    return hashlib.sha256(f"{HWID_SALT}|{raw}".encode("utf-8")).hexdigest()
+
 
 def get_device_name():
     """Nome legível do dispositivo para a gestão no portal de licenças."""
@@ -218,13 +397,7 @@ def get_device_name():
     suffix = host_name[:6].upper() if host_name else "LOCAL"
     return f"Dispositivo SyncPulse ({suffix})"
 
-def load_license():
-    try:
-        with open(LICENSE_FILE, "r", encoding="utf-8") as source:
-            data = json.load(source)
-        return data if isinstance(data, dict) else {}
-    except (OSError, json.JSONDecodeError):
-        return {}
+
 
 def save_license(data):
     with open(LICENSE_FILE, "w", encoding="utf-8") as target:
@@ -339,37 +512,7 @@ async def refresh_automation_services():
             except ProcessLookupError:
                 pass
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Lógica de Startup
-    global APP_LOOP
-    APP_LOOP = asyncio.get_running_loop()
-    
-    if is_license_active():
-        sync_realtime_watchers(load_tasks())
-        sync_scheduled_tasks(load_tasks())
-        asyncio.create_task(poll_realtime_download_tasks())
-    asyncio.create_task(update_health_cache())
-    
-    app_scheduler.add_job(update_health_cache, 'interval', minutes=2)
-    if is_license_active():
-        app_scheduler.add_job(
-            poll_realtime_download_tasks,
-            'interval',
-            seconds=REMOTE_POLL_SECONDS,
-            id='remote-realtime-poll',
-            replace_existing=True,
-            max_instances=1,
-            coalesce=True
-        )
-    app_scheduler.start()
-    
-    yield # A aplicação corre aqui
-    
-    # Lógica de Shutdown
-    if app_scheduler.running:
-        app_scheduler.shutdown(wait=False)
-        
+      
 
 
 import shutil
@@ -404,19 +547,7 @@ def bootstrap_folders():
 # EXECUTAR O BOOTSTRAP ANTES DE QUALQUER OUTRA COISA
 bootstrap_folders()
 
-class ConnectionManager:
-    def __init__(self): self.active_connections = []
-    async def connect(self, websocket: WebSocket):
-        await websocket.accept()
-        self.active_connections.append(websocket)
-    def disconnect(self, websocket: WebSocket):
-        if websocket in self.active_connections: self.active_connections.remove(websocket)
-    async def broadcast(self, message: dict):
-        for connection in self.active_connections:
-            try: await connection.send_json(message)
-            except: pass
 
-manager = ConnectionManager()
 
 # --- WATCHDOG / TAREFAS EM TEMPO REAL ---
 
@@ -567,12 +698,7 @@ async def poll_realtime_download_tasks():
 
 # --- AUXILIARES ---
 
-def load_tasks():
-    if os.path.exists(CONFIG_FILE):
-        try:
-            with open(CONFIG_FILE, "r") as f: return json.load(f)
-        except: return []
-    return []
+
 
 def save_tasks(tasks):
     try:
@@ -585,20 +711,7 @@ def save_tasks(tasks):
         print(f"Erro ao gravar tarefas: {e}")
         return False
 
-def load_settings():
-    """Carrega as definições do ficheiro garantindo que todas as chaves existem."""
-    defaults = {
-        "auto_simulate": True, "terms_accepted": False,
-        "license_email": "", "license_key": ""
-    }
-    if os.path.exists(SETTINGS_FILE):
-        try:
-            with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                defaults.update(data) # Junta o que está no disco com os padrões
-        except:
-            pass
-    return defaults
+
 
 def save_settings(data):
     """Grava as definições e força a escrita física no disco."""
@@ -610,35 +723,7 @@ def save_settings(data):
     except Exception as e:
         print(f"Erro ao gravar settings: {e}")
 
-def get_initial_state():
-    """Inicializa o estado global. Carrega a licença local para ativação instantânea."""
-    s = load_settings()
-    lic = load_license()
-    
-    # Ativação imediata: se os dados básicos estão no disco, a UI desbloqueia já.
-    is_licensed = bool(lic.get("email") and lic.get("key"))
 
-    return {
-        "running": {}, "logs": {}, "active_files": {}, "finished_files": {},
-        "all_files": {}, "skipped_files": {}, "stats": {}, "failed_files": {},
-        "file_sizes": {},
-        "auto_simulate": s.get("auto_simulate", True),
-        "terms_accepted": s.get("terms_accepted", False),
-        "licensed": is_licensed, # O frontend lê isto para remover os cadeados
-        "license_info": {
-            "email": lic.get("email", ""),
-            "key": lic.get("key", ""),
-            "device_name": lic.get("device_name", ""),
-            "activated_at": lic.get("activated_at", ""),
-            # --- NOVOS CAMPOS PARA O MODO HÍBRIDO ---
-            "last_check": lic.get("last_check", ""), # Data da última validação online feita com sucesso
-            "offline_mode": False # Ficará True se a validação falhar por falta de internet
-        },
-        "hwid": get_secure_hwid()
-    }
-
-# Única definição de STATE no topo do ficheiro
-STATE = get_initial_state()
 
 def clean_log_line(text):
     if not text: return ""
@@ -1514,13 +1599,7 @@ async def update_health_cache():
         await manager.broadcast({"type": "health_update", "health": HEALTH_CACHE})
     except: pass
 
-@app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
-    await manager.connect(websocket)
-    try:
-        await websocket.send_json({"type": "init", "tasks": load_tasks(), "state": STATE})
-        while True: await websocket.receive_text()
-    except: manager.disconnect(websocket)
+
 
 @app.post("/api/tasks")
 async def post_tasks(request: Request):
@@ -1586,93 +1665,7 @@ def get_settings():
         "license_info": {"plan": license_data.get("plan"), "device_name": license_data.get("device_name"), "activated_at": license_data.get("activated_at")}
     }
 
-@app.post("/api/license/activate")
-async def activate_license_local(request: Request):
-    """
-    Ativação Manual: Comunica com o Railway, regista o HWID e 
-    desbloqueia a App imediatamente.
-    """
-    try:
-        data = await request.json()
-        email = str(data.get("email") or "").strip().lower()
-        key = str(data.get("key") or "").strip()
-        # Se o utilizador não der um nome, usamos o nome do sistema (Zimatest/ZimaBoard)
-        device_name = str(data.get("device_name") or socket.gethostname()).strip()[:120]
-        
-        if not email or not key:
-            return JSONResponse(status_code=400, content={"message": "E-mail e Chave são obrigatórios."})
 
-        hwid = get_secure_hwid()
-
-        # 1. CHAMADA AO SERVIDOR CENTRAL (RAILWAY)
-        print(f">>> [LICENSE] A tentar ativar: {email} em {device_name}")
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"{AUTH_SERVER_URL}/api/licenses/activate",
-                json={
-                    "email": email,
-                    "license_key": key,
-                    "hwid": hwid,
-                    "device_name": device_name
-                },
-                timeout=15.0
-            )
-
-        res_data = response.json()
-
-        # 2. SE O SERVIDOR RECUSAR
-        if response.status_code != 200 or not res_data.get("valid"):
-            return JSONResponse(
-                status_code=response.status_code,
-                content={"message": res_data.get("message", "Licença inválida ou limite atingido.")}
-            )
-
-        # 3. SE O SERVIDOR ACEITAR: PREPARAR DADOS PARA O DISCO
-        # Adicionamos 'last_check' para o modo híbrido saber quando foi a última validação online
-        license_data = {
-            "email": email,
-            "key": key,
-            "hwid": hwid,
-            "device_name": device_name,
-            "plan": res_data.get("plan", 1),
-            "activated_at": datetime.now().isoformat(),
-            "last_check": datetime.now().isoformat() 
-        }
-
-        # 4. PERSISTÊNCIA FÍSICA (Garante que sobrevive ao Reboot)
-        with open(LICENSE_FILE, "w", encoding="utf-8") as f:
-            json.dump(license_data, f)
-            f.flush()
-            os.fsync(f.fileno()) # Força o ZimaOS a gravar no disco real
-
-        # 5. ATUALIZAÇÃO DO ESTADO EM MEMÓRIA (Desbloqueio instantâneo)
-        STATE["licensed"] = True
-        STATE["license_info"] = license_data
-
-        # 6. LIGAR MOTORES DE SINCRONIZAÇÃO (Agora que temos licença)
-        sync_realtime_watchers(load_tasks())
-        sync_scheduled_tasks(load_tasks())
-        if not app_scheduler.get_job('remote-realtime-poll'):
-            app_scheduler.add_job(
-                poll_realtime_download_tasks, 'interval', seconds=REMOTE_POLL_SECONDS,
-                id='remote-realtime-poll', replace_existing=True
-            )
-
-        # Avisar o frontend via WebSocket para remover os cadeados
-        await manager.broadcast({"type": "update", "state": STATE})
-
-        return {
-            "status": "ok", 
-            "message": "SyncPulse Pro Ativado com sucesso!", 
-            "plan": license_data["plan"]
-        }
-
-    except Exception as e:
-        print(f">>> [LICENSE] Erro crítico na ativação: {e}")
-        return JSONResponse(
-            status_code=500, 
-            content={"message": "Erro ao contactar servidor de ativação."}
-        )
 
 @app.post("/api/settings")
 async def update_settings_endpoint(request: Request):
