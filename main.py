@@ -52,34 +52,92 @@ bootstrap()
 app_scheduler = AsyncIOScheduler()
 # (Mantém as tuas variáveis de caminhos como WWW_PATH, etc.)
 
+async def silent_license_check():
+    """Valida a licença no Railway em background sem interromper o utilizador."""
+    await asyncio.sleep(10) # Aguarda 10 segundos após o boot para não pesar
+    
+    if not STATE.get("licensed"):
+        return
+
+    print(">>> [BACKGROUND] A validar licença com o servidor central...")
+    email = STATE["license_info"].get("email")
+    key = STATE["license_info"].get("key")
+    hwid = STATE.get("hwid")
+
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{AUTH_SERVER_URL}/api/licenses/activate",
+                json={"email": email, "license_key": key, "hwid": hwid},
+                timeout=10.0
+            )
+
+        if response.status_code == 200:
+            res_data = response.json()
+            if res_data.get("valid"):
+                # Licença confirmada! Atualizamos o ficheiro local com a data do check
+                STATE["license_info"]["last_check"] = str(datetime.now())
+                with open(LICENSE_FILE, "w") as f:
+                    json.dump(STATE["license_info"], f)
+                print(">>> [BACKGROUND] Licença confirmada e atualizada.")
+            else:
+                # O servidor diz que a licença já não é válida (ex: refund ou remoção de slot)
+                print(">>> [BACKGROUND] Licença revogada pelo servidor!")
+                await revoke_license_local()
+        else:
+            # Servidor offline ou erro 500: mantemos o utilizador ativo (Modo Híbrido/Offline)
+            print(f">>> [BACKGROUND] Servidor central indisponível ({response.status_code}).")
+
+    except Exception as e:
+        print(f">>> [BACKGROUND] Sem ligação à internet para validar: {e}")
+
+async def revoke_license_local():
+    """Bloqueia a app imediatamente se a validação falhar."""
+    STATE["licensed"] = False
+    if os.path.exists(LICENSE_FILE):
+        os.remove(LICENSE_FILE)
+    
+    # Parar os motores de sincronização para respeitar o bloqueio
+    for tid in list(WATCHERS):
+        stop_realtime_watcher(tid)
+    
+    if app_scheduler.get_job('remote-realtime-poll'):
+        app_scheduler.remove_job('remote-realtime-poll')
+        
+    await manager.broadcast({"type": "update", "state": STATE})
+    print(">>> [LICENSE] Bloqueio Pro aplicado após verificação negativa.")
+
 # --- 3. DEFINIR O LIFESPAN (DEVE VIR ANTES DA APP) ---
 @asynccontextmanager
+@asynccontextmanager
 async def lifespan(app: FastAPI):
-    # O que corre ao iniciar
     global APP_LOOP
     APP_LOOP = asyncio.get_running_loop()
     
-    # Inicia as tuas tarefas (Watchdogs, Health Cache, etc.)
-    if is_license_active():
+    # 1. Inicia TUDO o que for local imediatamente (Sincronização arranca já)
+    if STATE.get("licensed"):
+        print(">>> [STARTUP] Licença local detectada. A iniciar motores...")
         sync_realtime_watchers(load_tasks())
         sync_scheduled_tasks(load_tasks())
         asyncio.create_task(poll_realtime_download_tasks())
+    
     asyncio.create_task(update_health_cache())
     
-    # O polling periódico só existe enquanto houver licença ativa.
-    if is_license_active():
+    # 2. Configura o polling periódico (se licenciado)
+    if STATE.get("licensed"):
         app_scheduler.add_job(
             poll_realtime_download_tasks, 'interval', seconds=REMOTE_POLL_SECONDS,
             id='remote-realtime-poll', replace_existing=True,
             max_instances=1, coalesce=True
         )
 
-    # Agendamentos
+    # 3. LANÇA A VERIFICAÇÃO HÍBRIDA EM SEGUNDO PLANO
+    asyncio.create_task(silent_license_check())
+
     app_scheduler.start()
     
-    yield # A App fica a funcionar aqui
+    yield # App operacional
     
-    # O que corre ao desligar
     if app_scheduler.running:
         app_scheduler.shutdown(wait=False)
 
@@ -553,11 +611,11 @@ def save_settings(data):
         print(f"Erro ao gravar settings: {e}")
 
 def get_initial_state():
-    """Cria o objeto de estado global lendo do disco."""
+    """Inicializa o estado global. Carrega a licença local para ativação instantânea."""
     s = load_settings()
     lic = load_license()
     
-    # Verifica se a licença está ativa (se tem os campos básicos)
+    # Ativação imediata: se os dados básicos estão no disco, a UI desbloqueia já.
     is_licensed = bool(lic.get("email") and lic.get("key"))
 
     return {
@@ -566,12 +624,15 @@ def get_initial_state():
         "file_sizes": {},
         "auto_simulate": s.get("auto_simulate", True),
         "terms_accepted": s.get("terms_accepted", False),
-        "licensed": is_licensed,
+        "licensed": is_licensed, # O frontend lê isto para remover os cadeados
         "license_info": {
             "email": lic.get("email", ""),
             "key": lic.get("key", ""),
             "device_name": lic.get("device_name", ""),
-            "activated_at": lic.get("activated_at", "")
+            "activated_at": lic.get("activated_at", ""),
+            # --- NOVOS CAMPOS PARA O MODO HÍBRIDO ---
+            "last_check": lic.get("last_check", ""), # Data da última validação online feita com sucesso
+            "offline_mode": False # Ficará True se a validação falhar por falta de internet
         },
         "hwid": get_secure_hwid()
     }
@@ -1527,40 +1588,91 @@ def get_settings():
 
 @app.post("/api/license/activate")
 async def activate_license_local(request: Request):
-    """Valida a licença no Railway e persiste a ativação associada ao HWID."""
+    """
+    Ativação Manual: Comunica com o Railway, regista o HWID e 
+    desbloqueia a App imediatamente.
+    """
     try:
         data = await request.json()
         email = str(data.get("email") or "").strip().lower()
-        license_key = str(data.get("key") or "").strip()
-        device_name = str(data.get("device_name") or get_device_name()).strip()[:120]
-        if not email or not license_key:
-            return JSONResponse(status_code=400, content={"message": "Email e chave de licença são obrigatórios.", "code": "invalid"})
+        key = str(data.get("key") or "").strip()
+        # Se o utilizador não der um nome, usamos o nome do sistema (Zimatest/ZimaBoard)
+        device_name = str(data.get("device_name") or socket.gethostname()).strip()[:120]
+        
+        if not email or not key:
+            return JSONResponse(status_code=400, content={"message": "E-mail e Chave são obrigatórios."})
 
-        if email == TEST_LICENSE_EMAIL and license_key == TEST_LICENSE_KEY:
-            auth_result = {"valid": True, "message": "Licença temporária de teste ativada.", "plan": "test", "code": "activated"}
-        else:
-            auth_result = await asyncio.to_thread(validate_license_with_api, email, license_key, device_name)
+        hwid = get_secure_hwid()
 
-        if not auth_result.get("valid"):
-            return JSONResponse(
-                status_code=401,
-                content={"message": auth_result.get("message", "Erro na validação."), "code": auth_result.get("code", "invalid")}
+        # 1. CHAMADA AO SERVIDOR CENTRAL (RAILWAY)
+        print(f">>> [LICENSE] A tentar ativar: {email} em {device_name}")
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{AUTH_SERVER_URL}/api/licenses/activate",
+                json={
+                    "email": email,
+                    "license_key": key,
+                    "hwid": hwid,
+                    "device_name": device_name
+                },
+                timeout=15.0
             )
 
+        res_data = response.json()
+
+        # 2. SE O SERVIDOR RECUSAR
+        if response.status_code != 200 or not res_data.get("valid"):
+            return JSONResponse(
+                status_code=response.status_code,
+                content={"message": res_data.get("message", "Licença inválida ou limite atingido.")}
+            )
+
+        # 3. SE O SERVIDOR ACEITAR: PREPARAR DADOS PARA O DISCO
+        # Adicionamos 'last_check' para o modo híbrido saber quando foi a última validação online
         license_data = {
-            "active": True, "email": email, "key": license_key,
-            "hwid": get_secure_hwid(), "device_name": device_name, "plan": auth_result.get("plan"),
-            "activated_at": datetime.now().isoformat()
+            "email": email,
+            "key": key,
+            "hwid": hwid,
+            "device_name": device_name,
+            "plan": res_data.get("plan", 1),
+            "activated_at": datetime.now().isoformat(),
+            "last_check": datetime.now().isoformat() 
         }
-        save_license(license_data)
-        STATE["license_active"] = True
-        STATE["license_info"] = {"email": email, "plan": license_data["plan"], "device_name": device_name, "activated_at": license_data["activated_at"]}
-        await refresh_automation_services()
+
+        # 4. PERSISTÊNCIA FÍSICA (Garante que sobrevive ao Reboot)
+        with open(LICENSE_FILE, "w", encoding="utf-8") as f:
+            json.dump(license_data, f)
+            f.flush()
+            os.fsync(f.fileno()) # Força o ZimaOS a gravar no disco real
+
+        # 5. ATUALIZAÇÃO DO ESTADO EM MEMÓRIA (Desbloqueio instantâneo)
+        STATE["licensed"] = True
+        STATE["license_info"] = license_data
+
+        # 6. LIGAR MOTORES DE SINCRONIZAÇÃO (Agora que temos licença)
+        sync_realtime_watchers(load_tasks())
+        sync_scheduled_tasks(load_tasks())
+        if not app_scheduler.get_job('remote-realtime-poll'):
+            app_scheduler.add_job(
+                poll_realtime_download_tasks, 'interval', seconds=REMOTE_POLL_SECONDS,
+                id='remote-realtime-poll', replace_existing=True
+            )
+
+        # Avisar o frontend via WebSocket para remover os cadeados
         await manager.broadcast({"type": "update", "state": STATE})
-        return {"status": "ok", "license_active": True, "message": auth_result.get("message"), "plan": auth_result.get("plan"), "code": auth_result.get("code", "activated")}
-    except Exception as error:
-        print(f"Erro na ativação da licença: {error}")
-        return JSONResponse(status_code=500, content={"message": "Não foi possível contactar o servidor de ativação.", "code": "unavailable"})
+
+        return {
+            "status": "ok", 
+            "message": "SyncPulse Pro Ativado com sucesso!", 
+            "plan": license_data["plan"]
+        }
+
+    except Exception as e:
+        print(f">>> [LICENSE] Erro crítico na ativação: {e}")
+        return JSONResponse(
+            status_code=500, 
+            content={"message": "Erro ao contactar servidor de ativação."}
+        )
 
 @app.post("/api/settings")
 async def update_settings_endpoint(request: Request):
