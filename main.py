@@ -1,4 +1,4 @@
-import os, json, asyncio, subprocess, re, typing, time, signal, shutil, hashlib, uuid, platform
+import os, json, asyncio, subprocess, re, typing, time, signal, shutil, hashlib, uuid, platform, httpx
 from urllib.request import Request as UrlRequest, urlopen
 from urllib.error import URLError, HTTPError
 from fastapi import FastAPI, BackgroundTasks, Request, WebSocket, WebSocketDisconnect
