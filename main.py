@@ -20,6 +20,7 @@ HISTORY_FILE = os.path.join(CONFIG_DIR, "history.json")
 SETTINGS_FILE = os.path.join(CONFIG_DIR, "settings.json")
 LICENSE_FILE = os.path.join(CONFIG_DIR, "license.json")
 BISYNC_WORKDIR = os.path.join(CONFIG_DIR, "bisync")
+HWID_SALT = "syncpulse_secret_salt_2026"
 
 for p in [LOGS_DIR, BISYNC_WORKDIR, "/config"]:
     if not os.path.exists(p): os.makedirs(p, exist_ok=True)
