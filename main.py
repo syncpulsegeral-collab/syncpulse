@@ -88,7 +88,7 @@ def get_initial_state():
         "auto_simulate": s.get("auto_simulate", True),
         "terms_accepted": s.get("terms_accepted", False),
         # Enviamos as duas variantes para garantir que o Frontend e o Backend se entendem
-        "licensed": is_valid,
+        "licensed": is_active,
         "license_active": is_valid, 
         "license_info": {
             "email": lic.get("email", ""),
