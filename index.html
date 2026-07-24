@@ -28,6 +28,20 @@
 			to { opacity: 1; transform: translateY(0); }
 		}
 
+		#account-dropdown {
+			background-color: #0f172a; /* Azul muito escuro sólido */
+			border: 1px solid #1e293b;
+			box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+		}
+
+		/* Garante que o estado ativo também não tenha transparência */
+		#account-dropdown.active {
+			display: block;
+			animation: slideIn 0.3s ease forwards;
+			background-color: #0f172a !important; 
+			backdrop-filter: none !important;
+		}
+
 		#account-dropdown.active {
 			display: block;
 			animation: slideIn 0.3s ease forwards;
@@ -81,57 +95,65 @@
 							<i class="fas fa-user-astronaut"></i>
 						</button>
 
-						<!-- DROPDOWN DE CONTA -->
-						<div id="account-dropdown" class="hidden absolute right-0 mt-4 w-[350px] sm:w-[450px] glass rounded-3xl border border-white/10 shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-5 duration-300">
+						<<!-- DROPDOWN DE CONTA -->
+						<div id="account-dropdown" class="hidden absolute right-0 mt-4 w-[350px] sm:w-[450px] rounded-3xl border border-white/10 shadow-2xl overflow-hidden z-[110]">
 							
 							<!-- ESTADO 1: FORMULÁRIO DE LOGIN -->
 							<div id="auth-form" class="p-8">
 								<h4 class="text-white font-black uppercase text-sm tracking-widest mb-6" data-i18n="login_title">Aceder à Minha Conta</h4>
-								<div class="space-y-4">
-									<input type="email" id="login-email" placeholder="E-mail da compra" data-i18n-placeholder="form_email" class="input-field text-sm">
-									<input type="text" id="login-key" placeholder="Chave SP-XXXX" data-i18n-placeholder="license_key" class="input-field text-sm">
-									<button onclick="simulateLogin()" class="w-full py-4 bg-cyan-500 text-black font-black uppercase text-[10px] tracking-[0.2em] rounded-xl hover:bg-cyan-400 transition-all" data-i18n="login_btn">Entrar no Dashboard</button>
-								</div>
-								<div id="auth-error" class="hidden text-[10px] text-red-500 mb-2 text-center font-bold">
+								<div id="auth-error" class="hidden text-[10px] text-red-500 mb-4 text-center font-bold bg-red-500/10 py-2 rounded-lg">
 									E-mail ou Chave incorretos.
+								</div>
+								<div class="space-y-4">
+									<input type="email" id="login-email" placeholder="jo.example@example.com" class="input-field text-sm">
+									<input type="text" id="login-key" placeholder="SP-D0C30C15" class="input-field text-sm">
+									<button onclick="simulateLogin()" class="w-full py-4 bg-cyan-500 text-black font-black uppercase text-[10px] tracking-[0.2em] rounded-xl hover:bg-cyan-400 transition-all" data-i18n="login_btn">Entrar no Dashboard</button>
 								</div>
 								<p class="mt-6 text-[10px] text-slate-500 text-center" data-i18n="login_note">Use os dados recebidos após o apoio no Ko-fi.</p>
 							</div>
 
-							<!-- ESTADO 2: DASHBOARD (ESCONDIDO POR PADRÃO) -->
-							<div id="auth-dashboard" class="hidden p-6 bg-slate-900/40">
+							<!-- ESTADO 2: DASHBOARD -->
+							<div id="auth-dashboard" class="hidden p-6">
 								<div class="flex items-center justify-between mb-6 border-b border-white/5 pb-4">
 									<div class="flex items-center gap-3">
-										<div class="w-8 h-8 rounded-full bg-cyan-500/20 flex items-center justify-center text-cyan-400 text-xs"><i class="fas fa-check-double"></i></div>
+										<div class="w-8 h-8 rounded-full bg-cyan-500/20 flex items-center justify-center text-cyan-400 text-xs">
+											<i class="fas fa-check-double"></i>
+										</div>
 										<div>
-											<p id="user-email-display" class="text-white font-bold text-[11px]">luis.test@gmail.com</p>
+											<p id="user-email-display" class="text-white font-bold text-[11px]">jo.example@example.com</p>
 											<span class="text-[9px] text-cyan-400 font-black uppercase tracking-tighter" data-i18n="acc_status">Conta Ativa</span>
 										</div>
 									</div>
-									<button onclick="simulateLogout()" class="text-slate-500 hover:text-red-400 transition"><i class="fas fa-power-off"></i></button>
+									<button onclick="simulateLogout()" class="text-slate-500 hover:text-red-400 transition">
+										<i class="fas fa-power-off"></i>
+									</button>
 								</div>
 
-								<!-- Slots -->
-								<div class="space-y-3 mb-6">
+								<!-- Slots de Dispositivos -->
+								<div class="space-y-3">
 									<div class="flex justify-between text-[10px] font-black uppercase text-slate-500 mb-1">
 										<span data-i18n="active_devices">Dispositivos</span>
-										<span><span class="text-white">1</span> / 3</span>
+										<span><span class="text-white">1</span> / 1</span>
 									</div>
-									<!-- Dispositivo Ativo -->
-									<div class="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/5">
-										<div class="flex items-center gap-3">
-											<i class="fas fa-server text-cyan-400 text-xs"></i>
-											<span class="text-xs text-white font-medium">ZimaCube-Oficina</span>
+									
+									<!-- Dispositivo Ativo (Simulando o teu Zimatest) -->
+									<div class="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
+										<div class="flex items-center gap-4">
+											<div class="w-10 h-10 rounded-xl bg-cyan-500/10 flex items-center justify-center text-cyan-400">
+												<i class="fas fa-server"></i>
+											</div>
+											<div>
+												<h5 class="text-sm font-bold text-white">Zimatest</h5>
+												<p class="text-[10px] text-slate-500 font-mono">HWID: dc0c...f940</p>
+											</div>
 										</div>
-										<button class="text-red-400 hover:text-red-300 p-1"><i class="fas fa-trash-alt text-[10px]"></i></button>
-									</div>
-									<!-- Vaga -->
-									<div class="p-3 border border-dashed border-slate-700 rounded-xl text-center">
-										<span class="text-[10px] text-slate-600 font-bold uppercase" data-i18n="empty_slot">Vaga Disponível</span>
+										<button class="w-8 h-8 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all flex items-center justify-center">
+											<i class="fas fa-trash-alt text-xs"></i>
+										</button>
 									</div>
 								</div>
-
-								<a href="https://ko-fi.com/syncpulse" target="_blank" class="block w-full py-3 bg-blue-600 text-white text-center rounded-xl font-black uppercase text-[9px] tracking-widest hover:bg-blue-500 transition-all" data-i18n="manage_on_kofi">Gerir Subscrição</a>
+								
+								<!-- O botão de gerir no ko-fi foi removido daqui -->
 							</div>
 						</div>
 					</div>
