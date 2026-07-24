@@ -20,7 +20,7 @@ HISTORY_FILE = os.path.join(CONFIG_DIR, "history.json")
 SETTINGS_FILE = os.path.join(CONFIG_DIR, "settings.json")
 LICENSE_FILE = os.path.join(CONFIG_DIR, "license.json")
 BISYNC_WORKDIR = os.path.join(CONFIG_DIR, "bisync")
-HWID_SALT = "syncpulse_secret_salt_2026"
+HWID_SALT = os.getenv("SYNCPULSE_HWID_SALT", "syncpulse-hwid-v1")
 
 for p in [LOGS_DIR, BISYNC_WORKDIR, "/config"]:
     if not os.path.exists(p): os.makedirs(p, exist_ok=True)
@@ -89,14 +89,16 @@ def get_initial_state():
         "auto_simulate": s.get("auto_simulate", True),
         "terms_accepted": s.get("terms_accepted", False),
         # Enviamos as duas variantes para garantir que o Frontend e o Backend se entendem
-        "licensed": is_active,
+        "licensed": is_valid,
         "license_active": is_valid, 
         "license_info": {
             "email": lic.get("email", ""),
             "key": lic.get("key", ""),
             "device_name": lic.get("device_name", ""),
             "activated_at": lic.get("activated_at", ""),
-            "plan": lic.get("plan", 1)
+            "plan": lic.get("plan", 1),
+            "active": is_valid,
+            "hwid": lic.get("hwid", "")
         },
         "hwid": hwid_atual
     }
@@ -167,7 +169,7 @@ async def silent_license_check():
     print(">>> [BACKGROUND] A validar licença com o servidor central...")
     email = STATE["license_info"].get("email")
     key = STATE["license_info"].get("key")
-    hwid = STATE.get("hwid")
+    hwid = get_secure_hwid()
 
     try:
         async with httpx.AsyncClient() as client:
@@ -181,6 +183,10 @@ async def silent_license_check():
             res_data = response.json()
             if res_data.get("valid"):
                 # Licença confirmada! Atualizamos o ficheiro local com a data do check
+                STATE["licensed"] = True
+                STATE["license_active"] = True
+                STATE["license_info"]["active"] = True
+                STATE["license_info"]["hwid"] = hwid
                 STATE["license_info"]["last_check"] = str(datetime.now())
                 with open(LICENSE_FILE, "w") as f:
                     json.dump(STATE["license_info"], f)
@@ -264,7 +270,7 @@ async def activate_license_local(request: Request):
         email = str(data.get("email") or "").strip().lower()
         key = str(data.get("key") or "").strip()
         # Se o utilizador não der um nome, usamos o nome do sistema (Zimatest/ZimaBoard)
-        device_name = str(data.get("device_name") or socket.gethostname()).strip()[:120]
+        device_name = str(data.get("device_name") or get_device_name()).strip()[:120]
         
         if not email or not key:
             return JSONResponse(status_code=400, content={"message": "E-mail e Chave são obrigatórios."})
@@ -299,6 +305,7 @@ async def activate_license_local(request: Request):
         license_data = {
             "email": email,
             "key": key,
+            "active": True,
             "hwid": hwid,
             "device_name": device_name,
             "plan": res_data.get("plan", 1),
@@ -314,6 +321,7 @@ async def activate_license_local(request: Request):
 
         # 5. ATUALIZAÇÃO DO ESTADO EM MEMÓRIA (Desbloqueio instantâneo)
         STATE["licensed"] = True
+        STATE["license_active"] = True
         STATE["license_info"] = license_data
 
         # 6. LIGAR MOTORES DE SINCRONIZAÇÃO (Agora que temos licença)
@@ -331,6 +339,7 @@ async def activate_license_local(request: Request):
         return {
             "status": "ok", 
             "message": "SyncPulse Pro Ativado com sucesso!", 
+            "license_active": True,
             "plan": license_data["plan"]
         }
 
@@ -344,6 +353,8 @@ async def activate_license_local(request: Request):
 async def revoke_license_local():
     """Bloqueia a app imediatamente se a validação falhar."""
     STATE["licensed"] = False
+    STATE["license_active"] = False
+    STATE["license_info"] = {}
     if os.path.exists(LICENSE_FILE):
         os.remove(LICENSE_FILE)
     
@@ -385,10 +396,6 @@ AUTH_SERVER_URL = os.getenv(
     "SYNCPULSE_AUTH_SERVER_URL", "https://syncpulse-auth-production.up.railway.app"
 ).rstrip("/")
 LICENSE_API_URL = f"{AUTH_SERVER_URL}/api/licenses/activate"
-HWID_SALT = os.getenv("SYNCPULSE_HWID_SALT", "syncpulse-hwid-v1")
-
-
-
 def get_device_name():
     """Nome legível do dispositivo para a gestão no portal de licenças."""
     configured_name = os.getenv("SYNCPULSE_DEVICE_NAME", "").strip()
