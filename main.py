@@ -75,6 +75,7 @@ def get_initial_state():
     s = load_settings()
     lic = load_license() # Esta função lê o /config/license.json
     hwid_atual = get_secure_hwid()
+    is_active = bool(lic.get("email") and lic.get("key"))
 
     # Validação Híbrida:
     # 1. O ficheiro tem de ter "active": true (como no teu print)
