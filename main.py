@@ -19,6 +19,7 @@ LOGS_DIR = os.path.join(CONFIG_DIR, "logs")
 HISTORY_FILE = os.path.join(CONFIG_DIR, "history.json")
 SETTINGS_FILE = os.path.join(CONFIG_DIR, "settings.json")
 LICENSE_FILE = os.path.join(CONFIG_DIR, "license.json")
+DEVICE_ID_FILE = os.path.join(CONFIG_DIR, "device-id")
 BISYNC_WORKDIR = os.path.join(CONFIG_DIR, "bisync")
 HWID_SALT = os.getenv("SYNCPULSE_HWID_SALT", "syncpulse-hwid-v1")
 
@@ -29,6 +30,12 @@ def get_secure_hwid():
     """Devolve um fingerprint hash; nunca expõe o identificador bruto à API."""
     machine_id = os.getenv("SYNCPULSE_HWID", "").strip()
     if not machine_id:
+        try:
+            with open(DEVICE_ID_FILE, "r", encoding="utf-8") as source:
+                machine_id = source.read().strip()
+        except OSError:
+            pass
+    if not machine_id:
         for path in ("/etc/machine-id", "/var/lib/dbus/machine-id"):
             try:
                 with open(path, "r", encoding="utf-8") as source:
@@ -37,8 +44,17 @@ def get_secure_hwid():
                     break
             except OSError:
                 pass
-    raw = "|".join([machine_id, str(uuid.getnode()), platform.node()])
-    return hashlib.sha256(f"{HWID_SALT}|{raw}".encode("utf-8")).hexdigest()
+    if not machine_id:
+        machine_id = f"{uuid.getnode()}|{platform.node()}"
+    try:
+        if not os.path.exists(DEVICE_ID_FILE):
+            with open(DEVICE_ID_FILE, "w", encoding="utf-8") as target:
+                target.write(machine_id)
+                target.flush()
+                os.fsync(target.fileno())
+    except OSError:
+        pass
+    return hashlib.sha256(f"{HWID_SALT}|{machine_id}".encode("utf-8")).hexdigest()
 
 def load_settings():
     """Carrega as definições do ficheiro garantindo que todas as chaves existem."""
@@ -75,7 +91,7 @@ def get_initial_state():
     s = load_settings()
     lic = load_license() # Esta função lê o /config/license.json
     hwid_atual = get_secure_hwid()
-    is_active = bool(lic.get("email") and lic.get("key"))
+    has_saved_license = bool(lic.get("email") and lic.get("key"))
 
     # Validação Híbrida:
     # 1. O ficheiro tem de ter "active": true (como no teu print)
@@ -89,7 +105,7 @@ def get_initial_state():
         "auto_simulate": s.get("auto_simulate", True),
         "terms_accepted": s.get("terms_accepted", False),
         # Enviamos as duas variantes para garantir que o Frontend e o Backend se entendem
-        "licensed": is_valid,
+        "licensed": has_saved_license,
         "license_active": is_valid, 
         "license_info": {
             "email": lic.get("email", ""),
@@ -161,9 +177,9 @@ app_scheduler = AsyncIOScheduler()
 
 async def silent_license_check():
     """Valida a licença no Railway em background sem interromper o utilizador."""
-    await asyncio.sleep(10) # Aguarda 10 segundos após o boot para não pesar
+    await asyncio.sleep(1)
     
-    if not STATE.get("licensed"):
+    if not (STATE["license_info"].get("email") and STATE["license_info"].get("key")):
         return
 
     print(">>> [BACKGROUND] A validar licença com o servidor central...")
@@ -175,7 +191,7 @@ async def silent_license_check():
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 f"{AUTH_SERVER_URL}/api/licenses/activate",
-                json={"email": email, "license_key": key, "hwid": hwid},
+                json={"email": email, "license_key": key, "hwid": hwid, "device_name": STATE["license_info"].get("device_name") or get_device_name()},
                 timeout=10.0
             )
 
@@ -187,9 +203,11 @@ async def silent_license_check():
                 STATE["license_active"] = True
                 STATE["license_info"]["active"] = True
                 STATE["license_info"]["hwid"] = hwid
-                STATE["license_info"]["last_check"] = str(datetime.now())
-                with open(LICENSE_FILE, "w") as f:
-                    json.dump(STATE["license_info"], f)
+                STATE["license_info"]["last_check"] = datetime.now().isoformat()
+                STATE["license_info"]["plan"] = res_data.get("plan", STATE["license_info"].get("plan", 1))
+                save_license(STATE["license_info"])
+                await refresh_automation_services()
+                await manager.broadcast({"type": "update", "state": STATE})
                 print(">>> [BACKGROUND] Licença confirmada e atualizada.")
             else:
                 # O servidor diz que a licença já não é válida (ex: refund ou remoção de slot)
@@ -208,7 +226,7 @@ async def lifespan(app: FastAPI):
     APP_LOOP = asyncio.get_running_loop()
     
     # 1. Inicia TUDO o que for local imediatamente (Sincronização arranca já)
-    if STATE.get("licensed"):
+    if STATE.get("license_active"):
         print(">>> [STARTUP] Licença local detectada. A iniciar motores...")
         sync_realtime_watchers(load_tasks())
         sync_scheduled_tasks(load_tasks())
@@ -217,7 +235,7 @@ async def lifespan(app: FastAPI):
     asyncio.create_task(update_health_cache())
     
     # 2. Configura o polling periódico (se licenciado)
-    if STATE.get("licensed"):
+    if STATE.get("license_active"):
         app_scheduler.add_job(
             poll_realtime_download_tasks, 'interval', seconds=REMOTE_POLL_SECONDS,
             id='remote-realtime-poll', replace_existing=True,
