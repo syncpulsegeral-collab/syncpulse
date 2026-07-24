@@ -92,6 +92,9 @@
 									<input type="text" id="login-key" placeholder="Chave SP-XXXX" data-i18n-placeholder="license_key" class="input-field text-sm">
 									<button onclick="simulateLogin()" class="w-full py-4 bg-cyan-500 text-black font-black uppercase text-[10px] tracking-[0.2em] rounded-xl hover:bg-cyan-400 transition-all" data-i18n="login_btn">Entrar no Dashboard</button>
 								</div>
+								<div id="auth-error" class="hidden text-[10px] text-red-500 mb-2 text-center font-bold">
+									E-mail ou Chave incorretos.
+								</div>
 								<p class="mt-6 text-[10px] text-slate-500 text-center" data-i18n="login_note">Use os dados recebidos após o apoio no Ko-fi.</p>
 							</div>
 
@@ -508,24 +511,56 @@
 		}
 
 		function simulateLogin() {
-			const email = document.getElementById('login-email').value;
-			const key = document.getElementById('login-key').value;
+			const emailInput = document.getElementById('login-email');
+			const keyInput = document.getElementById('login-key');
+			const errorMsg = document.getElementById('auth-error');
+			
+			// Os teus dados de simulação
+			const validEmail = "jo.example@example.com";
+			const validKey = "SP-D0C30C15";
 
-			if(email && key) {
-				document.getElementById('user-email-display').innerText = email;
+			// Reset de erro
+			errorMsg.classList.add('hidden');
+
+			if (emailInput.value === validEmail && keyInput.value === validKey) {
+				// SUCESSO
+				document.getElementById('user-email-display').innerText = validEmail;
 				document.getElementById('auth-form').classList.add('hidden');
 				document.getElementById('auth-dashboard').classList.remove('hidden');
-				// Mudar a cor do botão da navbar para verde indicando logado
-				document.getElementById('account-btn').classList.add('bg-green-500/20', 'text-green-400');
+				
+				// Feedback visual no botão da Navbar
+				const accBtn = document.getElementById('account-btn');
+				accBtn.classList.add('bg-cyan-500/20', 'text-cyan-400', 'border-cyan-500/40');
+				accBtn.innerHTML = '<i class="fas fa-user-check"></i>';
+				
+				console.log("Login simulado com sucesso!");
 			} else {
-				alert("Insira os dados de teste.");
+				// FALHA
+				errorMsg.classList.remove('hidden');
+				// Pequena animação de abanar (opcional)
+				emailInput.classList.add('border-red-500/50');
+				keyInput.classList.add('border-red-500/50');
+				
+				setTimeout(() => {
+					emailInput.classList.remove('border-red-500/50');
+					keyInput.classList.remove('border-red-500/50');
+				}, 2000);
 			}
 		}
 
 		function simulateLogout() {
+			// Limpar campos
+			document.getElementById('login-email').value = "";
+			document.getElementById('login-key').value = "";
+			
+			// Trocar ecrãs
 			document.getElementById('auth-form').classList.remove('hidden');
 			document.getElementById('auth-dashboard').classList.add('hidden');
-			document.getElementById('account-btn').classList.remove('bg-green-500/20', 'text-green-400');
+			
+			// Reset do botão da Navbar
+			const accBtn = document.getElementById('account-btn');
+			accBtn.classList.remove('bg-cyan-500/20', 'text-cyan-400', 'border-cyan-500/40');
+			accBtn.innerHTML = '<i class="fas fa-user-astronaut"></i>';
 		}
 
 		// Fechar menu ao clicar fora
