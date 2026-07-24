@@ -22,6 +22,21 @@
         /* Modal Lightbox */
         #lightbox { display: none; position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,0.9); align-items: center; justify-content: center; padding: 20px; }
         #lightbox.active { display: flex; }
+		/* Animação de entrada do menu */
+		@keyframes slideIn {
+			from { opacity: 0; transform: translateY(-10px); }
+			to { opacity: 1; transform: translateY(0); }
+		}
+
+		#account-dropdown.active {
+			display: block;
+			animation: slideIn 0.3s ease forwards;
+		}
+
+		.input-field {
+			background: rgba(15, 23, 42, 0.8);
+			border: 1px solid rgba(255, 255, 255, 0.05);
+		}
     </style>
 </head>
 <body>
@@ -32,33 +47,94 @@
         <button class="absolute top-10 right-10 text-white text-3xl"><i class="fas fa-times"></i></button>
     </div>
 
-    <!-- Navbar -->
-    <nav class="fixed w-full z-50 glass py-4 px-6">
-        <div class="max-w-6xl mx-auto flex justify-between items-center">
-            <div class="flex items-center gap-3">
-                <svg width="32" height="32" viewBox="0 0 512 512" fill="none">
-                    <rect x="40" y="40" width="432" height="432" rx="100" fill="#0F172A"/>
-                    <path d="M100 256H160L190 140L256 380L322 140L352 256H412" stroke="#00D1FF" stroke-width="40" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-                <span class="font-black tracking-tighter text-2xl uppercase text-white">Sync<span class="text-cyan-400">Pulse</span></span>
-            </div>
-            
-            <div class="hidden md:flex gap-6 items-center">
-                <div class="flex gap-6 text-xs font-bold uppercase tracking-widest mr-4">
-                    <a href="#showcase" data-i18n="nav_showcase" class="hover:text-cyan-400 transition">Ecrãs</a>
-                    <a href="#auth" data-i18n="nav_account" class="hover:text-cyan-400 transition">Conta</a>
-                    <a href="#tiers" data-i18n="nav_plans" class="hover:text-cyan-400 transition">Planos</a>
-                </div>
-                <select onchange="changeLang(this.value)" class="lang-select">
-                    <option value="pt">PT</option>
-                    <option value="en">EN</option>
-                    <option value="fr">FR</option>
-                    <option value="es">ES</option>
-                    <option value="de">DE</option>
-                </select>
-            </div>
-        </div>
-    </nav>
+    <!-- Navbar Atualizada -->
+		<nav class="fixed w-full z-[100] glass py-4 px-6">
+			<div class="max-w-6xl mx-auto flex justify-between items-center">
+				<!-- Logo -->
+				<div class="flex items-center gap-3">
+					<svg width="32" height="32" viewBox="0 0 512 512" fill="none">
+						<rect x="40" y="40" width="432" height="432" rx="100" fill="#0F172A"/>
+						<path d="M100 256H160L190 140L256 380L322 140L352 256H412" stroke="#00D1FF" stroke-width="40" stroke-linecap="round" stroke-linejoin="round"/>
+					</svg>
+					<span class="font-black tracking-tighter text-2xl uppercase text-white">Sync<span class="text-cyan-400">Pulse</span></span>
+				</div>
+				
+				<!-- Menu Desktop -->
+				<div class="flex gap-6 items-center">
+					<div class="hidden md:flex gap-6 text-xs font-bold uppercase tracking-widest mr-4">
+						<a href="#showcase" data-i18n="nav_showcase" class="hover:text-cyan-400 transition">Ecrãs</a>
+						<a href="#tiers" data-i18n="nav_plans" class="hover:text-cyan-400 transition">Planos</a>
+					</div>
+
+					<!-- Seletor de Língua -->
+					<select onchange="changeLang(this.value)" class="lang-select mr-2">
+						<option value="pt">PT</option>
+						<option value="en">EN</option>
+						<option value="fr">FR</option>
+						<option value="es">ES</option>
+						<option value="de">DE</option>
+					</select>
+
+					<!-- BOTÃO DE CONTA (O GATILHO) -->
+					<div class="relative">
+						<button onclick="toggleAccountMenu()" id="account-btn" class="w-10 h-10 rounded-full bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400 hover:bg-blue-600 hover:text-white transition-all shadow-lg">
+							<i class="fas fa-user-astronaut"></i>
+						</button>
+
+						<!-- DROPDOWN DE CONTA -->
+						<div id="account-dropdown" class="hidden absolute right-0 mt-4 w-[350px] sm:w-[450px] glass rounded-3xl border border-white/10 shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-5 duration-300">
+							
+							<!-- ESTADO 1: FORMULÁRIO DE LOGIN -->
+							<div id="auth-form" class="p-8">
+								<h4 class="text-white font-black uppercase text-sm tracking-widest mb-6" data-i18n="login_title">Aceder à Minha Conta</h4>
+								<div class="space-y-4">
+									<input type="email" id="login-email" placeholder="E-mail da compra" data-i18n-placeholder="form_email" class="input-field text-sm">
+									<input type="text" id="login-key" placeholder="Chave SP-XXXX" data-i18n-placeholder="license_key" class="input-field text-sm">
+									<button onclick="simulateLogin()" class="w-full py-4 bg-cyan-500 text-black font-black uppercase text-[10px] tracking-[0.2em] rounded-xl hover:bg-cyan-400 transition-all" data-i18n="login_btn">Entrar no Dashboard</button>
+								</div>
+								<p class="mt-6 text-[10px] text-slate-500 text-center" data-i18n="login_note">Use os dados recebidos após o apoio no Ko-fi.</p>
+							</div>
+
+							<!-- ESTADO 2: DASHBOARD (ESCONDIDO POR PADRÃO) -->
+							<div id="auth-dashboard" class="hidden p-6 bg-slate-900/40">
+								<div class="flex items-center justify-between mb-6 border-b border-white/5 pb-4">
+									<div class="flex items-center gap-3">
+										<div class="w-8 h-8 rounded-full bg-cyan-500/20 flex items-center justify-center text-cyan-400 text-xs"><i class="fas fa-check-double"></i></div>
+										<div>
+											<p id="user-email-display" class="text-white font-bold text-[11px]">luis.test@gmail.com</p>
+											<span class="text-[9px] text-cyan-400 font-black uppercase tracking-tighter" data-i18n="acc_status">Conta Ativa</span>
+										</div>
+									</div>
+									<button onclick="simulateLogout()" class="text-slate-500 hover:text-red-400 transition"><i class="fas fa-power-off"></i></button>
+								</div>
+
+								<!-- Slots -->
+								<div class="space-y-3 mb-6">
+									<div class="flex justify-between text-[10px] font-black uppercase text-slate-500 mb-1">
+										<span data-i18n="active_devices">Dispositivos</span>
+										<span><span class="text-white">1</span> / 3</span>
+									</div>
+									<!-- Dispositivo Ativo -->
+									<div class="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/5">
+										<div class="flex items-center gap-3">
+											<i class="fas fa-server text-cyan-400 text-xs"></i>
+											<span class="text-xs text-white font-medium">ZimaCube-Oficina</span>
+										</div>
+										<button class="text-red-400 hover:text-red-300 p-1"><i class="fas fa-trash-alt text-[10px]"></i></button>
+									</div>
+									<!-- Vaga -->
+									<div class="p-3 border border-dashed border-slate-700 rounded-xl text-center">
+										<span class="text-[10px] text-slate-600 font-bold uppercase" data-i18n="empty_slot">Vaga Disponível</span>
+									</div>
+								</div>
+
+								<a href="https://ko-fi.com/syncpulse" target="_blank" class="block w-full py-3 bg-blue-600 text-white text-center rounded-xl font-black uppercase text-[9px] tracking-widest hover:bg-blue-500 transition-all" data-i18n="manage_on_kofi">Gerir Subscrição</a>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</nav>
 
     <!-- Hero Section -->
     <header class="pt-48 pb-10 px-6 text-center">
@@ -328,7 +404,8 @@
 				empty_slot: "Vaga Disponível", empty_slot_desc: "Pronto para nova ativação",
 				tier1_device: "1 Dispositivo", tier2_device: "3 Dispositivos", tier3_device: "5 Dispositivos",
 				tier_panel: "Painel Web", tier_multi: "Multi-plataforma", tier_priority: "Suporte Prioritário", tier_beta: "Beta VIP",
-				btn_buy: "Comprar", contact_title: "Feedback & Suporte", form_name: "Nome", form_email: "Teu E-mail", form_msg: "Mensagem...", form_btn: "Enviar Mensagem"
+				btn_buy: "Comprar", contact_title: "Feedback & Suporte", form_name: "Nome", form_email: "Teu E-mail", form_msg: "Mensagem...", form_btn: "Enviar Mensagem",
+				login_title: "Aceder à Minha Conta", login_btn: "Entrar no Dashboard", login_note: "Use os dados recebidos após o apoio no Ko-fi.", manage_on_kofi: "Gerir no Ko-fi", acc_status: "Conta Ativa"
 			},
 			en: {
 				nav_showcase: "Screens", nav_plans: "Plans", nav_account: "Account", nav_contact: "Contact",
@@ -423,6 +500,43 @@
 			});
 			document.documentElement.lang = lang;
 		}
+
+		function toggleAccountMenu() {
+			const dropdown = document.getElementById('account-dropdown');
+			dropdown.classList.toggle('active');
+			dropdown.classList.toggle('hidden');
+		}
+
+		function simulateLogin() {
+			const email = document.getElementById('login-email').value;
+			const key = document.getElementById('login-key').value;
+
+			if(email && key) {
+				document.getElementById('user-email-display').innerText = email;
+				document.getElementById('auth-form').classList.add('hidden');
+				document.getElementById('auth-dashboard').classList.remove('hidden');
+				// Mudar a cor do botão da navbar para verde indicando logado
+				document.getElementById('account-btn').classList.add('bg-green-500/20', 'text-green-400');
+			} else {
+				alert("Insira os dados de teste.");
+			}
+		}
+
+		function simulateLogout() {
+			document.getElementById('auth-form').classList.remove('hidden');
+			document.getElementById('auth-dashboard').classList.add('hidden');
+			document.getElementById('account-btn').classList.remove('bg-green-500/20', 'text-green-400');
+		}
+
+		// Fechar menu ao clicar fora
+		window.addEventListener('click', function(e) {
+			const btn = document.getElementById('account-btn');
+			const dropdown = document.getElementById('account-dropdown');
+			if (!btn.contains(e.target) && !dropdown.contains(e.target)) {
+				dropdown.classList.add('hidden');
+				dropdown.classList.remove('active');
+			}
+		});
 
 		// Inicializa com Português por defeito
 		window.onload = () => changeLang('pt');
