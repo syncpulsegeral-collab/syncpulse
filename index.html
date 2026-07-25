@@ -81,6 +81,7 @@
 				<div class="hidden md:flex gap-6 text-xs font-bold uppercase tracking-widest mr-4">
 					<a href="#showcase" data-i18n="nav_showcase" class="hover:text-cyan-400 transition">Ecrãs</a>
 					<a href="#tiers" data-i18n="nav_plans" class="hover:text-cyan-400 transition">Planos</a>
+					<a href="#install" data-i18n="nav_install" class="hover:text-cyan-400 transition">Instalação</a>
 					<a href="#auth" data-i18n="nav_account" class="hover:text-cyan-400 transition">Conta</a>
 				</div>
 
@@ -335,6 +336,95 @@
 
         </div>
     </section>
+	
+	<!-- SECTION: INSTALLATION -->
+		<section id="install" class="py-24 px-6 border-t border-white/5">
+			<div class="max-w-3xl mx-auto">
+				<div class="text-center mb-12">
+					<h2 class="text-3xl font-black uppercase tracking-widest mb-4" data-i18n="nav_install">Instalação</h2>
+					<p class="text-slate-500 text-sm" data-i18n="install_desc">Copia o código abaixo ou descarrega o ficheiro para instalação personalizada no ZimaOS.</p>
+				</div>
+
+				<div class="bg-black/40 rounded-3xl border border-slate-800 p-8 shadow-2xl relative group">
+					<!-- Botões de Ação no canto superior -->
+					<div class="absolute top-4 right-6 flex gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+						<button onclick="copyYAML()" class="text-slate-400 hover:text-cyan-400 text-xs font-bold flex items-center gap-2 bg-slate-900/80 px-3 py-1.5 rounded-lg border border-white/5">
+							<i class="fas fa-copy"></i> <span data-i18n="btn_copy">Copiar</span>
+						</button>
+						<button onclick="downloadYAML()" class="text-slate-400 hover:text-green-400 text-xs font-bold flex items-center gap-2 bg-slate-900/80 px-3 py-1.5 rounded-lg border border-white/5">
+							<i class="fas fa-download"></i> <span data-i18n="btn_download">Download</span>
+						</button>
+					</div>
+
+					<pre id="yaml-content" class="text-cyan-500/90 font-mono text-[11px] leading-relaxed overflow-x-auto whitespace-pre">
+		name: syncpulse
+		services:
+		  syncpulse:
+			cpu_shares: 90
+			command: []
+			container_name: SyncPulse
+			deploy:
+			  resources:
+				limits:
+				  memory: 8264380416
+				reservations:
+				  devices: []
+			environment:
+			  - PYTHONUNBUFFERED=1
+			  - TZ=Europe/Lisbon
+			image: ghcr.io/syncpulsegeral-collab/syncpulse:latest
+			labels:
+			  icon: https://github.com/syncpulsegeral-collab/syncpulse/raw/main/logo_splash.png
+			ports:
+			  - target: 8181
+				published: "8181"
+				protocol: tcp
+			privileged: true
+			restart: always
+			user: root
+			volumes:
+			  - type: bind
+				source: /DATA/AppData/SyncPulse/config
+				target: /config
+			  - type: bind
+				source: /DATA/AppData/SyncPulse/app
+				target: /app
+			  - type: bind
+				source: /DATA/AppData/SyncPulse/www
+				target: /www
+			  - type: bind
+				source: /mnt
+				target: /mnt
+			  - type: bind
+				source: /etc/machine-id
+				target: /etc/machine-id
+			devices: []
+			cap_add: []
+			network_mode: bridge
+		x-casaos:
+		  author: self
+		  category: self
+		  hostname: ""
+		  icon: https://github.com/syncpulsegeral-collab/syncpulse/raw/main/logo_splash.png
+		  index: /
+		  is_uncontrolled: false
+		  main: syncpulse
+		  port_map: "8181"
+		  scheme: http
+		  store_app_id: syncpulse
+		  title:
+			custom: SyncPulse
+			en_us: syncpulse</pre>
+				</div>
+				
+				<div class="mt-8 text-center">
+					<button onclick="downloadYAML()" class="inline-flex items-center gap-3 bg-slate-800 hover:bg-slate-700 text-white px-8 py-4 rounded-2xl font-black uppercase text-xs tracking-widest transition-all shadow-xl">
+						<i class="fas fa-file-download text-lg text-cyan-400"></i>
+						<span data-i18n="btn_download_full">Descarregar ficheiro .yaml</span>
+					</button>
+				</div>
+			</div>
+		</section>
 
     <!-- Contact Form -->
     <section id="contact" class="py-32 px-6 bg-slate-900/30">
@@ -374,7 +464,12 @@
 				login_note: "Use os dados recebidos após o apoio no Ko-fi.", login_error: "E-mail ou Chave incorretos.",
 				tier1_device: "1 Dispositivo", tier2_device: "3 Dispositivos", tier3_device: "5 Dispositivos",
 				tier_panel: "Painel Web", tier_multi: "Multi-plataforma", tier_priority: "Suporte Prioritário", tier_beta: "Beta VIP",
-				btn_buy: "Comprar", contact_title: "Contacto & Suporte", form_name: "Nome", form_email: "Teu E-mail", form_msg: "Mensagem...", form_btn: "Enviar Mensagem"
+				btn_buy: "Comprar", contact_title: "Contacto & Suporte", form_name: "Nome", form_email: "Teu E-mail", form_msg: "Mensagem...", form_btn: "Enviar Mensagem",
+				nav_install: "Instalação",
+				install_desc: "Utiliza o código abaixo ou descarrega o ficheiro para instalação personalizada.",
+				btn_copy: "Copiar",
+				btn_download: "Download",
+				btn_download_full: "Descarregar ficheiro .yaml"
 			},
 			en: {
 				nav_showcase: "Screens", nav_plans: "Plans", nav_account: "Account", nav_contact: "Contact",
@@ -393,7 +488,12 @@
 				login_note: "Use details received after supporting on Ko-fi.", login_error: "Incorrect Email or Key.",
 				tier1_device: "1 Device", tier2_device: "3 Devices", tier3_device: "5 Devices",
 				tier_panel: "Web Panel", tier_multi: "Multi-platform", tier_priority: "Priority Support", tier_beta: "VIP Beta",
-				btn_buy: "Buy Now", contact_title: "Contact & Support", form_name: "Name", form_email: "Your Email", form_msg: "Message...", form_btn: "Send Message"
+				btn_buy: "Buy Now", contact_title: "Contact & Support", form_name: "Name", form_email: "Your Email", form_msg: "Message...", form_btn: "Send Message",
+				nav_install: "Installation",
+				install_desc: "Use the code below or download the file for custom installation.",
+				btn_copy: "Copy",
+				btn_download: "Download",
+				btn_download_full: "Download .yaml file",
 			},
 			fr: {
 				nav_showcase: "Écrans", nav_plans: "Plans", nav_account: "Compte", nav_contact: "Contact",
@@ -412,7 +512,12 @@
 				login_note: "Utilisez les données reçues sur Ko-fi.", login_error: "Email ou clé incorrect.",
 				tier1_device: "1 Appareil", tier2_device: "3 Appareils", tier3_device: "5 Appareils",
 				tier_panel: "Panneau Web", tier_multi: "Multi-plateforme", tier_priority: "Support Prioritaire", tier_beta: "Bêta VIP",
-				btn_buy: "Acheter", contact_title: "Support", form_name: "Nom", form_email: "Votre Email", form_msg: "Message...", form_btn: "Envoyer"
+				btn_buy: "Acheter", contact_title: "Support", form_name: "Nom", form_email: "Votre Email", form_msg: "Message...", form_btn: "Envoyer",
+				nav_install: "Installation",
+				install_desc: "Utilisez le code ci-dessous ou téléchargez le fichier pour une installation personnalisée.",
+				btn_copy: "Copier",
+				btn_download: "Télécharger",
+				btn_download_full: "Télécharger le fichier .yaml"
 			},
 			es: {
 				nav_showcase: "Capturas", nav_plans: "Planes", nav_account: "Cuenta", nav_contact: "Contacto",
@@ -431,7 +536,12 @@
 				login_note: "Usa los datos recibidos en Ko-fi.", login_error: "Email o clave incorrectos.",
 				tier1_device: "1 Dispositivo", tier2_device: "3 Dispositivos", tier3_device: "5 Dispositivos",
 				tier_panel: "Panel Web", tier_multi: "Multiplataforma", tier_priority: "Soporte Prioritario", tier_beta: "Beta VIP",
-				btn_buy: "Comprar", contact_title: "Soporte", form_name: "Nombre", form_email: "Tu Email", form_msg: "Mensaje...", form_btn: "Enviar"
+				btn_buy: "Comprar", contact_title: "Soporte", form_name: "Nombre", form_email: "Tu Email", form_msg: "Mensaje...", form_btn: "Enviar",
+				nav_install: "Instalación",
+				install_desc: "Utilice el código a continuación o descargue el archivo para una instalación personalizada.",
+				btn_copy: "Copiar",
+				btn_download: "Descargar",
+				btn_download_full: "Descargar archivo .yaml"
 			},
 			de: {
 				nav_showcase: "Screens", nav_plans: "Pläne", nav_account: "Konto", nav_contact: "Kontakt",
@@ -450,7 +560,12 @@
 				login_note: "Nutzen Sie die Ko-fi Daten.", login_error: "Falsche E-Mail oder Schlüssel.",
 				tier1_device: "1 Gerät", tier2_device: "3 Geräte", tier3_device: "5 Geräte",
 				tier_panel: "Web-Panel", tier_multi: "Multi-Plattform", tier_priority: "Priorisierter Support", tier_beta: "VIP-Beta",
-				btn_buy: "Kaufen", contact_title: "Support", form_name: "Name", form_email: "Ihre E-Mail", form_msg: "Nachricht...", form_btn: "Senden"
+				btn_buy: "Kaufen", contact_title: "Support", form_name: "Name", form_email: "Ihre E-Mail", form_msg: "Nachricht...", form_btn: "Senden",
+				nav_install: "Installation",
+				install_desc: "Verwenden Sie den unten stehenden Code oder laden Sie die Datei für eine benutzerdefinierte Installation herunter.",
+				btn_copy: "Kopieren",
+				btn_download: "Herunterladen",
+				btn_download_full: "YAML-Datei herunterladen"
 			}
 		};
 
@@ -681,6 +796,26 @@
 			const lb = document.getElementById('lightbox');
 			lb.classList.remove('active');
 			document.body.style.overflow = 'auto';
+		}
+		
+		function downloadYAML() {
+			const yamlText = document.getElementById('yaml-content').innerText;
+			const blob = new Blob([yamlText], { type: 'text/yaml' });
+			const url = window.URL.createObjectURL(blob);
+			const a = document.createElement('a');
+			a.href = url;
+			a.download = 'syncpulse_install.yaml';
+			document.body.appendChild(a);
+			a.click();
+			window.URL.revokeObjectURL(url);
+			document.body.removeChild(a);
+		}
+
+		function copyYAML() {
+			const yamlText = document.getElementById('yaml-content').innerText;
+			navigator.clipboard.writeText(yamlText).then(() => {
+				alert("YAML copiado para a área de transferência!");
+			});
 		}
 	</script>
 </body>
