@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SyncPulse - Cloud Sync for ZimaOS</title>
+    <title>SyncPulse - Cloud Sync</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap" rel="stylesheet">
@@ -108,7 +108,7 @@
 							<div class="space-y-4">
 								<input type="email" id="login-email" placeholder="jo.example@example.com" class="input-field text-sm">
 								<input type="text" id="login-key" placeholder="SP-D0C30C15" class="input-field text-sm">
-								<button onclick="simulateLogin()" class="w-full py-4 bg-cyan-500 text-black font-black uppercase text-[10px] tracking-[0.2em] rounded-xl hover:bg-cyan-400 transition-all" data-i18n="login_btn">Entrar no Dashboard</button>
+								<button onclick="attemptRealLogin()" class="w-full py-4 bg-cyan-500 text-black font-black uppercase text-[10px] tracking-[0.2em] rounded-xl hover:bg-cyan-400 transition-all" data-i18n="login_btn">Entrar no Dashboard</button>
 							</div>
 							<p class="mt-6 text-[10px] text-slate-500 text-center" data-i18n="login_note">Use os dados recebidos após o apoio no Ko-fi.</p>
 						</div>
@@ -125,7 +125,7 @@
 										<span class="text-[9px] text-cyan-400 font-black uppercase tracking-widest" data-i18n="acc_status">Conta Ativa</span>
 									</div>
 								</div>
-								<button onclick="simulateLogout()" class="text-slate-500 hover:text-red-400 transition" title="Sair">
+								<button onclick="logoutUser()" class="text-slate-500 hover:text-red-400 transition" title="Sair">
 									<i class="fas fa-power-off"></i>
 								</button>
 							</div>
@@ -481,45 +481,107 @@
 			document.documentElement.lang = lang;
 		}
 
-		window.onload = () => changeLang('pt');
+		window.onload = () => {
+			// Carrega o idioma (o que já tinhas)
+			changeLang('pt');
+
+			// VERIFICA SE JÁ ESTÁ LOGADO
+			const savedUser = sessionStorage.getItem('syncpulse_user');
+			if (savedUser) {
+				const userData = JSON.parse(savedUser);
+				// Se houver dados, pula o login e mostra o dashboard diretamente
+				renderUserDashboard(userData); 
+			}
+		};
 
 		function toggleAccountMenu() {
 			const dropdown = document.getElementById('account-dropdown');
 			dropdown.classList.toggle('hidden');
 		}
 
-		function simulateLogin() {
-			const emailInput = document.getElementById('login-email');
-			const keyInput = document.getElementById('login-key');
-			const errorMsg = document.getElementById('auth-error');
+		// VARIÁVEL COM O TEU LINK DO RAILWAY
+		const API_URL = "https://syncpulse-auth-production.up.railway.app"; 
+
+		// Função auxiliar para desenhar o dashboard (usada no login e no auto-login)
+		function renderUserDashboard(user) {
+			document.getElementById('user-email-display').innerText = user.email;
+			document.getElementById('auth-form').classList.add('hidden');
+			document.getElementById('auth-dashboard').classList.remove('hidden');
 			
-			const validEmail = "jo.example@example.com";
-			const validKey = "SP-D0C30C15";
+			// Atualiza o ícone da navbar
+			const accBtn = document.getElementById('account-btn');
+			accBtn.classList.add('bg-cyan-500/20', 'text-cyan-400', 'border-cyan-500/40');
+			accBtn.innerHTML = '<i class="fas fa-user-check"></i>';
+			
+			// Dispara a busca dos dispositivos reais no Railway
+			fetchDevices(); 
+		}
 
-			errorMsg.classList.add('hidden');
+		async function attemptRealLogin() {
+			const email = document.getElementById('login-email').value;
+			const key = document.getElementById('login-key').value;
+			const errorMsg = document.getElementById('auth-error');
 
-			if (emailInput.value === validEmail && keyInput.value === validKey) {
-				document.getElementById('user-email-display').innerText = validEmail;
-				document.getElementById('auth-form').classList.add('hidden');
-				document.getElementById('auth-dashboard').classList.remove('hidden');
-				
-				const accBtn = document.getElementById('account-btn');
-				accBtn.classList.add('bg-cyan-500/20', 'text-cyan-400', 'border-cyan-500/40');
-				accBtn.innerHTML = '<i class="fas fa-user-check"></i>';
-			} else {
-				errorMsg.classList.remove('hidden');
+			try {
+				const response = await fetch(`${API_URL}/api/user/login`, {
+					method: 'POST',
+					headers: {'Content-Type': 'application/json'},
+					body: JSON.stringify({ email, key })
+				});
+
+				if (response.ok) {
+					const userData = await response.json();
+					// Guardamos os dados na sessão do browser para não deslogar ao dar refresh
+					sessionStorage.setItem('syncpulse_user', JSON.stringify(userData));
+					renderUserDashboard(userData);
+				} else {
+					errorMsg.classList.remove('hidden');
+				}
+			} catch (e) {
+				alert("Erro ao ligar ao servidor de autenticação.");
 			}
 		}
 
-		function simulateLogout() {
+		async function fetchDevices() {
+			const user = JSON.parse(sessionStorage.getItem('syncpulse_user'));
+			const response = await fetch(`${API_URL}/api/user/devices/${user.email}/${user.license_key}`);
+			const devices = await response.json();
+			
+			// Aqui usas um .map() para desenhar os cartões dos dispositivos no HTML
+			// exatamente como o esboço que fizemos.
+		}
+
+		async function releaseSlot(activationId) {
+			if(!confirm("Tem a certeza que deseja remover este dispositivo?")) return;
+			
+			const user = JSON.parse(sessionStorage.getItem('syncpulse_user'));
+			const response = await fetch(`${API_URL}/api/user/device/release/${user.email}/${user.license_key}/${activationId}`, {
+				method: 'DELETE'
+			});
+
+			if(response.ok) {
+				fetchDevices(); // Recarrega a lista
+			}
+		}
+
+		function logoutUser() {
+			// 1. Limpa os dados da sessão no browser
+			sessionStorage.removeItem('syncpulse_user');
+
+			// 2. Limpa os campos de input por segurança
 			document.getElementById('login-email').value = "";
 			document.getElementById('login-key').value = "";
+
+			// 3. Troca os ecrãs no Dropdown
 			document.getElementById('auth-form').classList.remove('hidden');
 			document.getElementById('auth-dashboard').classList.add('hidden');
-			
+
+			// 4. Reset do aspeto do botão da Navbar
 			const accBtn = document.getElementById('account-btn');
 			accBtn.classList.remove('bg-cyan-500/20', 'text-cyan-400', 'border-cyan-500/40');
 			accBtn.innerHTML = '<i class="fas fa-user-astronaut"></i>';
+
+			console.log("Sessão terminada com sucesso.");
 		}
 
 		window.addEventListener('click', function(e) {
@@ -531,7 +593,18 @@
 		});
 
 		// Inicializa com Português por defeito
-		window.onload = () => changeLang('pt');
+		window.onload = () => {
+			// Carrega o idioma (o que já tinhas)
+			changeLang('pt');
+
+			// VERIFICA SE JÁ ESTÁ LOGADO
+			const savedUser = sessionStorage.getItem('syncpulse_user');
+			if (savedUser) {
+				const userData = JSON.parse(savedUser);
+				// Se houver dados, pula o login e mostra o dashboard diretamente
+				renderUserDashboard(userData); 
+			}
+		};
 
 		function openLightbox(src) {
 			const lb = document.getElementById('lightbox');
