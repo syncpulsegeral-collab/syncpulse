@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>SyncPulse - Cloud Sync</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -491,6 +494,23 @@
 
 		// VARIÁVEL COM O TEU LINK DO RAILWAY
 		const API_URL = "https://syncpulse-auth-production.up.railway.app"; 
+		let profileRefreshStarted = false;
+
+		async function refreshUserProfile() {
+			const user = JSON.parse(sessionStorage.getItem('syncpulse_user') || 'null');
+			if (!user) return;
+			try {
+				const response = await fetch(`${API_URL}/api/user/account/${encodeURIComponent(user.email)}/${encodeURIComponent(user.license_key)}`, {
+					cache: 'no-store'
+				});
+				if (!response.ok) return;
+				const currentUser = await response.json();
+				sessionStorage.setItem('syncpulse_user', JSON.stringify(currentUser));
+				renderUserDashboard(currentUser);
+			} catch (e) {
+				// Mantém a sessão visível se a ligação estiver indisponível.
+			}
+		}
 
 		// Função auxiliar para desenhar o dashboard (usada no login e no auto-login)
 		function renderUserDashboard(user) {
@@ -515,6 +535,10 @@
 			document.getElementById('user-license-key').innerText = user.license_key || '---';
 			document.getElementById('user-device-limit').innerText = user.max_slots || 0;
 			fetchDevices();
+			if (!profileRefreshStarted) {
+				profileRefreshStarted = true;
+				queueMicrotask(refreshUserProfile);
+			}
 		}
 
 		async function attemptRealLogin() {
