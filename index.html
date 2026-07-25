@@ -136,27 +136,17 @@
 									<span class="text-[9px] text-slate-500 uppercase font-black block" data-i18n="current_plan">Plano Atual</span>
 									<span id="user-plan-name" class="text-xs font-bold text-cyan-400">---</span>
 								</div>
-								<code class="text-[10px] text-slate-400 font-mono bg-black/40 px-2 py-1 rounded">SP-D0C30C15</code>
+								<code id="user-license-key" class="text-[10px] text-slate-400 font-mono bg-black/40 px-2 py-1 rounded">---</code>
 							</div>
 
 							<!-- Dispositivos -->
 							<div class="space-y-3">
 								<div class="flex justify-between text-[10px] font-black uppercase text-slate-500 mb-1">
 									<span data-i18n="active_devices">Dispositivos Ativos</span>
-									<span><span class="text-cyan-400">1</span> / 1</span>
+									<span><span id="user-device-count" class="text-cyan-400">0</span> / <span id="user-device-limit">0</span></span>
 								</div>
-								
-								<div class="flex items-center justify-between p-3 bg-slate-800/40 rounded-xl border border-white/5">
-									<div class="flex items-center gap-3">
-										<i class="fas fa-server text-cyan-400 text-xs"></i>
-										<div>
-											<h5 class="text-xs font-bold text-white">Zimatest</h5>
-											<p class="text-[9px] text-slate-500 font-mono">HWID: dc0c...f940</p>
-										</div>
-									</div>
-									<button class="w-7 h-7 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white transition-all flex items-center justify-center">
-										<i class="fas fa-trash-alt text-[10px]"></i>
-									</button>
+								<div id="user-device-list" class="space-y-2">
+									<p class="text-[10px] text-slate-500 text-center py-3">A carregar dispositivos...</p>
 								</div>
 							</div>
 						</div>
@@ -511,7 +501,7 @@
 			// PREENCHE O NOME DO PLANO VINDO DA BD
 			const planDisplays = document.querySelectorAll('#user-plan-name');
 			planDisplays.forEach(el => {
-				el.innerText = `${user.plan_name} (${user.max_slots} ${user.max_slots > 1 ? 'Slots' : 'Slot'})`;
+				el.innerText = `${user.plan_type || user.plan_name || '---'} (${user.max_slots} ${user.max_slots > 1 ? 'Slots' : 'Slot'})`;
 			});
 			
 			// Mostra o dashboard e esconde o login
@@ -522,7 +512,9 @@
 			accBtn.classList.add('bg-cyan-500/20', 'text-cyan-400', 'border-cyan-500/40');
 			accBtn.innerHTML = '<i class="fas fa-user-check"></i>';
 			
-			fetchDevices(); 
+			document.getElementById('user-license-key').innerText = user.license_key || '---';
+			document.getElementById('user-device-limit').innerText = user.max_slots || 0;
+			fetchDevices();
 		}
 
 		async function attemptRealLogin() {
@@ -550,10 +542,46 @@
 			}
 		}
 
+		function escapeHtml(value) {
+			return String(value ?? '').replace(/[&<>'"]/g, char => ({
+				'&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+			}[char]));
+		}
+
+		function renderDevices(devices) {
+			const list = document.getElementById('user-device-list');
+			document.getElementById('user-device-count').innerText = devices.length;
+			if (!devices.length) {
+				list.innerHTML = '<p class="text-[10px] text-slate-500 text-center py-3">Sem dispositivos ativos.</p>';
+				return;
+			}
+
+			list.innerHTML = devices.map(device => `
+				<div class="flex items-center justify-between p-3 bg-slate-800/40 rounded-xl border border-white/5">
+					<div class="flex items-center gap-3 min-w-0">
+						<i class="fas fa-server text-cyan-400 text-xs"></i>
+						<div class="min-w-0"><h5 class="text-xs font-bold text-white truncate">${escapeHtml(device.name)}</h5>
+						<p class="text-[9px] text-slate-500 font-mono">HWID: ${escapeHtml(device.hwid)} · ${escapeHtml(device.date)}</p></div>
+					</div>
+					<button data-activation-id="${escapeHtml(device.id)}" class="release-device w-7 h-7 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white transition-all flex items-center justify-center" title="Remover dispositivo">
+						<i class="fas fa-trash-alt text-[10px]"></i>
+					</button>
+				</div>`).join('');
+			list.querySelectorAll('.release-device').forEach(button => {
+				button.addEventListener('click', () => releaseSlot(button.dataset.activationId));
+			});
+		}
+
 		async function fetchDevices() {
-			const user = JSON.parse(sessionStorage.getItem('syncpulse_user'));
-			const response = await fetch(`${API_URL}/api/user/devices/${user.email}/${user.license_key}`);
+			const user = JSON.parse(sessionStorage.getItem('syncpulse_user') || 'null');
+			if (!user) return;
+			const response = await fetch(`${API_URL}/api/user/devices/${encodeURIComponent(user.email)}/${encodeURIComponent(user.license_key)}`);
+			if (!response.ok) {
+				document.getElementById('user-device-list').innerHTML = '<p class="text-[10px] text-red-400 text-center py-3">Não foi possível carregar os dispositivos.</p>';
+				return;
+			}
 			const devices = await response.json();
+			renderDevices(Array.isArray(devices) ? devices : []);
 			
 			// Aqui usas um .map() para desenhar os cartões dos dispositivos no HTML
 			// exatamente como o esboço que fizemos.
@@ -562,13 +590,16 @@
 		async function releaseSlot(activationId) {
 			if(!confirm("Tem a certeza que deseja remover este dispositivo?")) return;
 			
-			const user = JSON.parse(sessionStorage.getItem('syncpulse_user'));
-			const response = await fetch(`${API_URL}/api/user/device/release/${user.email}/${user.license_key}/${activationId}`, {
+			const user = JSON.parse(sessionStorage.getItem('syncpulse_user') || 'null');
+			if (!user || !activationId) return;
+			const response = await fetch(`${API_URL}/api/user/device/release/${encodeURIComponent(user.email)}/${encodeURIComponent(user.license_key)}/${encodeURIComponent(activationId)}`, {
 				method: 'DELETE'
 			});
 
 			if(response.ok) {
 				fetchDevices(); // Recarrega a lista
+			} else {
+				alert('Não foi possível remover o dispositivo. Tente novamente.');
 			}
 		}
 
