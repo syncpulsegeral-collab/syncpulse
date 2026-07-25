@@ -25,6 +25,10 @@ HWID_SALT = os.getenv("SYNCPULSE_HWID_SALT", "syncpulse-hwid-v1")
 
 for p in [LOGS_DIR, BISYNC_WORKDIR, "/config"]:
     if not os.path.exists(p): os.makedirs(p, exist_ok=True)
+    
+# --- 2. CONFIGURAÇÕES E AGENDADOR ---
+app_scheduler = AsyncIOScheduler()
+# (Mantém as tuas variáveis de caminhos como WWW_PATH, etc.)    
 
 def get_secure_hwid():
     """Devolve um fingerprint hash; nunca expõe o identificador bruto à API."""
@@ -130,6 +134,8 @@ REALTIME_DEBOUNCE_SECONDS = 2.0
 REMOTE_POLL_SECONDS = 30
 CLOUD_STATE_CACHE = {}
 HEALTH_CACHE = []
+
+
     
 # --- 1. LÓGICA DE AUTO-INSTALAÇÃO (BOOTSTRAP) ---
 # Deve correr logo no início
@@ -171,9 +177,7 @@ def bootstrap():
 # Executa o bootstrap logo no arranque
 bootstrap()
 
-# --- 2. CONFIGURAÇÕES E AGENDADOR ---
-app_scheduler = AsyncIOScheduler()
-# (Mantém as tuas variáveis de caminhos como WWW_PATH, etc.)
+
 
 async def silent_license_check():
     """Valida a licença no Railway em background sem interromper o utilizador."""
@@ -404,11 +408,6 @@ try:
 except ImportError:
     HAS_WATCHDOG = False
     
-app_scheduler = AsyncIOScheduler() # Renomeado para evitar confusão se necessário 
-
-
-
-
 
 
 # --- LICENCIAMENTO ---------------------------------------------------------
