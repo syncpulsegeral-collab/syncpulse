@@ -189,8 +189,10 @@ async def silent_license_check():
 
     try:
         async with httpx.AsyncClient() as client:
+            # Este pedido tem de ser apenas de validação. Usar /activate aqui
+            # volta a registar o HWID quando o dispositivo foi removido na BD.
             response = await client.post(
-                f"{AUTH_SERVER_URL}/api/licenses/activate",
+                LICENSE_VALIDATE_URL,
                 json={"email": email, "license_key": key, "hwid": hwid, "device_name": STATE["license_info"].get("device_name") or get_device_name()},
                 timeout=10.0
             )
@@ -414,6 +416,12 @@ AUTH_SERVER_URL = os.getenv(
     "SYNCPULSE_AUTH_SERVER_URL", "https://syncpulse-auth-production.up.railway.app"
 ).rstrip("/")
 LICENSE_API_URL = f"{AUTH_SERVER_URL}/api/licenses/activate"
+# Endpoint sem efeitos laterais: confirma que a ativação deste HWID ainda
+# existe na BD, mas nunca cria nem recupera uma ativação removida.
+LICENSE_VALIDATE_URL = os.getenv(
+    "SYNCPULSE_LICENSE_VALIDATE_URL",
+    f"{AUTH_SERVER_URL}/api/licenses/validate"
+)
 def get_device_name():
     """Nome legível do dispositivo para a gestão no portal de licenças."""
     configured_name = os.getenv("SYNCPULSE_DEVICE_NAME", "").strip()
