@@ -134,7 +134,7 @@
 							<div class="bg-slate-900/80 p-3 rounded-2xl border border-slate-800 mb-4 flex justify-between items-center">
 								<div>
 									<span class="text-[9px] text-slate-500 uppercase font-black block" data-i18n="current_plan">Plano Atual</span>
-									<span class="text-xs font-bold text-cyan-400">Basic Pro (1 Slot)</span>
+									<span id="user-plan-name" class="text-xs font-bold text-cyan-400">---</span>
 								</div>
 								<code class="text-[10px] text-slate-400 font-mono bg-black/40 px-2 py-1 rounded">SP-D0C30C15</code>
 							</div>
@@ -504,16 +504,24 @@
 
 		// Função auxiliar para desenhar o dashboard (usada no login e no auto-login)
 		function renderUserDashboard(user) {
-			document.getElementById('user-email-display').innerText = user.email;
+			// Preenche o email
+			const emailDisplays = document.querySelectorAll('#user-email-display');
+			emailDisplays.forEach(el => el.innerText = user.email);
+
+			// PREENCHE O NOME DO PLANO VINDO DA BD
+			const planDisplays = document.querySelectorAll('#user-plan-name');
+			planDisplays.forEach(el => {
+				el.innerText = `${user.plan_name} (${user.max_slots} ${user.max_slots > 1 ? 'Slots' : 'Slot'})`;
+			});
+			
+			// Mostra o dashboard e esconde o login
 			document.getElementById('auth-form').classList.add('hidden');
 			document.getElementById('auth-dashboard').classList.remove('hidden');
 			
-			// Atualiza o ícone da navbar
 			const accBtn = document.getElementById('account-btn');
 			accBtn.classList.add('bg-cyan-500/20', 'text-cyan-400', 'border-cyan-500/40');
 			accBtn.innerHTML = '<i class="fas fa-user-check"></i>';
 			
-			// Dispara a busca dos dispositivos reais no Railway
 			fetchDevices(); 
 		}
 
