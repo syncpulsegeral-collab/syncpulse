@@ -337,31 +337,79 @@
     </div>
 
 
-    <!-- ECRÃ DE BOAS-VINDAS (Primeiro Arranque) -->
-    <div id="welcome-screen" class="overlay-screen hidden-overlay" style="background: rgba(5, 10, 18, 0.95); backdrop-filter: blur(10px);">
-        <div class="welcome-card">
-            <img src="logo_splash.png" class="max-h-20 mx-auto mb-8" alt="Logo">
-            <h2 class="text-2xl font-black text-white mb-4" data-key="welcome_title">Bem-vindo ao SmartSync</h2>
-            
-            <div class="bg-slate-900/50 border border-slate-800 rounded-xl p-6 text-left mb-8 space-y-4">
-                <p class="text-xs text-slate-400 leading-relaxed" data-key="disclaimer_text">
-                    Esta é uma <b>versão Beta</b>. O programador não se responsabiliza por quaisquer erros, bugs ou perda de dados decorrentes do uso desta aplicação. Use por sua conta e risco.
-                </p>
-                <p class="text-xs text-blue-400/80 font-medium" data-key="privacy_text">
-                    <i class="fas fa-shield-alt mr-2"></i>Privacidade: Todas as informações e chaves das suas Clouds ficam guardadas localmente no seu ZimaOS. O programador não tem acesso aos seus dados.
-                </p>
-            </div>
+    <!-- ECRÃ DE BOAS-VINDAS / SOBRE (Refeito) -->
+		<div id="welcome-screen" class="overlay-screen hidden-overlay" style="background: rgba(5, 10, 18, 0.98); backdrop-filter: blur(15px);">
+			<div class="welcome-card max-w-2xl w-[90%] max-h-[85vh] flex flex-col p-0 overflow-hidden border-slate-800 shadow-2xl">
+				
+				<!-- Cabeçalho Fixo -->
+				<div class="p-8 text-center border-b border-white/5 bg-slate-900/50">
+					<div class="w-16 h-16 mx-auto mb-4">
+						<svg viewBox="0 0 512 512" fill="none">
+							<rect x="40" y="40" width="432" height="432" rx="100" fill="#0F172A" stroke="#3b82f6" stroke-width="4"/>
+							<path d="M100 256H160L190 140L256 380L322 140L352 256H412" stroke="#3b82f6" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>
+						</svg>
+					</div>
+					<h2 class="text-xl font-black text-white uppercase tracking-widest">SyncPulse <span class="text-blue-500">v1.0</span></h2>
+					<p class="text-[10px] text-slate-500 font-bold uppercase mt-1">ZimaOS Edition</p>
+				</div>
 
-            <div class="space-y-4">
-                <button onclick="acceptTerms()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-4 rounded-xl transition-all uppercase text-xs tracking-widest" data-key="accept_btn">
-                    Aceitar e Continuar
-                </button>
-                <button onclick="toggleModal('mCloud', true)" class="text-slate-500 hover:text-white text-[10px] uppercase font-bold tracking-tight">
-                    <i class="fas fa-book mr-2"></i>Tutorial de Configuração
-                </button>
-            </div>
-        </div>
-    </div>
+				<!-- Conteúdo Scrollable -->
+				<div class="flex-1 overflow-y-auto p-8 space-y-8 text-sm leading-relaxed">
+					
+					<!-- Secção 1: O que é -->
+					<section>
+						<h4 class="text-blue-400 font-bold mb-2 uppercase text-xs tracking-tighter" data-key="about_sync_title">Sobre o Projeto</h4>
+						<p class="text-slate-400 text-xs" data-key="about_sync_text">
+							O SyncPulse é uma interface profissional e motor de automação desenvolvido para simplificar a gestão de storage híbrida no ZimaOS. 
+							Este software atua como uma ponte inteligente entre o seu hardware e os principais serviços de Cloud do mercado.
+						</p>
+					</section>
+
+					<!-- Secção 2: Rclone Compliance (CRÍTICO) -->
+					<section class="bg-blue-500/5 border border-blue-500/10 p-4 rounded-xl">
+						<h4 class="text-white font-bold mb-2 uppercase text-[11px] flex items-center gap-2">
+							<i class="fas fa-code-branch text-blue-500"></i> Open Source & Credits
+						</h4>
+						<p class="text-slate-400 text-[11px]">
+							O SyncPulse utiliza o motor <b>Rclone</b> (rclone.org) como backend de comunicação. 
+							O Rclone é um software de código aberto distribuído sob a <b>Licença MIT</b>. 
+							Nós orgulhamo-nos de apoiar e utilizar tecnologias open-source para garantir a robustez do nosso serviço.
+						</p>
+						<div class="mt-3 flex gap-4 text-[10px]">
+							<a href="https://rclone.org" target="_blank" class="text-blue-400 hover:underline">Site Oficial Rclone</a>
+							<a href="https://github.com/rclone/rclone/blob/master/COPYING" target="_blank" class="text-blue-400 hover:underline">Licença MIT</a>
+						</div>
+					</section>
+
+					<!-- Secção 3: EULA / Isenção -->
+					<section>
+						<h4 class="text-red-400 font-bold mb-2 uppercase text-xs tracking-tighter" data-key="eula_title">Termos de Utilização (EULA)</h4>
+						<div class="text-[10px] text-slate-500 space-y-2 bg-black/20 p-3 rounded-lg border border-white/5 font-mono">
+							<p>1. O software é fornecido "COMO ESTÁ", sem garantias de qualquer tipo.</p>
+							<p>2. O programador não se responsabiliza por perda de dados decorrente de má configuração ou falhas de terceiros.</p>
+							<p>3. A licença Pro é vinculada a 1 dispositivo físico (Hardware ID) por slot adquirido.</p>
+							<p>4. É proibida a engenharia reversa do sistema de ativação.</p>
+						</div>
+					</section>
+
+					<!-- Secção 4: Privacidade -->
+					<section>
+						<h4 class="text-green-400 font-bold mb-2 uppercase text-xs tracking-tighter" data-key="privacy_title">Privacidade de Dados</h4>
+						<p class="text-slate-400 text-[11px]" data-key="privacy_text">
+							A sua segurança é a nossa prioridade. Todas as credenciais de Cloud e chaves de acesso são encriptadas e guardadas <b>localmente</b> no seu ZimaOS. O SyncPulse não tem acesso aos seus ficheiros nem envia dados privados para servidores externos.
+						</p>
+					</section>
+				</div>
+
+				<!-- Rodapé / Ações -->
+				<div class="p-6 border-t border-white/5 bg-slate-900/50 flex justify-between items-center">
+					<button onclick="closeWelcome()" id="btn-close-about" class="hidden text-slate-500 hover:text-white text-[10px] font-bold uppercase tracking-widest transition-all">Fechar</button>
+					<button onclick="acceptTerms()" id="btn-accept-welcome" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-3 rounded-xl transition-all uppercase text-xs tracking-widest">
+						Aceitar e Continuar
+					</button>
+				</div>
+			</div>
+		</div>
     
     <aside class="sidebar" id="sidebar">
         <!-- Botão de Colapsar -->
@@ -661,6 +709,15 @@
                             <span class="text-[9px] font-bold text-white uppercase" data-key="official_site">Website</span>
                         </a>
                     </div>
+					<div class="pt-4 border-t border-slate-800">
+						<button onclick="showAbout()" class="w-full flex items-center justify-between p-4 bg-slate-800/20 hover:bg-slate-800/40 rounded-xl border border-white/5 transition-all group">
+							<div class="flex items-center gap-3">
+								<i class="fas fa-info-circle text-slate-500 group-hover:text-blue-400"></i>
+								<span class="text-xs font-bold text-slate-300" data-key="nav_about">Sobre o SyncPulse</span>
+							</div>
+							<i class="fas fa-chevron-right text-[10px] text-slate-600"></i>
+						</button>
+					</div>
                 </div>
                 
                 <div class="text-center opacity-70 text-[11px] font-mono text-slate-500 pt-2">
@@ -711,7 +768,11 @@
         file_skipped: "SEM ALTERAÇÃO",
         file_error: "ERRO",
         file_done: "CONCLUÍDO",
-        view_more: "ver mais"
+        view_more: "ver mais",
+		nav_about: "Sobre o SyncPulse",
+		about_sync_title: "Sobre o Projeto",
+		eula_title: "Contrato de Licença (EULA)",
+		privacy_title: "Privacidade",
     },
     en: { 
         new_task: "New Task", manage_clouds: "Manage Clouds", cloud_health: "Cloud Health", active_tasks: "Active Tasks", global_progress: "Global Progress", files_queue: "Files Queue", config_task: "Config Task", edit_task: "Edit Task", task_name: "Name", local_folder: "Local Folder", remote_folder: "Cloud Folder", sync_type: "Mode", trigger: "Trigger", interval: "Interval", cancel: "Cancel", save: "Save", btn_stop: "Stop", btn_start: "Start", mode_bi: "Bisync", mode_up: "Local->Cloud", mode_down: "Cloud->Local", opt_real: "Real-time", status_inactive: "Inactive", status_active: "Active", status_sim: "Simulating", status_done: "Done", last_sync: "Last Sync", start_time: "Start Time (24h)", daily: "Daily",
@@ -746,7 +807,11 @@
         file_skipped: "NO CHANGE",
         file_error: "ERROR",
         file_done: "COMPLETED",
-        view_more: "view more"
+        view_more: "view more",
+		nav_about: "About SyncPulse",
+		about_sync_title: "About Project",
+		eula_title: "License Agreement (EULA)",
+		privacy_title: "Privacy",
     },
     fr: { 
         new_task: "Nouvelle Tâche", manage_clouds: "Gérer Clouds", cloud_health: "Santé Cloud", active_tasks: "Tâches Actives", global_progress: "Progrès Global", files_queue: "File d'attente", config_task: "Configurer", edit_task: "Modifier", task_name: "Nom", local_folder: "Dossier Local", remote_folder: "Dossier Cloud", sync_type: "Mode", trigger: "Déclencheur", interval: "Intervalle", cancel: "Annuler", save: "Sauvegarder", btn_stop: "Arrêter", btn_start: "Démarrer", mode_bi: "Bisync", mode_up: "Local->Cloud", mode_down: "Cloud->Local", opt_real: "Temps Réel", status_inactive: "Inactif", status_active: "Actif", status_sim: "Simulation", status_done: "Terminé", last_sync: "Dernière Sync", start_time: "Heure (24h)", daily: "Quotidien",
@@ -941,6 +1006,24 @@
 			await fetch('/api/terms/accept', { method: 'POST' });
 			// Esconde o ecrã imediatamente no browser
 			document.getElementById('welcome-screen').classList.add('hidden-overlay');
+		}
+		
+		function showAbout() {
+			// Esconde o botão "Aceitar" e mostra o "Fechar"
+			document.getElementById('btn-accept-welcome').classList.add('hidden');
+			document.getElementById('btn-close-about').classList.remove('hidden');
+			// Mostra o ecrã
+			document.getElementById('welcome-screen').classList.remove('hidden-overlay');
+		}
+
+		function closeWelcome() {
+			document.getElementById('welcome-screen').classList.add('hidden-overlay');
+		}
+
+		// Atualizar a função original de aceitar termos
+		async function acceptTerms() {
+			await fetch('/api/terms/accept', { method: 'POST' });
+			closeWelcome();
 		}
         
         function connectWS() {
