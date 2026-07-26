@@ -491,7 +491,11 @@
 				install_desc: "Utiliza o código abaixo ou descarrega o ficheiro para instalação personalizada.",
 				btn_copy: "Copiar",
 				btn_download: "Download",
-				btn_download_full: "Descarregar ficheiro .yaml"
+				btn_download_full: "Descarregar ficheiro .yaml",
+				watchtower_title: "Atualizações Automáticas",
+				watchtower_subtitle: "Dica de Especialista",
+				watchtower_desc: "Recomendamos a instalação do Watchtower. Este pequeno utilitário vigia o nosso repositório e atualiza a tua App silenciosamente sempre que houver melhorias, sem que precises de fazer nada.",
+				btn_copy: "Copiar"
 			},
 			en: {
 				nav_showcase: "Screens", nav_plans: "Plans", nav_account: "Account", nav_contact: "Contact",
@@ -516,6 +520,10 @@
 				btn_copy: "Copy",
 				btn_download: "Download",
 				btn_download_full: "Download .yaml file",
+				watchtower_title: "Automatic Updates",
+				watchtower_subtitle: "Expert Tip",
+				watchtower_desc: "We recommend installing Watchtower. This utility monitors our repository and updates your App silently whenever improvements are released, without any manual action.",
+				btn_copy: "Copy"
 			},
 			fr: {
 				nav_showcase: "Écrans", nav_plans: "Plans", nav_account: "Compte", nav_contact: "Contact",
@@ -539,7 +547,11 @@
 				install_desc: "Utilisez le code ci-dessous ou téléchargez le fichier pour une installation personnalisée.",
 				btn_copy: "Copier",
 				btn_download: "Télécharger",
-				btn_download_full: "Télécharger le fichier .yaml"
+				btn_download_full: "Télécharger le fichier .yaml",
+				watchtower_title: "Mises à jour Automatiques",
+				watchtower_subtitle: "Conseil d'expert",
+				watchtower_desc: "Nous recommandons l'installation de Watchtower. Cet utilitaire surveille notre dépôt et met à jour votre application silencieusement dès que des améliorations sont publiées.",
+				btn_copy: "Copier"
 			},
 			es: {
 				nav_showcase: "Capturas", nav_plans: "Planes", nav_account: "Cuenta", nav_contact: "Contacto",
@@ -563,7 +575,12 @@
 				install_desc: "Utilice el código a continuación o descargue el archivo para una instalación personalizada.",
 				btn_copy: "Copiar",
 				btn_download: "Descargar",
-				btn_download_full: "Descargar archivo .yaml"
+				btn_download_full: "Descargar archivo .yaml",
+				watchtower_title: "Actualizaciones Automáticas",
+				watchtower_subtitle: "Consejo de Experto",
+				watchtower_desc: "Recomendamos instalar Watchtower. Esta utilidad monitorea nuestro repositorio y actualiza tu aplicación silenciosamente cada vez que se publican mejoras.",
+				btn_copy: "Copiar"
+
 			},
 			de: {
 				nav_showcase: "Screens", nav_plans: "Pläne", nav_account: "Konto", nav_contact: "Kontakt",
@@ -587,7 +604,11 @@
 				install_desc: "Verwenden Sie den unten stehenden Code oder laden Sie die Datei für eine benutzerdefinierte Installation herunter.",
 				btn_copy: "Kopieren",
 				btn_download: "Herunterladen",
-				btn_download_full: "YAML-Datei herunterladen"
+				btn_download_full: "YAML-Datei herunterladen",
+				watchtower_title: "Automatische Updates",
+				watchtower_subtitle: "Experten-Tipp",
+				watchtower_desc: "Wir empfehlen die Installation von Watchtower. Dieses Dienstprogramm überwacht unser Repository und aktualisiert Ihre App geräuschlos, sobald Verbesserungen veröffentlicht werden.",
+				btn_copy: "Kopieren"
 			}
 		};
 
@@ -833,10 +854,10 @@
 			document.body.removeChild(a);
 		}
 
-		function copyYAML() {
-			const yamlText = document.getElementById('yaml-content').innerText;
+		function copyYAML(elementId) {
+			const yamlText = document.getElementById(elementId).innerText;
 			navigator.clipboard.writeText(yamlText).then(() => {
-				alert("YAML copiado para a área de transferência!");
+				alert("Código copiado!");
 			});
 		}
 	</script>
