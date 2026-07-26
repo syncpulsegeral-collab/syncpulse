@@ -338,93 +338,115 @@
     </section>
 	
 	<!-- SECTION: INSTALLATION -->
-		<section id="install" class="py-24 px-6 border-t border-white/5">
-			<div class="max-w-3xl mx-auto">
-				<div class="text-center mb-12">
-					<h2 class="text-3xl font-black uppercase tracking-widest mb-4" data-i18n="nav_install">Instalação</h2>
-					<p class="text-slate-500 text-sm" data-i18n="install_desc">Copia o código abaixo ou descarrega o ficheiro para instalação personalizada no ZimaOS.</p>
-				</div>
+	<section id="install" class="py-24 px-6 border-t border-white/5">
+		<div class="max-w-3xl mx-auto">
+			<div class="text-center mb-12">
+				<h2 class="text-3xl font-black uppercase tracking-widest mb-4" data-i18n="nav_install">Instalação</h2>
+				<p class="text-slate-500 text-sm" data-i18n="install_desc">Copia o código abaixo ou descarrega o ficheiro para instalação personalizada no ZimaOS.</p>
+			</div>
 
-				<div class="bg-black/40 rounded-3xl border border-slate-800 p-8 shadow-2xl relative group">
-					<!-- Botões de Ação no canto superior -->
-					<div class="absolute top-4 right-6 flex gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
-						<button onclick="copyYAML()" class="text-slate-400 hover:text-cyan-400 text-xs font-bold flex items-center gap-2 bg-slate-900/80 px-3 py-1.5 rounded-lg border border-white/5">
-							<i class="fas fa-copy"></i> <span data-i18n="btn_copy">Copiar</span>
-						</button>
-						<button onclick="downloadYAML()" class="text-slate-400 hover:text-green-400 text-xs font-bold flex items-center gap-2 bg-slate-900/80 px-3 py-1.5 rounded-lg border border-white/5">
-							<i class="fas fa-download"></i> <span data-i18n="btn_download">Download</span>
-						</button>
-					</div>
-
-					<pre id="yaml-content" class="text-cyan-500/90 font-mono text-[11px] leading-relaxed overflow-x-auto whitespace-pre">
-		name: syncpulse
-		services:
-		  syncpulse:
-			cpu_shares: 90
-			command: []
-			container_name: SyncPulse
-			deploy:
-			  resources:
-				limits:
-				  memory: 8264380416
-				reservations:
-				  devices: []
-			environment:
-			  - PYTHONUNBUFFERED=1
-			  - TZ=Europe/Lisbon
-			image: ghcr.io/syncpulsegeral-collab/syncpulse:latest
-			labels:
-			  icon: https://github.com/syncpulsegeral-collab/syncpulse/raw/main/logo_splash.png
-			ports:
-			  - target: 8181
-				published: "8181"
-				protocol: tcp
-			privileged: true
-			restart: always
-			user: root
-			volumes:
-			  - type: bind
-				source: /DATA/AppData/SyncPulse/config
-				target: /config
-			  - type: bind
-				source: /DATA/AppData/SyncPulse/app
-				target: /app
-			  - type: bind
-				source: /DATA/AppData/SyncPulse/www
-				target: /www
-			  - type: bind
-				source: /mnt
-				target: /mnt
-			  - type: bind
-				source: /etc/machine-id
-				target: /etc/machine-id
-			devices: []
-			cap_add: []
-			network_mode: bridge
-		x-casaos:
-		  author: self
-		  category: self
-		  hostname: ""
-		  icon: https://github.com/syncpulsegeral-collab/syncpulse/raw/main/logo_splash.png
-		  index: /
-		  is_uncontrolled: false
-		  main: syncpulse
-		  port_map: "8181"
-		  scheme: http
-		  store_app_id: syncpulse
-		  title:
-			custom: SyncPulse
-			en_us: syncpulse</pre>
-				</div>
-				
-				<div class="mt-8 text-center">
-					<button onclick="downloadYAML()" class="inline-flex items-center gap-3 bg-slate-800 hover:bg-slate-700 text-white px-8 py-4 rounded-2xl font-black uppercase text-xs tracking-widest transition-all shadow-xl">
-						<i class="fas fa-file-download text-lg text-cyan-400"></i>
-						<span data-i18n="btn_download_full">Descarregar ficheiro .yaml</span>
+			<!-- Bloco Principal SyncPulse -->
+			<div class="bg-black/40 rounded-3xl border border-slate-800 p-8 shadow-2xl relative group mb-8">
+				<div class="absolute top-4 right-6 flex gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+					<button onclick="copyYAML('yaml-content')" class="text-slate-400 hover:text-cyan-400 text-xs font-bold flex items-center gap-2 bg-slate-900/80 px-3 py-1.5 rounded-lg border border-white/5">
+						<i class="fas fa-copy"></i> <span data-i18n="btn_copy">Copiar</span>
 					</button>
 				</div>
+				<pre id="yaml-content" class="text-cyan-500/90 font-mono text-[11px] leading-relaxed overflow-x-auto">
+	name: syncpulse
+			services:
+			  syncpulse:
+				cpu_shares: 90
+				command: []
+				container_name: SyncPulse
+				deploy:
+				  resources:
+					limits:
+					  memory: 8264380416
+					reservations:
+					  devices: []
+				environment:
+				  - PYTHONUNBUFFERED=1
+				  - TZ=Europe/Lisbon
+				image: ghcr.io/syncpulsegeral-collab/syncpulse:latest
+				labels:
+				  icon: https://github.com/syncpulsegeral-collab/syncpulse/raw/main/logo_splash.png
+				ports:
+				  - target: 8181
+					published: "8181"
+					protocol: tcp
+				privileged: true
+				restart: always
+				user: root
+				volumes:
+				  - type: bind
+					source: /DATA/AppData/SyncPulse/config
+					target: /config
+				  - type: bind
+					source: /DATA/AppData/SyncPulse/app
+					target: /app
+				  - type: bind
+					source: /DATA/AppData/SyncPulse/www
+					target: /www
+				  - type: bind
+					source: /mnt
+					target: /mnt
+				  - type: bind
+					source: /etc/machine-id
+					target: /etc/machine-id
+				devices: []
+				cap_add: []
+				network_mode: bridge
+			x-casaos:
+			  author: self
+			  category: self
+			  hostname: ""
+			  icon: https://github.com/syncpulsegeral-collab/syncpulse/raw/main/logo_splash.png
+			  index: /
+			  is_uncontrolled: false
+			  main: syncpulse
+			  port_map: "8181"
+			  scheme: http
+			  store_app_id: syncpulse
+			  title:
+				custom: SyncPulse
+				en_us: syncpulse</pre>
 			</div>
-		</section>
+
+			<!-- BLOCO RECOMENDAÇÃO WATCHTOWER -->
+			<div class="p-8 rounded-3xl bg-cyan-500/5 border border-cyan-500/20 shadow-lg">
+				<div class="flex items-center gap-3 mb-4">
+					<div class="w-10 h-10 rounded-full bg-cyan-500 flex items-center justify-center text-black shadow-[0_0_15px_rgba(6,182,212,0.4)]">
+						<i class="fas fa-magic"></i>
+					</div>
+					<div>
+						<h3 class="text-white font-bold uppercase text-sm tracking-widest" data-i18n="watchtower_title">Atualizações Automáticas</h3>
+						<p class="text-[11px] text-slate-500" data-i18n="watchtower_subtitle">Recomendado para manter o SyncPulse sempre atualizado</p>
+					</div>
+				</div>
+				<p class="text-xs text-slate-400 mb-6 leading-relaxed" data-i18n="watchtower_desc">
+					Instala o <b>Watchtower</b> para que o ZimaOS verifique e instale automaticamente as novas versões do SyncPulse assim que as lançarmos.
+				</p>
+				<div class="bg-black/60 rounded-xl p-4 border border-white/5 relative group/wt">
+					<button onclick="copyYAML('wt-content')" class="absolute top-2 right-3 text-slate-500 hover:text-cyan-400 text-[10px] font-bold opacity-0 group-hover/wt:opacity-100 transition-opacity">
+						<i class="fas fa-copy"></i>
+					</button>
+					<pre id="wt-content" class="text-[10px] text-slate-500 font-mono overflow-x-auto">
+	version: '3'
+	services:
+	  watchtower:
+		image: containrrr/watchtower
+		container_name: watchtower
+		restart: always
+		volumes:
+		  - /var/run/docker.sock:/var/run/docker.sock
+		environment:
+		  - WATCHTOWER_POLL_INTERVAL=3600
+		  - WATCHTOWER_CLEANUP=true</pre>
+				</div>
+			</div>
+		</div>
+	</section>
 
     <!-- Contact Form -->
     <section id="contact" class="py-32 px-6 bg-slate-900/30">
