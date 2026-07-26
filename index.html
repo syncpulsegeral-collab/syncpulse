@@ -23,7 +23,18 @@
         .input-field { background: #0f172a; border: 1px solid #1e293b; color: white; padding: 12px; border-radius: 12px; width: 100%; transition: 0.3s; }
         
         /* Modal Lightbox */
-        #lightbox { display: none; position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,0.9); align-items: center; justify-content: center; padding: 20px; }
+        #lightbox { 
+			display: none; 
+			position: fixed; 
+			inset: 0; 
+			z-index: 9999; /* Valor muito alto para cobrir a navbar */
+			background: rgba(5, 10, 18, 0.98); 
+			backdrop-filter: blur(15px);
+			align-items: center; 
+			justify-content: center; 
+			padding: 20px; 
+			cursor: zoom-out;
+		}
         #lightbox.active { display: flex; }
 		/* Animação de entrada do menu */
 		@keyframes slideIn {
@@ -54,15 +65,49 @@
 			background: rgba(15, 23, 42, 0.8);
 			border: 1px solid rgba(255, 255, 255, 0.05);
 		}
+		
+		/* Botão de Fechar flutuante */
+		.close-lightbox {
+			position: absolute;
+			top: 30px;
+			right: 30px;
+			width: 50px;
+			height: 50px;
+			background: rgba(255, 255, 255, 0.05);
+			border: 1px solid rgba(255, 255, 255, 0.1);
+			color: white;
+			border-radius: 50%;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			font-size: 20px;
+			cursor: pointer;
+			transition: 0.3s;
+			z-index: 10000;
+		}
+
+		.close-lightbox:hover {
+			background: #ef4444;
+			transform: rotate(90deg);
+		}
     </style>
 </head>
 <body>
 
-    <!-- Lightbox Modal -->
-    <div id="lightbox" onclick="closeLightbox()">
-        <img id="lightbox-img" src="" class="max-w-full max-h-full rounded-xl shadow-2xl border border-white/10">
-        <button class="absolute top-10 right-10 text-white text-3xl"><i class="fas fa-times"></i></button>
-    </div>
+	<!-- Lightbox Modal Corrigido -->
+	<div id="lightbox" onclick="closeLightbox()">
+		<!-- Botão de Fechar explícito -->
+		<button class="close-lightbox" onclick="closeLightbox()">
+			<i class="fas fa-times"></i>
+		</button>
+		
+		<!-- Contentor da Imagem -->
+		<div class="relative max-w-6xl w-full h-full flex items-center justify-center p-4 sm:p-12">
+			<img id="lightbox-img" src="" 
+				 class="max-w-full max-h-full rounded-2xl shadow-2xl border border-white/10 object-contain animate-in zoom-in-95 duration-300"
+				 onclick="event.stopPropagation()"> <!-- Impede fechar ao clicar na imagem -->
+		</div>
+	</div>
 
     <!-- NAVBAR COM DROPDOWN CORRIGIDO -->
 	<nav class="fixed w-full z-[100] glass py-4 px-6">
@@ -832,14 +877,21 @@
 			const img = document.getElementById('lightbox-img');
 			img.src = src;
 			lb.classList.add('active');
+			// Impede o scroll da página por trás
 			document.body.style.overflow = 'hidden';
 		}
 
 		function closeLightbox() {
 			const lb = document.getElementById('lightbox');
 			lb.classList.remove('active');
+			// Devolve o scroll à página
 			document.body.style.overflow = 'auto';
 		}
+		
+		// Fechar com a tecla ESC
+		window.addEventListener('keydown', (e) => {
+			if (e.key === "Escape") closeLightbox();
+		});
 		
 		function downloadYAML() {
 			const yamlText = document.getElementById('yaml-content').innerText;
