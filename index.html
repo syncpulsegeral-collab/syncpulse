@@ -382,101 +382,106 @@
         </div>
     </section>
 	
-	<!-- SECTION: INSTALLATION -->
+	<!-- SECTION: INSTALLATION V9.0 -->
 	<section id="install" class="py-24 px-6 border-t border-white/5">
-		<div class="max-w-3xl mx-auto">
-			<div class="text-center mb-12">
+		<div class="max-w-6xl mx-auto">
+			<div class="text-center mb-16">
 				<h2 class="text-3xl font-black uppercase tracking-widest mb-4" data-i18n="nav_install">Instalação</h2>
-				<p class="text-slate-500 text-sm" data-i18n="install_desc">Copia o código abaixo ou descarrega o ficheiro para instalação personalizada no ZimaOS.</p>
+				<p class="text-slate-500 text-sm max-w-2xl mx-auto" data-i18n="install_desc">Siga o guia oficial para configurar o SyncPulse no seu ZimaOS.</p>
 			</div>
 
-			<!-- Bloco Principal SyncPulse -->
-			<div class="bg-black/40 rounded-3xl border border-slate-800 p-8 shadow-2xl relative group mb-8">
-				<div class="absolute top-4 right-6 flex gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
-					<button onclick="copyYAML('yaml-content')" class="text-slate-400 hover:text-cyan-400 text-xs font-bold flex items-center gap-2 bg-slate-900/80 px-3 py-1.5 rounded-lg border border-white/5">
-						<i class="fas fa-copy"></i> <span data-i18n="btn_copy">Copiar</span>
-					</button>
-				</div>
-				<pre id="yaml-content" class="text-cyan-500/90 font-mono text-[11px] leading-relaxed overflow-x-auto">
-	name: syncpulse
-			services:
-			  syncpulse:
-				cpu_shares: 90
-				command: []
-				container_name: SyncPulse
-				deploy:
-				  resources:
-					limits:
-					  memory: 8264380416
-					reservations:
-					  devices: []
-				environment:
-				  - PYTHONUNBUFFERED=1
-				  - TZ=Europe/Lisbon
-				image: ghcr.io/syncpulsegeral-collab/syncpulse:latest
-				labels:
+			<div class="grid lg:grid-cols-2 gap-12 items-start">
+				
+				<!-- COLUNA ESQUERDA: CÓDIGOS YAML -->
+				<div class="space-y-8">
+					
+					<!-- PASSO 1: SyncPulse -->
+					<div class="space-y-4">
+						<div class="flex items-center gap-3">
+							<div class="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white text-xs font-bold">1</div>
+							<h3 class="text-white font-bold uppercase text-sm tracking-wider">SyncPulse Engine</h3>
+						</div>
+						<div class="bg-black/40 rounded-3xl border border-slate-800 p-6 shadow-2xl relative group">
+							<button onclick="copyYAML('yaml-content')" class="absolute top-4 right-6 text-slate-500 hover:text-cyan-400 text-xs font-bold transition-all">
+								<i class="fas fa-copy"></i>
+							</button>
+							<pre id="yaml-content" class="text-cyan-500/90 font-mono text-[10px] leading-relaxed overflow-x-auto whitespace-pre">
+			name: syncpulse
+				services:
+				  syncpulse:
+					cpu_shares: 90
+					command: []
+					container_name: SyncPulse
+					deploy:
+					  resources:
+						limits:
+						  memory: 8264380416
+						reservations:
+						  devices: []
+					environment:
+					  - PYTHONUNBUFFERED=1
+					  - TZ=Europe/Lisbon
+					image: ghcr.io/syncpulsegeral-collab/syncpulse:latest
+					labels:
+					  icon: https://github.com/syncpulsegeral-collab/syncpulse/raw/main/logo_splash.png
+					ports:
+					  - target: 8181
+						published: "8181"
+						protocol: tcp
+					privileged: true
+					restart: always
+					user: root
+					volumes:
+					  - type: bind
+						source: /DATA/AppData/SyncPulse/config
+						target: /config
+					  - type: bind
+						source: /DATA/AppData/SyncPulse/app
+						target: /app
+					  - type: bind
+						source: /DATA/AppData/SyncPulse/www
+						target: /www
+					  - type: bind
+						source: /mnt
+						target: /mnt
+					  - type: bind
+						source: /etc/machine-id
+						target: /etc/machine-id
+					devices: []
+					cap_add: []
+					network_mode: bridge
+				x-casaos:
+				  author: self
+				  category: self
+				  hostname: ""
 				  icon: https://github.com/syncpulsegeral-collab/syncpulse/raw/main/logo_splash.png
-				ports:
-				  - target: 8181
-					published: "8181"
-					protocol: tcp
-				privileged: true
-				restart: always
-				user: root
-				volumes:
-				  - type: bind
-					source: /DATA/AppData/SyncPulse/config
-					target: /config
-				  - type: bind
-					source: /DATA/AppData/SyncPulse/app
-					target: /app
-				  - type: bind
-					source: /DATA/AppData/SyncPulse/www
-					target: /www
-				  - type: bind
-					source: /mnt
-					target: /mnt
-				  - type: bind
-					source: /etc/machine-id
-					target: /etc/machine-id
-				devices: []
-				cap_add: []
-				network_mode: bridge
-			x-casaos:
-			  author: self
-			  category: self
-			  hostname: ""
-			  icon: https://github.com/syncpulsegeral-collab/syncpulse/raw/main/logo_splash.png
-			  index: /
-			  is_uncontrolled: false
-			  main: syncpulse
-			  port_map: "8181"
-			  scheme: http
-			  store_app_id: syncpulse
-			  title:
-				custom: SyncPulse
-				en_us: syncpulse</pre>
-			</div>
+				  index: /
+				  is_uncontrolled: false
+				  main: syncpulse
+				  port_map: "8181"
+				  scheme: http
+				  store_app_id: syncpulse
+				  title:
+					custom: SyncPulse
+					en_us: syncpulse</pre>
+						</div>
+					</div>
 
-			<!-- BLOCO RECOMENDAÇÃO WATCHTOWER -->
-			<div class="p-8 rounded-3xl bg-cyan-500/5 border border-cyan-500/20 shadow-lg">
-				<div class="flex items-center gap-3 mb-4">
-					<div class="w-10 h-10 rounded-full bg-cyan-500 flex items-center justify-center text-black shadow-[0_0_15px_rgba(6,182,212,0.4)]">
-						<i class="fas fa-magic"></i>
-					</div>
-					<div>
-						<h3 class="text-white font-bold uppercase text-sm tracking-widest" data-i18n="watchtower_title">Atualizações Automáticas</h3>
-						<p class="text-[11px] text-slate-500" data-i18n="watchtower_subtitle">Recomendado para manter o SyncPulse sempre atualizado</p>
-					</div>
-				</div>
-				<p class="text-xs text-slate-400 mb-6 leading-relaxed" data-i18n="watchtower_desc">
-					Instala o <b>Watchtower</b> para que o ZimaOS verifique e instale automaticamente as novas versões do SyncPulse assim que as lançarmos.
-				</p>
-				<div class="bg-black/60 rounded-xl p-4 border border-white/5 relative group/wt">
-					<button onclick="copyYAML('wt-content')" class="absolute top-2 right-3 text-slate-500 hover:text-cyan-400 text-[10px] font-bold opacity-0 group-hover/wt:opacity-100 transition-opacity">
-						<i class="fas fa-copy"></i>
-					</button>
-					<pre id="wt-content" class="text-[10px] text-slate-500 font-mono overflow-x-auto">
+					<!-- PASSO 2: Watchtower (Expert Tip) -->
+					<div class="p-6 rounded-3xl bg-cyan-500/5 border border-cyan-500/10 relative group/wt">
+						<div class="flex items-center gap-3 mb-4">
+							<div class="w-8 h-8 rounded-full bg-cyan-500 flex items-center justify-center text-black text-xs">
+								<i class="fas fa-magic"></i>
+							</div>
+							<div>
+								<h3 class="text-white font-bold uppercase text-xs tracking-widest" data-i18n="watchtower_title">Updates Automáticos</h3>
+								<p class="text-[10px] text-slate-500" data-i18n="watchtower_subtitle">Recomendado</p>
+							</div>
+							<button onclick="copyYAML('wt-content')" class="ml-auto text-slate-500 hover:text-cyan-400 text-xs transition-all">
+								<i class="fas fa-copy"></i>
+							</button>
+						</div>
+						<pre id="wt-content" class="text-[10px] text-slate-600 font-mono overflow-x-auto mb-4">
 	version: '3'
 	services:
 	  watchtower:
@@ -488,7 +493,57 @@
 		environment:
 		  - WATCHTOWER_POLL_INTERVAL=3600
 		  - WATCHTOWER_CLEANUP=true</pre>
+						<p class="text-[10px] text-slate-500 leading-relaxed" data-i18n="watchtower_desc">O Watchtower garante que a sua App é atualizada silenciosamente mal lançamos uma melhoria no GitHub.</p>
+					</div>
 				</div>
+
+				<!-- COLUNA DIREITA: CONFIGURAÇÃO DE DISCOS (O TEU PEDIDO) -->
+				<div class="space-y-8 lg:pt-2">
+					<div class="flex items-center gap-3">
+						<div class="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center text-cyan-400 text-xs font-bold">2</div>
+						<h3 class="text-white font-bold uppercase text-sm tracking-wider" data-i18n="step_2_title">Configuração de Discos</h3>
+					</div>
+					
+					<div class="glass p-6 rounded-3xl border-slate-800">
+						<p class="text-xs text-slate-400 leading-relaxed mb-6" data-i18n="mount_tip">
+							<b>Importante:</b> Para que o SyncPulse consiga ler os teus ficheiros, deves mapear o teu disco físico do ZimaOS (Host) para a pasta interna <code class="text-cyan-400">/mnt</code> da App.
+						</p>
+
+						<div class="space-y-6">
+							<!-- Screen 1 -->
+							<div class="space-y-2">
+								<p class="text-[10px] text-slate-500 font-bold uppercase" data-i18n="mount_screen_1">1. Abrir Definições do Contentor</p>
+								<div class="img-container shadow-xl" onclick="openLightbox('img/mount_step1.png')">
+									<img src="Screens/Volume_1.jpg" alt="Settings" class="w-full opacity-80 hover:opacity-100 transition-opacity">
+								</div>
+							</div>
+
+							<!-- Screen 2 -->
+							<div class="space-y-2">
+								<p class="text-[10px] text-slate-500 font-bold uppercase" data-i18n="mount_screen_2">2. Ajustar "Host Path" no volume /mnt</p>
+								<div class="img-container shadow-xl" onclick="openLightbox('img/mount_step2.png')">
+									<img src="Screens/Volume_1.jpg" alt="Volumes" class="w-full opacity-80 hover:opacity-100 transition-opacity">
+								</div>
+							</div>
+						</div>
+
+						<div class="mt-6 p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex gap-3 items-start">
+							<i class="fas fa-info-circle text-amber-500 text-xs mt-0.5"></i>
+							<p class="text-[10px] text-amber-200/60 leading-relaxed" data-i18n="mount_warning">
+								Verifica se o caminho do Host começa por <span class="text-amber-500 font-mono">/media/...</span> para garantir acesso total aos teus dados.
+							</p>
+						</div>
+					</div>
+				</div>
+
+			</div>
+
+			<!-- Botão de Download Final -->
+			<div class="mt-16 text-center">
+				<button onclick="downloadYAML()" class="inline-flex items-center gap-3 bg-slate-800 hover:bg-slate-700 text-white px-10 py-5 rounded-2xl font-black uppercase text-xs tracking-[0.2em] transition-all shadow-2xl border border-white/5">
+					<i class="fas fa-file-download text-cyan-400 text-lg"></i>
+					<span data-i18n="btn_download_full">Download syncpulse.yaml</span>
+				</button>
 			</div>
 		</div>
 	</section>
@@ -540,7 +595,16 @@
 				watchtower_title: "Atualizações Automáticas",
 				watchtower_subtitle: "Dica de Especialista",
 				watchtower_desc: "Recomendamos a instalação do Watchtower. Este pequeno utilitário vigia o nosso repositório e atualiza a tua App silenciosamente sempre que houver melhorias, sem que precises de fazer nada.",
-				btn_copy: "Copiar"
+				btn_copy: "Copiar",
+				nav_install: "Instalação",
+				install_desc: "Instalação personalizada via Docker Compose no ZimaOS.",
+				step_1_title: "1. Importar Código",
+				step_2_title: "2. Configurar Armazenamento",
+				mount_tip: "Para que o SyncPulse consiga ler os seus discos, é necessário mapear o caminho físico para o caminho interno da App.",
+				mount_screen_1: "Ir às Definições da App",
+				mount_screen_2: "Verificar campo /mnt",
+				mount_warning: "Certifique-se de que o caminho do Host corresponde ao seu disco (ex: /media/HDD).",
+				btn_download_full: "Descarregar ficheiro .yaml"
 			},
 			en: {
 				nav_showcase: "Screens", nav_plans: "Plans", nav_account: "Account", nav_contact: "Contact",
@@ -568,7 +632,17 @@
 				watchtower_title: "Automatic Updates",
 				watchtower_subtitle: "Expert Tip",
 				watchtower_desc: "We recommend installing Watchtower. This utility monitors our repository and updates your App silently whenever improvements are released, without any manual action.",
-				btn_copy: "Copy"
+				btn_copy: "Copy",
+				nav_install: "Installation",
+				install_desc: "Custom installation via Docker Compose on ZimaOS.",
+				step_1_title: "1. Import Code",
+				step_2_title: "2. Storage Setup",
+				mount_tip: "To allow SyncPulse to access your files, you must map the physical host path to the internal App path.",
+				mount_screen_1: "Go to App Settings",
+				mount_screen_2: "Check /mnt field",
+				mount_warning: "Ensure the Host path matches your drive (e.g., /media/HDD).",
+				btn_download_full: "Download .yaml file"
+
 			},
 			fr: {
 				nav_showcase: "Écrans", nav_plans: "Plans", nav_account: "Compte", nav_contact: "Contact",
