@@ -22,6 +22,7 @@ LICENSE_FILE = os.path.join(CONFIG_DIR, "license.json")
 DEVICE_ID_FILE = os.path.join(CONFIG_DIR, "device-id")
 BISYNC_WORKDIR = os.path.join(CONFIG_DIR, "bisync")
 HWID_SALT = os.getenv("SYNCPULSE_HWID_SALT", "syncpulse-hwid-v1")
+LAST_BOX_CHECK_TIME = 0
 
 for p in [LOGS_DIR, BISYNC_WORKDIR, "/config"]:
     if not os.path.exists(p): os.makedirs(p, exist_ok=True)
@@ -1630,13 +1631,40 @@ async def check_single_remote(remote_name):
     except: return {"name": remote_name, "status": "offline", "message": "Timeout"}
 
 async def update_health_cache():
-    global HEALTH_CACHE
+    global HEALTH_CACHE, LAST_BOX_CHECK_TIME
     try:
-        out = subprocess.check_output(["rclone", "--config", RCLONE_CONFIG, "listremotes"]).decode("utf-8")
-        remotes = [x.strip().replace(":", "") for x in out.split("\n") if x.strip()]
-        HEALTH_CACHE = await asyncio.gather(*[check_single_remote(r) for r in remotes])
+        # 1. Obtemos a lista longa para saber o tipo de cada cloud (drive, box, onedrive...)
+        out = subprocess.check_output(["rclone", "--config", RCLONE_CONFIG, "listremotes", "--long"]).decode("utf-8")
+        
+        remotes_to_check = []
+        now = time.time()
+        
+        for line in out.split("\n"):
+            if ":" in line:
+                name = line.split(":")[0].strip()
+                type_name = line.split(":")[1].strip().lower()
+                
+                # 2. Lógica Especial para a BOX
+                if type_name == "box":
+                    # Se já temos a Box no cache e passaram menos de 60 min (3600s), não verificamos de novo
+                    existing_box = next((item for item in HEALTH_CACHE if item["name"] == name), None)
+                    if existing_box and (now - LAST_BOX_CHECK_TIME < 3600):
+                        # Reutilizamos o estado anterior para não gastar o token
+                        remotes_to_check.append(asyncio.sleep(0, result=existing_box))
+                        continue
+                    else:
+                        LAST_BOX_CHECK_TIME = now
+                
+                # 3. Para as outras nuvens ou se for hora de validar a Box a sério
+                remotes_to_check.append(check_single_remote(name))
+
+        # Executa as verificações (as reais e as "falsas" da Box)
+        HEALTH_CACHE = await asyncio.gather(*remotes_to_check)
+        
         await manager.broadcast({"type": "health_update", "health": HEALTH_CACHE})
-    except: pass
+        
+    except Exception as e:
+        print(f">>> [HEALTH] Erro ao atualizar: {e}")
 
 
 
