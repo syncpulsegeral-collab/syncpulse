@@ -1809,6 +1809,26 @@ async def stop_sync(task_id: str):
             return JSONResponse(status_code=500, content={"message": str(e)})
     return {"status": "not_running"}        
 
+@app.delete("/api/clouds/remove/{name}")
+async def delete_cloud_config(name: str):
+    """Remove permanentemente uma configuração de cloud do rclone.conf"""
+    try:
+        # Comando rclone para apagar um remote específico
+        # Usamos o nome da cloud seguido de : (ex: GoogleDrive:)
+        subprocess.check_call([
+            "rclone", "--config", RCLONE_CONFIG, "config", "delete", f"{name}:"
+        ])
+        
+        # Opcional: Limpar o cache de saúde para forçar atualização
+        global HEALTH_CACHE
+        HEALTH_CACHE = [c for c in HEALTH_CACHE if c['name'] != name]
+        
+        return {"status": "ok"}
+    except subprocess.CalledProcessError as e:
+        return JSONResponse(status_code=500, content={"message": f"Erro rclone: {str(e)}"})
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"message": str(e)})
+
 @app.get("/api/health")
 async def get_health(): return HEALTH_CACHE
 

@@ -1494,17 +1494,27 @@
             document.getElementById('cloud-manager-list').innerHTML = rems.map(rem => `<div class="flex justify-between bg-slate-800/40 p-4 rounded-xl border border-slate-800"><span class="text-white font-bold">${rem}</span><button onclick="removeCloud('${rem}')" class="text-red-500 text-[10px] font-black">APAGAR</button></div>`).join(''); 
         }
         
-        async function remove_cloud_config(n) { 
-            if(confirm('Tens a certeza que queres apagar esta ligação Cloud?')) { 
-                const response = await fetch(`/api/clouds/remove/${n}`, { method: 'DELETE' }); 
-                if (response.ok) {
-                    renderCloudManager(); // Recarrega a lista no modal
-                    updateHealth();      // Atualiza a barra lateral
-                } else {
-                    alert("Erro ao apagar a cloud.");
-                }
-            } 
-        }
+        async function removeCloud(name) {
+			if (!confirm(`Tens a certeza que queres apagar a ligação "${name}"?`)) return;
+
+			try {
+				const response = await fetch(`/api/clouds/remove/${encodeURIComponent(name)}`, {
+					method: 'DELETE'
+				});
+
+				if (response.ok) {
+					// Atualiza a lista no modal e a saúde na barra lateral
+					renderCloudManager(); 
+					updateHealth(); 
+				} else {
+					const err = await response.json();
+					alert("Erro ao apagar: " + (err.message || "Erro desconhecido"));
+				}
+			} catch (e) {
+				console.error("Erro ao contactar o servidor:", e);
+				alert("Erro de ligação ao servidor.");
+			}
+		}
         
         async function updateHealth() { 
             try { 
