@@ -1841,6 +1841,62 @@ async def delete_cloud_config(name: str):
 @app.get("/api/health")
 async def get_health(): return HEALTH_CACHE
 
+# --- NOVOS ENDPOINTS PARA GESTÃO DE CLOUDS (DOCKER) ---
+
+@app.get("/api/remotes/providers")
+def get_rclone_providers():
+    """Extrai a lista oficial de serviços do rclone."""
+    try:
+        # No Docker usamos o comando direto 'rclone'
+        stdout = subprocess.check_output(["rclone", "config", "providers"], text=True)
+        start = stdout.find('[')
+        end = stdout.rfind(']') + 1
+        if start != -1 and end != -1:
+            data = json.loads(stdout[start:end])
+            providers = [{"name": p.get("Name"), "desc": p.get("Description")} for p in data 
+                         if p.get("Name") not in ["alias", "crypt", "union"]]
+            providers.sort(key=lambda x: x["desc"])
+            return providers
+    except Exception as e:
+        print(f"Erro ao listar providers: {e}")
+    return []
+
+@app.post("/api/remotes/create")
+async def create_remote_docker(request: Request):
+    try:
+        data = await request.json()
+        name = data.get("name").strip()
+        provider = data.get("provider")
+        options = data.get("options", {})
+
+        # Lista de serviços OAuth (que precisam de browser)
+        oauth_list = ['drive', 'onedrive', 'dropbox', 'pcloud', 'box']
+
+        if provider in oauth_list:
+            # Em Docker/Headless, o OAuth é mais complexo.
+            # Vamos lançar o comando, mas avisar o utilizador que deve usar o terminal 
+            # para o primeiro login ou usar a porta 53682 se estiver mapeada.
+            cmd = ["rclone", "--config", RCLONE_CONFIG, "config", "create", name, provider, "config_is_local=false"]
+            # Não bloqueamos a API, apenas disparamos
+            subprocess.Popen(cmd)
+            return {"status": "started", "method": "browser"}
+        
+        else:
+            # Modo Manual (Mega, FTP, WebDAV, etc)
+            args = ["rclone", "--config", RCLONE_CONFIG, "config", "create", name, provider, "--non-interactive"]
+            for k, v in options.items():
+                if v: args.extend([k, str(v)])
+            
+            result = subprocess.run(args, capture_output=True, text=True)
+            if result.returncode == 0:
+                # Forçar atualização do cache de saúde
+                asyncio.create_task(update_health_cache())
+                return {"status": "ok", "method": "manual"}
+            else:
+                return JSONResponse(status_code=500, content={"message": result.stderr})
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"message": str(e)})
+
 @app.get("/")
 async def serve_index(): return FileResponse(os.path.join(WWW_PATH, "index.html"))
 app.mount("/", StaticFiles(directory=WWW_PATH), name="static")

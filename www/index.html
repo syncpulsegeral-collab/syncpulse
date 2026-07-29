@@ -264,7 +264,26 @@
             to { opacity: 1; transform: scale(1); }
         }
         
-        
+        /* Dropdown de Provedores no Modal */
+		#dropdown-box {
+			background-color: #0f172a !important;
+			border: 1px solid #1e293b !important;
+			border-radius: 12px;
+			position: absolute;
+			width: 100%;
+			z-index: 1000;
+			top: 100%;
+			margin-top: 5px;
+			max-height: 250px;
+			overflow-y: auto;
+			box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+		}
+		.provider-item {
+			display: flex; align-items: center; gap: 10px; padding: 10px;
+			cursor: pointer; transition: 0.2s; border-bottom: 1px solid rgba(255,255,255,0.05);
+		}
+		.provider-item:hover { background: rgba(59, 130, 246, 0.1); }
+		.provider-item i { color: #3b82f6; font-size: 14px; }
     </style>
 </head>
 <body>
@@ -618,23 +637,60 @@
         </div>
     </div>
 
-    <!-- GESTOR DE CLOUDS -->
-    <div id="mCloud" class="fixed inset-0 modal-overlay hidden z-50 flex items-center justify-center p-4">
-        <div class="bg-slate-900 border border-slate-700 w-full max-w-2xl rounded-2xl p-10 shadow-2xl overflow-y-auto max-h-[90vh]">
-            <div class="flex justify-between items-center mb-8"><h3 class="text-2xl font-black text-white" data-key="manage_clouds">Gerir Clouds</h3><button onclick="toggleModal('mCloud', false)" class="text-slate-500 hover:text-white text-2xl">&times;</button></div>
-            <div id="cloud-manager-list" class="space-y-3 mb-8"></div>
-            <div class="bg-blue-900/10 border border-blue-500/20 rounded-xl p-6 text-[11px] text-slate-400 leading-relaxed">
-                <h4 class="text-blue-400 font-bold mb-4 uppercase" data-key="tut_title">Tutorial de Configuração</h4>
-                <div class="space-y-3">
-                    <p data-key="tut_s1">1. Terminal ZimaOS: <code class="bg-black p-1 text-blue-300">sudo docker exec -it SyncPulse env -u RCLONE_VERSION rclone --config /config/rclone.conf config</code></p>
-                    <p data-key="tut_s2">2. Digita <b class="text-white">n</b> (New Remote) e dá um nome.</p>
-                    <p data-key="tut_s3">3. Seleciona o serviço (Google Drive ou OneDrive).</p>
-                    <p data-key="tut_s4">4. Quando perguntar <i class="text-white">"Use auto config?"</i>, responde <b class="text-white">n</b>.</p>
-                    <p data-key="tut_s5">5. Autoriza no browser do teu PC e cola o código no terminal.</p>
-                    <p data-key="tut_s6">6. Termina e as clouds aparecerão aqui automaticamente.</p>
+    <!-- GESTOR DE CLOUDS (FORMATO WINDOWS ADAPTADO) -->
+    <div id="mCloud" class="modal-overlay hidden">
+        <div class="bg-slate-900 border border-slate-700 w-full max-w-2xl rounded-2xl p-8 shadow-2xl overflow-y-auto max-h-[90vh]">
+            <div class="flex justify-between items-center mb-8">
+                <h3 class="text-xl font-black text-white uppercase tracking-wider" data-key="manage_clouds">Gerir Clouds</h3>
+                <button onclick="toggleModal('mCloud', false)" class="text-slate-500 hover:text-white text-2xl">&times;</button>
+            </div>
+
+            <!-- Lista de Clouds Atuais -->
+            <div id="cloud-manager-list" class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-10"></div>
+
+            <!-- Formulário para Adicionar Nova Cloud -->
+            <div class="border-t border-slate-800 pt-8">
+                <h4 class="text-blue-500 font-black text-xs uppercase mb-6 tracking-widest">Adicionar Nova Ligação</h4>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Nome -->
+                    <div>
+                        <label class="text-[10px] text-slate-500 font-bold uppercase mb-2 block">Nome da Conexão</label>
+                        <input type="text" id="new-cloud-name" placeholder="Ex: GoogleDrive" class="input-box">
+                    </div>
+
+                    <!-- Dropdown Provedores -->
+                    <div class="relative">
+                        <label class="text-[10px] text-slate-500 font-bold uppercase mb-2 block">Serviço Cloud</label>
+                        <div onclick="toggleProviderDropdown()" id="provider-selected-view" class="input-box cursor-pointer flex justify-between items-center">
+                            <span id="provider-selected-text" class="text-slate-400">Escolha o serviço...</span>
+                            <i class="fas fa-chevron-down text-blue-500 text-[10px]"></i>
+                        </div>
+                        <div id="dropdown-box" class="hidden">
+                            <div class="p-2 border-b border-slate-800">
+                                <input type="text" id="provider-search" onkeyup="filterProviders(this.value)" placeholder="Pesquisar..." class="w-full bg-black/40 border border-slate-800 rounded p-2 text-[11px] outline-none">
+                            </div>
+                            <div id="providers-list-container"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Campos Manuais (Mega, FTP) -->
+                <div id="manual-auth-fields" class="hidden mt-4 p-4 bg-black/20 rounded-xl border border-white/5 space-y-3">
+                    <input type="text" id="cloud-user" placeholder="E-mail / Utilizador" class="input-box">
+                    <input type="password" id="cloud-pass" placeholder="Palavra-passe" class="input-box">
+                </div>
+
+                <div class="mt-6">
+                    <button id="btn-create-cloud" onclick="submitNewCloud()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-3 rounded-xl transition-all uppercase text-[10px] tracking-widest">
+                        Criar Ligação
+                    </button>
                 </div>
             </div>
-            <div class="mt-8 text-center"><button onclick="toggleModal('mCloud', false)" class="text-slate-500 font-bold text-xs uppercase tracking-widest">Fechar</button></div>
+
+            <div class="mt-8 text-center">
+                <button onclick="toggleModal('mCloud', false)" class="text-slate-600 font-bold text-[10px] uppercase tracking-widest hover:text-white transition-colors">Fechar</button>
+            </div>
         </div>
     </div>
     
