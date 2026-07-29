@@ -637,59 +637,56 @@
         </div>
     </div>
 
-    <!-- GESTOR DE CLOUDS (FORMATO WINDOWS ADAPTADO) -->
+    <!-- GESTOR DE CLOUDS (ESTILO CARDS + PESQUISA) -->
     <div id="mCloud" class="modal-overlay hidden">
-        <div class="bg-slate-900 border border-slate-700 w-full max-w-2xl rounded-2xl p-8 shadow-2xl overflow-y-auto max-h-[90vh]">
+        <div class="bg-slate-900 border border-slate-700 w-full max-w-3xl rounded-2xl p-8 shadow-2xl overflow-y-auto max-h-[90vh]">
             <div class="flex justify-between items-center mb-8">
-                <h3 class="text-xl font-black text-white uppercase tracking-wider" data-key="manage_clouds">Gerir Clouds</h3>
+                <h3 class="text-xl font-black text-white uppercase tracking-wider">Gestão de Clouds</h3>
                 <button onclick="toggleModal('mCloud', false)" class="text-slate-500 hover:text-white text-2xl">&times;</button>
             </div>
 
-            <!-- Lista de Clouds Atuais -->
-            <div id="cloud-manager-list" class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-10"></div>
+            <!-- GRID DE CARTÕES (REMOTE CARDS) -->
+            <div id="cloud-manager-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
+                <!-- Injetado via JS -->
+            </div>
 
-            <!-- Formulário para Adicionar Nova Cloud -->
+            <!-- FORMULÁRIO DE CRIAÇÃO -->
             <div class="border-t border-slate-800 pt-8">
-                <h4 class="text-blue-500 font-black text-xs uppercase mb-6 tracking-widest">Adicionar Nova Ligação</h4>
+                <h4 class="text-blue-500 font-black text-[10px] uppercase mb-6 tracking-[3px]">Nova Ligação</h4>
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <!-- Nome -->
                     <div>
-                        <label class="text-[10px] text-slate-500 font-bold uppercase mb-2 block">Nome da Conexão</label>
+                        <label class="text-[10px] text-slate-500 font-bold uppercase mb-2 block">Nome</label>
                         <input type="text" id="new-cloud-name" placeholder="Ex: GoogleDrive" class="input-box">
                     </div>
 
-                    <!-- Dropdown Provedores -->
                     <div class="relative">
-                        <label class="text-[10px] text-slate-500 font-bold uppercase mb-2 block">Serviço Cloud</label>
+                        <label class="text-[10px] text-slate-500 font-bold uppercase mb-2 block">Serviço</label>
                         <div onclick="toggleProviderDropdown()" id="provider-selected-view" class="input-box cursor-pointer flex justify-between items-center">
                             <span id="provider-selected-text" class="text-slate-400">Escolha o serviço...</span>
-                            <i class="fas fa-chevron-down text-blue-500 text-[10px]"></i>
+                            <i class="fas fa-search text-blue-500 text-[10px]"></i>
                         </div>
-                        <div id="dropdown-box" class="hidden">
-                            <div class="p-2 border-b border-slate-800">
-                                <input type="text" id="provider-search" onkeyup="filterProviders(this.value)" placeholder="Pesquisar..." class="w-full bg-black/40 border border-slate-800 rounded p-2 text-[11px] outline-none">
+                        
+                        <!-- DROPDOWN COM PESQUISA -->
+                        <div id="dropdown-box" class="hidden absolute left-0 right-0 top-full mt-2 bg-slate-950 border border-slate-700 rounded-xl z-[100] shadow-2xl overflow-hidden">
+                            <div class="p-3 border-b border-slate-800 bg-slate-900">
+                                <input type="text" id="provider-search" onkeyup="filterProviders(this.value)" placeholder="Pesquisar nuvem..." class="w-full bg-black/40 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none focus:border-blue-500">
                             </div>
-                            <div id="providers-list-container"></div>
+                            <div id="providers-list-container" class="max-h-60 overflow-y-auto">
+                                <!-- Injetado via JS -->
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Campos Manuais (Mega, FTP) -->
                 <div id="manual-auth-fields" class="hidden mt-4 p-4 bg-black/20 rounded-xl border border-white/5 space-y-3">
                     <input type="text" id="cloud-user" placeholder="E-mail / Utilizador" class="input-box">
                     <input type="password" id="cloud-pass" placeholder="Palavra-passe" class="input-box">
                 </div>
 
-                <div class="mt-6">
-                    <button id="btn-create-cloud" onclick="submitNewCloud()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-3 rounded-xl transition-all uppercase text-[10px] tracking-widest">
-                        Criar Ligação
-                    </button>
-                </div>
-            </div>
-
-            <div class="mt-8 text-center">
-                <button onclick="toggleModal('mCloud', false)" class="text-slate-600 font-bold text-[10px] uppercase tracking-widest hover:text-white transition-colors">Fechar</button>
+                <button id="btn-create-cloud" onclick="submitNewCloud()" class="w-full mt-6 bg-blue-600 hover:bg-blue-500 text-white font-black py-4 rounded-xl transition-all uppercase text-[10px] tracking-widest shadow-lg shadow-blue-500/20">
+                    Criar Ligação
+                </button>
             </div>
         </div>
     </div>
@@ -1545,10 +1542,37 @@
         function confExp() { let val = expMode === 'local' ? expPath : expRemote + ":" + expPath.replace(/^\//, ''); document.getElementById(expMode === 'local' ? 'in-loc' : 'in-rem').value = val; closeExp(); }
         function closeExp() { document.getElementById('expPop').style.display = 'none'; }
         
-        async function renderCloudManager() { 
-            const r = await fetch('/api/browse/remotes'); const rems = await r.json(); 
-            document.getElementById('cloud-manager-list').innerHTML = rems.map(rem => `<div class="flex justify-between bg-slate-800/40 p-4 rounded-xl border border-slate-800"><span class="text-white font-bold">${rem}</span><button onclick="removeCloud('${rem}')" class="text-red-500 text-[10px] font-black">APAGAR</button></div>`).join(''); 
-        }
+        async function renderCloudManager() {
+			const list = document.getElementById('cloud-manager-list');
+			try {
+				const r = await fetch('/api/remotes/list_with_types');
+				const remotes = await r.json();
+
+				if (remotes.length === 0) {
+					list.innerHTML = `<div class="col-span-full text-center py-10 text-slate-600 text-xs italic">Nenhuma cloud configurada.</div>`;
+					return;
+				}
+
+				list.innerHTML = remotes.map(rem => `
+					<div class="bg-slate-800/40 p-4 rounded-xl border border-slate-700 flex flex-col justify-between h-32 hover:border-blue-500/50 transition-colors">
+						<div class="flex justify-between items-start">
+							<div class="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400">
+								<i class="fab fa-${getIcon(rem.type)} text-lg"></i>
+							</div>
+							<button onclick="removeCloud('${rem.name}')" class="text-slate-600 hover:text-red-500 transition-colors">
+								<i class="fas fa-trash-alt text-xs"></i>
+							</button>
+						</div>
+						<div>
+							<div class="text-white font-bold text-sm truncate">${rem.name}</div>
+							<div class="text-[9px] text-slate-500 uppercase font-black tracking-widest">${rem.type}</div>
+						</div>
+					</div>
+				`).join('');
+			} catch(e) {
+				list.innerHTML = `<div class="text-red-500 text-xs">Erro ao carregar clouds.</div>`;
+			}
+		}
         
         async function removeCloud(name) {
 			if (!confirm(`Tens a certeza que queres apagar a ligação "${name}"?`)) return;
@@ -1734,13 +1758,16 @@
 			`).join('');
 		}
 
+		// Garante que o dropdown de pesquisa é filtrado corretamente
 		function filterProviders(val) {
+			const term = val.toLowerCase();
 			const filtered = allRcloneProviders.filter(p => 
-				p.name.toLowerCase().includes(val.toLowerCase()) || 
-				p.desc.toLowerCase().includes(val.toLowerCase())
+				p.name.toLowerCase().includes(term) || 
+				p.desc.toLowerCase().includes(term)
 			);
 			renderProvidersList(filtered);
 		}
+
 
 		function toggleProviderDropdown() {
 			document.getElementById('dropdown-box').classList.toggle('hidden');
@@ -1771,8 +1798,7 @@
 			if (!name || !currentSelectedProviderId) return alert("Preencha o nome e escolha o serviço.");
 
 			const payload = {
-				name: name,
-				provider: currentSelectedProviderId,
+				name: name, provider: currentSelectedProviderId,
 				options: {
 					user: document.getElementById('cloud-user').value,
 					pass: document.getElementById('cloud-pass').value
@@ -1788,12 +1814,16 @@
 			if (resp.ok) {
 				const res = await resp.json();
 				if (res.method === 'browser') {
-					alert("Cloud criada! Como esta é uma conta Google/OneDrive (OAuth), precisas de abrir o terminal do Docker e correr 'rclone config' para terminar a autorização, ou usar o botão 'Reconnect' no terminal.");
+					alert("A abrir o navegador para autorização...");
+					// O segredo: Tentamos abrir o servidor local de auth do rclone que está mapeado
+					// Se o utilizador estiver no mesmo PC, isto funciona.
+					window.open(res.auth_url, '_blank');
 				} else {
 					alert("Sucesso! Cloud adicionada.");
 				}
-				renderCloudManager(); // Atualiza a lista de clouds
-				updateHealth(); // Atualiza os ícones de saúde
+				document.getElementById('new-cloud-name').value = "";
+				renderCloudManager();
+				updateHealth();
 			} else {
 				const err = await resp.json();
 				alert("Erro: " + err.message);

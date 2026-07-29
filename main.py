@@ -1861,41 +1861,56 @@ def get_rclone_providers():
         print(f"Erro ao listar providers: {e}")
     return []
 
+@app.get("/api/remotes/list_with_types")
+def list_remotes_types():
+    """Lista remotes com o tipo para gerar os ícones nos cartões."""
+    try:
+        out = subprocess.check_output(["rclone", "--config", RCLONE_CONFIG, "listremotes", "--long"], text=True)
+        remotes = []
+        for line in out.strip().split('\n'):
+            if ':' in line:
+                parts = line.split(':')
+                remotes.append({
+                    "name": parts[0].strip(),
+                    "type": parts[1].strip()
+                })
+        return remotes
+    except:
+        return []
+
 @app.post("/api/remotes/create")
 async def create_remote_docker(request: Request):
-    try:
-        data = await request.json()
-        name = data.get("name").strip()
-        provider = data.get("provider")
-        options = data.get("options", {})
+    data = await request.json()
+    name = data.get("name").strip()
+    provider = data.get("provider")
+    options = data.get("options", {})
 
-        # Lista de serviços OAuth (que precisam de browser)
-        oauth_list = ['drive', 'onedrive', 'dropbox', 'pcloud', 'box']
+    oauth_list = ['drive', 'onedrive', 'dropbox', 'pcloud', 'box']
 
-        if provider in oauth_list:
-            # Em Docker/Headless, o OAuth é mais complexo.
-            # Vamos lançar o comando, mas avisar o utilizador que deve usar o terminal 
-            # para o primeiro login ou usar a porta 53682 se estiver mapeada.
-            cmd = ["rclone", "--config", RCLONE_CONFIG, "config", "create", name, provider, "config_is_local=false"]
-            # Não bloqueamos a API, apenas disparamos
-            subprocess.Popen(cmd)
-            return {"status": "started", "method": "browser"}
+    if provider in oauth_list:
+        # Modo Avançado: Iniciamos o rclone e tentamos capturar o link de auth
+        # Nota: Porta 53682 deve estar mapeada no Docker para o 'auto-config' funcionar
+        cmd = ["rclone", "--config", RCLONE_CONFIG, "config", "create", name, provider, "config_is_local=true"]
         
-        else:
-            # Modo Manual (Mega, FTP, WebDAV, etc)
-            args = ["rclone", "--config", RCLONE_CONFIG, "config", "create", name, provider, "--non-interactive"]
-            for k, v in options.items():
-                if v: args.extend([k, str(v)])
-            
-            result = subprocess.run(args, capture_output=True, text=True)
-            if result.returncode == 0:
-                # Forçar atualização do cache de saúde
-                asyncio.create_task(update_health_cache())
-                return {"status": "ok", "method": "manual"}
-            else:
-                return JSONResponse(status_code=500, content={"message": result.stderr})
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"message": str(e)})
+        # Iniciamos o processo e não esperamos (Popen)
+        # O rclone vai abrir o servidor na porta 53682 e o browser no host vai capturar
+        subprocess.Popen(cmd)
+        
+        # Como estamos no ZimaOS (Docker), o rclone vai tentar abrir o browser dentro do container e falhar,
+        # mas o servidor local dele fica ativo. O utilizador só precisa de abrir o IP do ZimaOS na porta 53682
+        # ou o link gerado.
+        return {"status": "started", "method": "browser", "auth_url": f"http://localhost:53682/auth?state={name}"}
+    
+    else:
+        args = ["rclone", "--config", RCLONE_CONFIG, "config", "create", name, provider, "--non-interactive"]
+        for k, v in options.items():
+            if v: args.extend([k, str(v)])
+        
+        res = subprocess.run(args, capture_output=True, text=True)
+        if res.returncode == 0:
+            asyncio.create_task(update_health_cache())
+            return {"status": "ok", "method": "manual"}
+        return JSONResponse(status_code=500, content={"message": res.stderr})
 
 @app.get("/")
 async def serve_index(): return FileResponse(os.path.join(WWW_PATH, "index.html"))
