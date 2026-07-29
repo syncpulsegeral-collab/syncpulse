@@ -1930,18 +1930,18 @@ async def create_remote_docker(request: Request):
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
         
         auth_url = ""
-        # Lemos as primeiras 30 linhas à procura do link https://
         for _ in range(30):
             line = proc.stdout.readline()
             if not line: break
-            print(f">>> RCLONE DEBUG: {line.strip()}") # Verificável nos logs do Docker
             
-            # Procuramos o link real do provedor (Google, Microsoft, etc)
-            if "https://" in line and ("accounts.google" in line or "login.microsoft" in line or "authorize" in line):
-                # Limpamos a linha para extrair apenas o URL
-                match = re.search(r'(https://[^\s]+)', line)
+            # Procuramos o link
+            if "https://" in line:
+                # O regex agora é mais rigoroso: apanha apenas o URL até ao primeiro espaço ou quebra de linha
+                match = re.search(r'(https://[^\s\n\r]+)', line)
                 if match:
-                    auth_url = match.group(1)
+                    auth_url = match.group(1).strip()
+                    # Remove pontos finais ou caracteres estranhos que fiquem no fim do URL
+                    auth_url = auth_url.rstrip('.')
                     break
         
         if auth_url:
