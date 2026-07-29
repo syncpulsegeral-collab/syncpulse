@@ -1863,19 +1863,18 @@ def get_rclone_providers():
 
 @app.get("/api/remotes/list_with_types")
 def list_remotes_types():
-    """Lista remotes com o tipo para gerar os ícones nos cartões."""
+    if not os.path.exists(RCLONE_CONFIG):
+        return [] # Retorna lista vazia em vez de erro 500
     try:
         out = subprocess.check_output(["rclone", "--config", RCLONE_CONFIG, "listremotes", "--long"], text=True)
         remotes = []
         for line in out.strip().split('\n'):
             if ':' in line:
                 parts = line.split(':')
-                remotes.append({
-                    "name": parts[0].strip(),
-                    "type": parts[1].strip()
-                })
+                remotes.append({"name": parts[0].strip(), "type": parts[1].strip()})
         return remotes
-    except:
+    except Exception as e:
+        print(f"Erro rclone: {e}")
         return []
 
 @app.post("/api/remotes/create")
