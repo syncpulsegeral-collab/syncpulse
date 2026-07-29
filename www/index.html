@@ -266,17 +266,17 @@
         
         /* Dropdown de Provedores no Modal */
 		#dropdown-box {
-			background-color: #0f172a !important;
-			border: 1px solid #1e293b !important;
+			background-color: #0b111d !important; /* Cor sólida */
+			border: 1px solid #334155 !important;
 			border-radius: 12px;
 			position: absolute;
 			width: 100%;
-			z-index: 1000;
-			top: 100%;
-			margin-top: 5px;
+			z-index: 9999; /* Z-index altíssimo */
+			bottom: 100%; /* Abre para cima para não ser cortado */
+			margin-bottom: 8px;
 			max-height: 250px;
 			overflow-y: auto;
-			box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+			box-shadow: 0 -10px 25px rgba(0,0,0,0.5);
 		}
 		.provider-item {
 			display: flex; align-items: center; gap: 10px; padding: 10px;
@@ -1474,7 +1474,14 @@
             if (!response.ok) { const result = await response.json(); alert(result.message || 'Operação indisponível.'); }
         }
         async function deleteTask(id) { if(confirm("Apagar?")) { tasks = tasks.filter(t => t.id.toString() !== id.toString()); await fetch('/api/tasks', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(tasks)}); } }
-        function toggleModal(id, s) { document.getElementById(id).classList.toggle('hidden', !s); if(id==='mCloud' && s) renderCloudManager(); }
+
+        function toggleModal(id, s) { 
+			document.getElementById(id).classList.toggle('hidden', !s); 
+			if(id === 'mCloud' && s) {
+				renderCloudManager(); // Carrega os cartões
+				fetchRcloneProviders(); // Carrega os serviços para o dropdown
+			}
+		}
         
         function openNewTaskModal() { 
             editingTaskId = null; 
@@ -1599,11 +1606,9 @@
 		// --- CORREÇÃO DA FUNÇÃO DE CARREGAMENTO ---
 		async function renderCloudManager() {
 			const list = document.getElementById('cloud-manager-list');
-			list.innerHTML = `<div class="col-span-full text-center py-10"><i class="fas fa-circle-notch fa-spin text-blue-500"></i></div>`;
-
 			try {
 				const r = await fetch('/api/remotes/list_with_types');
-				if (!r.ok) throw new Error("API Offline");
+				if (!r.ok) throw new Error();
 				const remotes = await r.json();
 
 				if (remotes.length === 0) {
@@ -1612,7 +1617,7 @@
 				}
 
 				list.innerHTML = remotes.map(rem => `
-					<div class="bg-slate-800/40 p-4 rounded-xl border border-slate-800 flex flex-col justify-between h-32">
+					<div class="bg-slate-800/40 p-4 rounded-xl border border-slate-700 flex flex-col justify-between h-32">
 						<div class="flex justify-between items-start">
 							<div class="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400">
 								<i class="fab fa-${getIcon(rem.type)} text-lg"></i>
@@ -1626,7 +1631,7 @@
 					</div>
 				`).join('');
 			} catch(e) {
-				list.innerHTML = `<div class="col-span-full text-center py-10 text-red-500 text-xs font-bold">Erro ao carregar motor SyncPulse.</div>`;
+				list.innerHTML = `<div class="col-span-full text-center py-10 text-red-500 text-xs font-bold">Erro ao ligar ao motor Rclone.</div>`;
 			}
 		}
         
@@ -1796,13 +1801,18 @@
 		let currentSelectedProviderId = "";
 
 		async function fetchRcloneProviders() {
-			const resp = await fetch('/api/remotes/providers');
-			allRcloneProviders = await resp.json();
-			renderProvidersList(allRcloneProviders);
+			try {
+				const resp = await fetch('/api/remotes/providers');
+				if (!resp.ok) return;
+				allRcloneProviders = await resp.json();
+				renderProvidersList(allRcloneProviders);
+			} catch (e) { console.error("Erro providers:", e); }
 		}
+
 
 		function renderProvidersList(list) {
 			const container = document.getElementById('providers-list-container');
+			if (!container) return;
 			container.innerHTML = list.map(p => `
 				<div class="provider-item" onclick="selectCloudProvider('${p.name}', '${p.desc}')">
 					<i class="fas fa-cloud"></i>
@@ -1816,37 +1826,27 @@
 
 		// Garante que o dropdown de pesquisa é filtrado corretamente
 		function filterProviders(val) {
-			const term = val.toLowerCase();
 			const filtered = allRcloneProviders.filter(p => 
-				p.name.toLowerCase().includes(term) || 
-				p.desc.toLowerCase().includes(term)
+				p.name.toLowerCase().includes(val.toLowerCase()) || 
+				p.desc.toLowerCase().includes(val.toLowerCase())
 			);
 			renderProvidersList(filtered);
 		}
 
 
 		function toggleProviderDropdown() {
-			document.getElementById('dropdown-box').classList.toggle('hidden');
-			if (allRcloneProviders.length === 0) fetchRcloneProviders();
+			const box = document.getElementById('dropdown-box');
+			box.classList.toggle('hidden');
 		}
 
 		function selectCloudProvider(id, desc) {
 			currentSelectedProviderId = id;
 			document.getElementById('provider-selected-text').innerText = desc;
-			document.getElementById('provider-selected-text').classList.replace('text-slate-400', 'text-blue-400');
+			document.getElementById('provider-selected-text').classList.add('text-blue-400');
 			document.getElementById('dropdown-box').classList.add('hidden');
 
-			// Mostrar campos de user/pass para Mega, FTP, etc.
 			const manualList = ['mega', 'ftp', 'sftp', 'webdav', 'opendrive'];
-			const manualFields = document.getElementById('manual-auth-fields');
-			
-			if (manualList.includes(id.toLowerCase())) {
-				manualFields.classList.remove('hidden');
-				document.getElementById('btn-create-cloud').innerText = "Criar e Autenticar";
-			} else {
-				manualFields.classList.add('hidden');
-				document.getElementById('btn-create-cloud').innerText = "Criar (Requer Terminal p/ OAuth)";
-			}
+			document.getElementById('manual-auth-fields').classList.toggle('hidden', !manualList.includes(id.toLowerCase()));
 		}
 
 		async function submitNewCloud() {

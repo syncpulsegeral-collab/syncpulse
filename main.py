@@ -1845,36 +1845,41 @@ async def get_health(): return HEALTH_CACHE
 
 @app.get("/api/remotes/providers")
 def get_rclone_providers():
-    """Extrai a lista oficial de serviços do rclone."""
+    """Obtém a lista de serviços suportados pelo rclone."""
     try:
-        # No Docker usamos o comando direto 'rclone'
-        stdout = subprocess.check_output(["rclone", "config", "providers"], text=True)
+        result = subprocess.run(["rclone", "config", "providers"], capture_output=True, text=True, timeout=5)
+        stdout = result.stdout
         start = stdout.find('[')
         end = stdout.rfind(']') + 1
         if start != -1 and end != -1:
             data = json.loads(stdout[start:end])
-            providers = [{"name": p.get("Name"), "desc": p.get("Description")} for p in data 
-                         if p.get("Name") not in ["alias", "crypt", "union"]]
+            providers = [{"name": p.get("Name"), "desc": p.get("Description")} for p in data]
+            # Filtramos tipos internos que não interessam ao utilizador
+            providers = [p for p in providers if p['name'] not in ['alias', 'crypt', 'union', 'combine']]
             providers.sort(key=lambda x: x["desc"])
             return providers
     except Exception as e:
-        print(f"Erro ao listar providers: {e}")
+        print(f"Erro providers: {e}")
     return []
 
 @app.get("/api/remotes/list_with_types")
 def list_remotes_types():
+    """Lista as clouds configuradas. Retorna vazio se não houver ficheiro."""
     if not os.path.exists(RCLONE_CONFIG):
-        return [] # Retorna lista vazia em vez de erro 500
+        return []
     try:
-        out = subprocess.check_output(["rclone", "--config", RCLONE_CONFIG, "listremotes", "--long"], text=True)
+        # Usamos o comando listremotes --long para obter Nome e Tipo
+        result = subprocess.run(["rclone", "--config", RCLONE_CONFIG, "listremotes", "--long"], 
+                                capture_output=True, text=True, timeout=5)
+        if result.returncode != 0: return []
+        
         remotes = []
-        for line in out.strip().split('\n'):
+        for line in result.stdout.strip().split('\n'):
             if ':' in line:
                 parts = line.split(':')
                 remotes.append({"name": parts[0].strip(), "type": parts[1].strip()})
         return remotes
-    except Exception as e:
-        print(f"Erro rclone: {e}")
+    except:
         return []
 
 @app.post("/api/remotes/create")
