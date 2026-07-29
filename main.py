@@ -1917,45 +1917,55 @@ def list_remotes_types():
 
 @app.post("/api/remotes/create")
 async def create_remote_docker(request: Request):
-    try:
-        data = await request.json()
-        name = data.get("name").strip()
-        provider = data.get("provider")
+    data = await request.json()
+    name = data.get("name").strip()
+    provider = data.get("provider")
+    
+    # Para serviços de Browser (OAuth)
+    if provider in ['drive', 'onedrive', 'dropbox', 'pcloud', 'box']:
+        # IMPORTANTE: config_is_local=false força o link externo
+        cmd = ["rclone", "config", "create", name, provider, "config_is_local=false", "--non-interactive"]
         
-        oauth_list = ['drive', 'onedrive', 'dropbox', 'pcloud', 'box']
+        # Abrimos o processo e lemos o output em tempo real
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
         
-        if provider in oauth_list:
-            # Forçamos o link de autorização externa (Headless)
-            cmd = ["rclone", "--config", RCLONE_CONFIG, "config", "create", name, provider, "config_is_local=false"]
-            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        auth_url = ""
+        for _ in range(50): # Aumentamos o range para garantir que lê o output todo
+            line = proc.stdout.readline()
+            if not line: break
             
-            auth_url = ""
-            # Lemos as primeiras 50 linhas à procura do link
-            for _ in range(50):
-                line = proc.stdout.readline()
-                if not line: break
-                if "https://" in line:
-                    # Regex para apanhar o link limpo
-                    match = re.search(r'(https://[^\s\n\r]+)', line)
-                    if match:
-                        auth_url = match.group(1).strip().split('\\')[0].split(' ')[0].rstrip('.')
-                        break
-            
-            if auth_url:
-                return {"status": "awaiting_code", "url": auth_url, "name": name, "provider": provider}
-            return JSONResponse(status_code=500, content={"message": "Não foi possível gerar link."})
-        
-        else:
-            # Modo Manual (Mega/FTP)
-            options = data.get("options", {})
-            args = ["rclone", "--config", RCLONE_CONFIG, "config", "create", name, provider, "--non-interactive"]
-            for k, v in options.items():
-                if v: args.extend([k, str(v)])
-            res = subprocess.run(args, capture_output=True, text=True)
-            return {"status": "ok" if res.returncode == 0 else "error", "message": res.stderr}
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"message": str(e)})
+            # Print para veres exatamente o que o rclone está a dizer nos logs do Docker
+            print(f">>> RCLONE OUTPUT: {repr(line)}") 
 
+            if "https://" in line:
+                # 1. Encontra onde começa o link
+                start_pos = line.find("https://")
+                # 2. Pega em tudo a partir daí
+                url_part = line[start_pos:]
+                # 3. .split()[0] corta NO PRIMEIRO espaço, \n ou \r que encontrar
+                auth_url = url_part.split()[0]
+                # 4. Limpeza final de caracteres de pontuação que o rclone às vezes mete no fim
+                auth_url = auth_url.strip().rstrip('.').rstrip(')').rstrip('\\')
+                
+                # Se o link for o de setup, ele está pronto
+                if "rclone.org/remote_setup" in auth_url:
+                    break
+        
+        if auth_url:
+            return {"status": "awaiting_code", "url": auth_url, "name": name, "provider": provider}
+        else:
+            return JSONResponse(status_code=500, content={"message": "Não foi possível gerar o link de autorização. Verifica os logs."})
+    
+    else:
+        # Modo Manual (Mega, FTP, etc)
+        options = data.get("options", {})
+        args = ["rclone", "config", "create", name, provider, "--non-interactive", "--config", RCLONE_CONFIG]
+        for k, v in options.items():
+            if v: args.extend([k, str(v)])
+        
+        res = subprocess.run(args, capture_output=True, text=True)
+        return {"status": "ok" if res.returncode == 0 else "error", "message": res.stderr}
+        
 @app.post("/api/remotes/submit_code")
 async def submit_auth_code(request: Request):
     try:
@@ -1968,7 +1978,7 @@ async def submit_auth_code(request: Request):
             return {"status": "ok"}
         return JSONResponse(status_code=500, content={"message": res.stderr})
     except Exception as e:
-        return JSONResponse(status_code=500, content={"message": str(e)})       
+        return JSONResponse(status_code=500, content={"message": str(e)})      
 
 @app.get("/")
 async def serve_index(): return FileResponse(os.path.join(WWW_PATH, "index.html"))
