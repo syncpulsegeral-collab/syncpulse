@@ -1888,9 +1888,10 @@
 		function toggleProviderDropdown() {
 			const box = document.getElementById('dropdown-box');
 			box.classList.toggle('hidden');
+			if(allRcloneProviders.length === 0) fetchRcloneProviders();
 		}
 
-		function selectCloudProvider(id, desc) {
+		function selectProvider(id, desc) {
 			currentSelectedProviderId = id;
 			document.getElementById('provider-selected-text').innerText = desc;
 			document.getElementById('provider-selected-text').classList.add('text-blue-400');
