@@ -1841,139 +1841,63 @@ async def delete_cloud_config(name: str):
 @app.get("/api/health")
 async def get_health(): return HEALTH_CACHE
 
-# --- NOVOS ENDPOINTS PARA GESTÃO DE CLOUDS (DOCKER) ---
+
+# --- ENDPOINTS GESTÃO DE CLOUDS (ESTÁVEIS) ---
 
 @app.get("/api/remotes/providers")
 def get_rclone_providers():
-    """Obtém a lista de serviços suportados pelo rclone."""
     try:
-        result = subprocess.run(["rclone", "config", "providers"], capture_output=True, text=True, timeout=5)
-        stdout = result.stdout
-        start = stdout.find('[')
-        end = stdout.rfind(']') + 1
-        if start != -1 and end != -1:
+        res = subprocess.run(["rclone", "config", "providers"], capture_output=True, text=True, timeout=5)
+        stdout = res.stdout
+        start, end = stdout.find('['), stdout.rfind(']') + 1
+        if start != -1:
             data = json.loads(stdout[start:end])
             providers = [{"name": p.get("Name"), "desc": p.get("Description")} for p in data]
-            # Filtramos tipos internos que não interessam ao utilizador
-            providers = [p for p in providers if p['name'] not in ['alias', 'crypt', 'union', 'combine']]
-            providers.sort(key=lambda x: x["desc"])
-            return providers
-    except Exception as e:
-        print(f"Erro providers: {e}")
+            return sorted([p for p in providers if p['name'] not in ['alias', 'crypt', 'union']], key=lambda x: x["desc"])
+    except: pass
     return []
 
 @app.get("/api/remotes/list_with_types")
 def list_remotes_types():
-    """Lê os remotes diretamente do ficheiro rclone.conf via Python (mais fiável no Docker)."""
-    print(f">>> [DEBUG] A ler remotes de: {RCLONE_CONFIG}")
-    
-    if not os.path.exists(RCLONE_CONFIG):
-        print(">>> [DEBUG] Ficheiro rclone.conf não existe.")
-        return []
-
-    # Tenta garantir que o ficheiro é legível (correção de permissões comum no ZimaOS)
-    try:
-        os.chmod(RCLONE_CONFIG, 0o666) 
-    except:
-        pass
-
-    remotes = []
-    
-    # MÉTODO 1: Leitura Direta do Ficheiro (Recomendado para Docker)
+    if not os.path.exists(RCLONE_CONFIG): return []
     try:
         config = configparser.ConfigParser()
         config.read(RCLONE_CONFIG, encoding='utf-8')
-        
-        for section in config.sections():
-            # O rclone guarda o tipo na chave 'type' dentro de cada seção [nome]
-            r_type = config.get(section, 'type', fallback='unknown')
-            remotes.append({
-                "name": section,
-                "type": r_type
-            })
-            
-        if remotes:
-            print(f">>> [DEBUG] {len(remotes)} remotes encontrados via ConfigParser.")
-            return remotes
-    except Exception as e:
-        print(f">>> [DEBUG] Erro ao ler ficheiro via Python: {e}")
-
-    # MÉTODO 2: Fallback via binário rclone (se o método 1 falhar)
-    try:
-        result = subprocess.run(
-            ["rclone", "--config", RCLONE_CONFIG, "listremotes", "--long"], 
-            capture_output=True, text=True, timeout=5
-        )
-        if result.returncode == 0:
-            for line in result.stdout.strip().split('\n'):
-                if ':' in line:
-                    parts = line.split(':')
-                    remotes.append({"name": parts[0].strip(), "type": parts[1].strip()})
-            return remotes
-    except:
-        pass
-
-    return []
+        return [{"name": s, "type": config.get(s, 'type', fallback='cloud')} for s in config.sections()]
+    except: return []
 
 @app.post("/api/remotes/create")
 async def create_remote_docker(request: Request):
     data = await request.json()
-    name = data.get("name").strip()
-    provider = data.get("provider")
-    
-    # Para serviços de Browser (OAuth)
+    name, provider = data.get("name").strip(), data.get("provider")
     if provider in ['drive', 'onedrive', 'dropbox', 'pcloud', 'box']:
-        # IMPORTANTE: config_is_local=false força o link externo
         cmd = ["rclone", "config", "create", name, provider, "config_is_local=false", "--non-interactive"]
-        
-        # Abrimos o processo e lemos o output em tempo real
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-        
         auth_url = ""
         for _ in range(50):
             line = proc.stdout.readline()
             if not line: break
-            
             if "https://" in line:
-                # Esta expressão regular isola APENAS o link, 
-                # ignorando \n, espaços ou a palavra "Execute"
                 match = re.search(r'(https://[^\s\n\r]+)', line)
                 if match:
-                    auth_url = match.group(1).strip()
-                    # Limpeza final: remove pontos ou barras invertidas acidentais no fim
-                    auth_url = auth_url.rstrip('.').replace('\\n', '').replace('\\', '')
-                    
-                    # Se encontrarmos o link de setup ou o da google, paramos
-                    if "rclone.org" in auth_url or "google" in auth_url:
-                        break
-        
-        if auth_url:
-            return {"status": "awaiting_code", "url": auth_url, "name": name, "provider": provider}
-        else:
-            return JSONResponse(status_code=500, content={"message": "Não foi possível gerar o link de autorização. Verifica os logs."})
-    
+                    auth_url = match.group(1).strip().split('\\')[0].split(' ')[0].rstrip('.')
+                    if "rclone.org" in auth_url or "google" in auth_url: break
+        if auth_url: return {"status": "awaiting_code", "url": auth_url, "name": name, "provider": provider}
+        return JSONResponse(status_code=500, content={"message": "Falha ao gerar link."})
     else:
-        # Modo Manual (Mega, FTP, etc)
         options = data.get("options", {})
-        args = ["rclone", "config", "create", name, provider, "--non-interactive", "--config", RCLONE_CONFIG]
+        args = ["rclone", "--config", RCLONE_CONFIG, "config", "create", name, provider, "--non-interactive"]
         for k, v in options.items():
             if v: args.extend([k, str(v)])
-        
         res = subprocess.run(args, capture_output=True, text=True)
-        return {"status": "ok" if res.returncode == 0 else "error", "message": res.stderr}
-        
+        return {"status": "ok" if res.returncode == 0 else "error"}
+
 @app.post("/api/remotes/submit_code")
 async def submit_auth_code(request: Request):
-    """Recebe o código que o utilizador copiou do Google/Microsoft."""
     data = await request.json()
-    # Aqui simulamos o envio do código para o processo rclone que ficou à espera
-    # Mas como o rclone create --non-interactive morre, o ideal é criar via argumentos:
-    name = data.get("name")
-    code = data.get("code")
-    # Comando final para criar usando o código recebido
-    cmd = ["rclone", "config", "create", name, data.get("provider"), "config_is_local=false", "token", code, "--non-interactive"]
+    cmd = ["rclone", "config", "create", data.get("name"), data.get("provider"), "config_is_local=false", "token", data.get("code"), "--non-interactive"]
     res = subprocess.run(cmd, capture_output=True, text=True)
-    return {"status": "ok" if res.returncode == 0 else "error"}        
+    return {"status": "ok" if res.returncode == 0 else "error"}      
 
 @app.get("/")
 async def serve_index(): return FileResponse(os.path.join(WWW_PATH, "index.html"))

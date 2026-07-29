@@ -267,23 +267,14 @@
         /* Dropdown de Provedores no Modal */
 		#dropdown-box {
 			background-color: #0b111d !important;
-			border: 1px solid #1e293b !important;
+			border: 1px solid #334155 !important;
 			border-radius: 12px;
-			position: absolute;
-			width: 100%;
-			z-index: 9999; /* Fica por cima de tudo */
-			bottom: 100%;  /* Abre para cima para não ser cortado pelo fundo do modal */
-			margin-bottom: 8px;
-			
-			/* LIMITAR ALTURA E CONTROLAR SCROLL INTERNO */
-			max-height: 220px;
-			overflow-y: auto;
-			overflow-x: hidden;
-			
-			box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.8);
+			position: absolute; width: 100%; z-index: 9999;
+			bottom: 100%; margin-bottom: 8px;
+			max-height: 200px; overflow-y: auto; overflow-x: hidden;
+			box-shadow: 0 -10px 30px rgba(0,0,0,0.8);
 		}
 
-		/* Scrollbar fina para o dropdown */
 		#dropdown-box::-webkit-scrollbar {
 			width: 4px;
 		}
@@ -324,15 +315,9 @@
 			justify-content: center;
 		}
 
-		#mCloud-content {
-			min-width: 500px;
-			min-height: 400px;
-			display: flex;
-			flex-direction: column;
-			position: relative;
-			/* Adiciona isto para permitir o resize manual do browser se o JS falhar */
-			resize: both; 
-			overflow: hidden; 
+		#cloud-manager-list {
+			flex: 1; overflow-y: auto; /* O scroll fica apenas nos cartões */
+			padding-right: 8px;
 		}
 
 		#cloud-manager-list {
@@ -341,12 +326,11 @@
 			padding-right: 10px;
 		}
 
-		.resizer-handle::after {
-			content: "";
-			width: 5px;
-			height: 5px;
-			border-right: 2px solid #3b82f6;
-			border-bottom: 2px solid #3b82f6;
+		.resizer-handle {
+			width: 16px; height: 16px;
+			position: absolute; right: 4px; bottom: 4px;
+			cursor: nwse-resize; z-index: 100;
+			border-right: 2px solid #3b82f6; border-bottom: 2px solid #3b82f6;
 		}
     </style>
 </head>
@@ -432,7 +416,7 @@
 							<path d="M100 256H160L190 140L256 380L322 140L352 256H412" stroke="#3b82f6" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>
 						</svg>
 					</div>
-					<h2 class="text-xl font-black text-white uppercase tracking-widest">SyncPulse <span class="text-blue-500">beta 2.13</span></h2>
+					<h2 class="text-xl font-black text-white uppercase tracking-widest">SyncPulse <span class="text-blue-500">v1.0</span></h2>
 					<p class="text-[10px] text-slate-500 font-bold uppercase mt-1">ZimaOS Edition</p>
 				</div>
 
@@ -741,19 +725,22 @@
                     <input type="text" id="cloud-user" placeholder="Utilizador" class="input-box">
                     <input type="password" id="cloud-pass" placeholder="Password" class="input-box">
                 </div>
-                <button id="btn-create-cloud" onclick="submitNewCloud()" class="w-full bg-blue-600 text-white py-4 rounded-xl font-black uppercase text-[10px]">
-					Criar Ligação
-				</button>
+                <button onclick="submitNewCloud()" class="w-full mt-4 bg-blue-600 hover:bg-blue-500 text-white font-black py-3 rounded-xl uppercase text-[10px] tracking-widest shadow-lg shadow-blue-500/20">
+                    Criar Ligação
+                </button>
             </div>
 
             <!-- PUXADOR DE REDIMENSIONAMENTO -->
             <div id="mCloud-resizer" class="resizer-handle"></div>
 			<!-- Campo que aparece apenas para OAuth -->
-			<div id="oauth-step-2" class="hidden mt-4 p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl">
-				<a id="auth-link" href="#" target="_blank" class="text-blue-400 underline text-xs block mb-4">Link de Autorização</a>
+			<div id="oauth-step-2" class="hidden mt-6 p-4 bg-blue-500/10 border border-blue-500/30 rounded-xl">
+				<p class="text-[10px] text-blue-400 font-bold uppercase mb-3">1. Autoriza no Browser através do link abaixo</p>
+				<a id="auth-link" href="#" target="_blank" class="text-white underline text-xs block mb-4 truncate">Clicar aqui para Autorizar</a>
+				
+				<p class="text-[10px] text-blue-400 font-bold uppercase mb-2">2. Cola o código gerado aqui:</p>
 				<div class="flex gap-2">
-					<input type="text" id="auth-code" placeholder="Cola o código/token aqui..." class="input-box">
-					<button onclick="confirmAuthCode()" class="bg-green-600 px-4 rounded text-white font-bold">OK</button>
+					<input type="text" id="auth-code" placeholder="Cola o código aqui..." class="input-box">
+					<button onclick="confirmAuthCode()" class="bg-green-600 px-4 rounded text-white font-bold text-xs">OK</button>
 				</div>
 			</div>
         </div>
@@ -842,7 +829,7 @@
                 </div>
                 
                 <div class="text-center opacity-70 text-[11px] font-mono text-slate-500 pt-2">
-                    SyncPulse ZIMAOS EDITION<br>BETA 2.12
+                    SyncPulse ZIMAOS EDITION<br>VERSION 1.0
                 </div>
             </div>
 
@@ -1658,35 +1645,35 @@
 		}
 
 		// --- CORREÇÃO DA FUNÇÃO DE CARREGAMENTO ---
+		const mCont = document.getElementById('mCloud-content');
+		document.getElementById('mCloud-resizer').onmousedown = (e) => {
+			e.preventDefault();
+			window.onmousemove = (ev) => {
+				const w = ev.clientX - mCont.getBoundingClientRect().left;
+				const h = ev.clientY - mCont.getBoundingClientRect().top;
+				if(w > 450) mCont.style.width = w + 'px';
+				if(h > 350) mCont.style.height = h + 'px';
+			};
+			window.onmouseup = () => window.onmousemove = null;
+		};
+
+		// --- GESTÃO DE CLOUDS ---
 		async function renderCloudManager() {
 			const list = document.getElementById('cloud-manager-list');
 			try {
 				const r = await fetch('/api/remotes/list_with_types');
-				if (!r.ok) throw new Error();
 				const remotes = await r.json();
-
-				if (remotes.length === 0) {
-					list.innerHTML = `<div class="col-span-full text-center py-10 text-slate-500 text-xs italic">Nenhuma cloud configurada.</div>`;
-					return;
-				}
-
-				list.innerHTML = remotes.map(rem => `
-					<div class="bg-slate-800/40 p-4 rounded-xl border border-slate-700 flex flex-col justify-between h-32">
+				list.innerHTML = remotes.length ? remotes.map(rem => `
+					<div class="bg-slate-800/40 p-4 rounded-xl border border-slate-700 flex flex-col justify-between h-32 mb-2">
 						<div class="flex justify-between items-start">
-							<div class="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400">
-								<i class="fab fa-${getIcon(rem.type)} text-lg"></i>
-							</div>
+							<i class="fab fa-${getIcon(rem.type)} text-blue-400 text-lg"></i>
 							<button onclick="removeCloud('${rem.name}')" class="text-slate-600 hover:text-red-500"><i class="fas fa-trash-alt text-xs"></i></button>
 						</div>
-						<div class="mt-2">
-							<div class="text-white font-bold text-sm truncate">${rem.name}</div>
-							<div class="text-[9px] text-slate-500 uppercase font-black tracking-widest">${rem.type}</div>
-						</div>
+						<div class="text-white font-bold text-sm truncate">${rem.name}</div>
+						<div class="text-[9px] text-slate-500 uppercase font-black">${rem.type}</div>
 					</div>
-				`).join('');
-			} catch(e) {
-				list.innerHTML = `<div class="col-span-full text-center py-10 text-red-500 text-xs font-bold">Erro ao ligar ao motor Rclone.</div>`;
-			}
+				`).join('') : '<div class="text-center py-10 text-slate-600 text-xs italic">Nenhuma cloud configurada.</div>';
+			} catch(e) { list.innerHTML = '<div class="text-red-500 text-xs">Erro ao carregar motor.</div>'; }
 		}
         
         async function removeCloud(name) {
@@ -1880,10 +1867,8 @@
 
 		// Garante que o dropdown de pesquisa é filtrado corretamente
 		function filterProviders(val) {
-			const filtered = allRcloneProviders.filter(p => 
-				p.name.toLowerCase().includes(val.toLowerCase()) || 
-				p.desc.toLowerCase().includes(val.toLowerCase())
-			);
+			const term = val.toLowerCase().trim();
+			const filtered = allRcloneProviders.filter(p => p.desc.toLowerCase().includes(term) || p.name.toLowerCase().includes(term));
 			renderProvidersList(filtered);
 		}
 
@@ -1891,10 +1876,9 @@
 		function toggleProviderDropdown() {
 			const box = document.getElementById('dropdown-box');
 			box.classList.toggle('hidden');
-			if(allRcloneProviders.length === 0) fetchRcloneProviders();
 		}
 
-		function selectProvider(id, desc) {
+		function selectCloudProvider(id, desc) {
 			currentSelectedProviderId = id;
 			document.getElementById('provider-selected-text').innerText = desc;
 			document.getElementById('provider-selected-text').classList.add('text-blue-400');
@@ -1904,107 +1888,48 @@
 			document.getElementById('manual-auth-fields').classList.toggle('hidden', !manualList.includes(id.toLowerCase()));
 		}
 
-		// Variáveis Globais (Devem estar no topo do script)
-		let currentSelectedProviderId = ""; 
-		let window_currentPendingCloud = null;
-
 		async function submitNewCloud() {
-			console.log("Botão clicado!"); // Debug no F12
-
-			const nameInput = document.getElementById('new-cloud-name');
-			const name = nameInput ? nameInput.value.trim() : "";
+			const name = document.getElementById('new-cloud-name').value.trim();
+			if (!name || !currentSelectedProviderId) return alert("Preencha o nome e escolha o serviço.");
 			
-			if (!name) {
-				alert("Por favor, dá um nome à tua ligação.");
-				return;
-			}
-			
-			if (!currentSelectedProviderId) {
-				alert("Por favor, seleciona um serviço cloud no menu.");
-				return;
-			}
+			const resp = await fetch('/api/remotes/create', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ 
+					name, provider: currentSelectedProviderId,
+					options: { user: document.getElementById('cloud-user').value, pass: document.getElementById('cloud-pass').value }
+				})
+			});
 
-			// Feedback visual no botão
-			const btn = document.getElementById('btn-create-cloud');
-			const originalText = btn.innerText;
-			btn.innerText = "A PROCESSAR...";
-			btn.disabled = true;
-
-			const payload = {
-				name: name,
-				provider: currentSelectedProviderId,
-				options: {
-					user: document.getElementById('cloud-user').value || "",
-					pass: document.getElementById('cloud-pass').value || ""
-				}
-			};
-
-			try {
-				const resp = await fetch('/api/remotes/create', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify(payload)
-				});
-
-				const res = await resp.json();
-
-				if (res.status === 'awaiting_code') {
-					document.getElementById('oauth-step-2').classList.remove('hidden');
-					
-					// LIMPEZA ADICIONAL NO FRONTEND
-					const cleanUrl = res.url.replace(/\\n/g, '').replace(/\\/g, '').trim();
-					
-					const linkEl = document.getElementById('auth-link');
-					linkEl.href = cleanUrl;
-					linkEl.innerText = cleanUrl;
-					
-					window.currentPendingCloud = { name: name, provider: res.provider };
-				} 
-				else if (res.status === 'ok') {
-					// MODO MANUAL (Mega/FTP)
-					alert("Sucesso! A cloud foi configurada.");
-					nameInput.value = "";
-					document.getElementById('manual-auth-fields').classList.add('hidden');
-					renderCloudManager(); // Recarrega os cartões
-				} 
-				else {
-					alert("Erro do motor: " + (res.message || "Erro desconhecido"));
-				}
-			} catch (e) {
-				console.error(e);
-				alert("Erro ao comunicar com o servidor.");
-			} finally {
-				btn.innerText = originalText;
-				btn.disabled = false;
+			const res = await resp.json();
+			if (res.status === 'awaiting_code') {
+				document.getElementById('oauth-step-2').classList.remove('hidden');
+				const cleanUrl = res.url.replace(/\\n/g, '').replace(/\\/g, '').trim();
+				const linkEl = document.getElementById('auth-link');
+				linkEl.href = cleanUrl; linkEl.innerText = "CLICA AQUI PARA AUTORIZAR";
+				window.currentPendingCloud = { name, provider: res.provider };
+			} else {
+				alert("Sucesso!"); renderCloudManager();
 			}
 		}
-
+		
 		async function confirmAuthCode() {
 			const code = document.getElementById('auth-code').value.trim();
-			if (!code) return alert("Cola o código primeiro.");
-
-			try {
-				const resp = await fetch('/api/remotes/submit_code', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ 
-						name: window_currentPendingCloud.name,
-						provider: window_currentPendingCloud.provider,
-						code: code 
-					})
-				});
-				
-				const res = await resp.json();
-				if (res.status === 'ok') {
-					alert("Configuração concluída!");
-					document.getElementById('oauth-step-2').classList.add('hidden');
-					document.getElementById('new-cloud-name').value = "";
-					renderCloudManager();
-				} else {
-					alert("O código foi rejeitado. Verifica se copiaste o token correto.");
-				}
-			} catch (e) {
-				alert("Erro de rede.");
+			const resp = await fetch('/api/remotes/submit_code', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ 
+					...window.currentPendingCloud,
+					code: code 
+				})
+			});
+			
+			if ((await resp.json()).status === 'ok') {
+				alert("Cloud Configurada!");
+				document.getElementById('oauth-step-2').classList.add('hidden');
+				renderCloudManager();
+			} else {
+				alert("Erro ao validar código.");
 			}
 		}
 		
@@ -2027,4 +1952,3 @@
     </script>
 </body>
 </html>\
-//beta
