@@ -1866,7 +1866,7 @@ def list_remotes_types():
         return [{"name": s, "type": config.get(s, 'type', fallback='cloud')} for s in config.sections()]
     except: return []
 
-@@app.post("/api/remotes/create")
+@app.post("/api/remotes/create")
 async def create_remote_docker(request: Request):
     data = await request.json()
     name, provider = data.get("name").strip(), data.get("provider")
