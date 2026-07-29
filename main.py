@@ -1920,34 +1920,46 @@ async def create_remote_docker(request: Request):
     data = await request.json()
     name = data.get("name").strip()
     provider = data.get("provider")
-    options = data.get("options", {})
-
-    oauth_list = ['drive', 'onedrive', 'dropbox', 'pcloud', 'box']
-
-    if provider in oauth_list:
-        # Modo Avançado: Iniciamos o rclone e tentamos capturar o link de auth
-        # Nota: Porta 53682 deve estar mapeada no Docker para o 'auto-config' funcionar
-        cmd = ["rclone", "--config", RCLONE_CONFIG, "config", "create", name, provider, "config_is_local=true"]
+    
+    # Para OAuth (Drive, OneDrive, etc)
+    if provider in ['drive', 'onedrive', 'dropbox', 'pcloud', 'box']:
+        # Iniciamos o rclone em modo NÃO LOCAL para ele nos dar o link no terminal
+        # Usamos o PIPE para ler o que o rclone escreve
+        cmd = ["rclone", "config", "create", name, provider, "config_is_local=false", "--non-interactive"]
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         
-        # Iniciamos o processo e não esperamos (Popen)
-        # O rclone vai abrir o servidor na porta 53682 e o browser no host vai capturar
-        subprocess.Popen(cmd)
+        # Tentamos ler a primeira linha que contém o link de autorização
+        auth_url = ""
+        for _ in range(20): # Tenta ler durante alguns segundos
+            line = proc.stdout.readline()
+            if "https://" in line:
+                auth_url = line.strip().split("https://")[-1]
+                auth_url = "https://" + auth_url
+                break
         
-        # Como estamos no ZimaOS (Docker), o rclone vai tentar abrir o browser dentro do container e falhar,
-        # mas o servidor local dele fica ativo. O utilizador só precisa de abrir o IP do ZimaOS na porta 53682
-        # ou o link gerado.
-        return {"status": "started", "method": "browser", "auth_url": f"http://localhost:53682/auth?state={name}"}
+        return {"status": "awaiting_code", "url": auth_url, "name": name}
     
     else:
+        # Modo Manual (Mega, FTP, etc) mantém-se igual
+        options = data.get("options", {})
         args = ["rclone", "--config", RCLONE_CONFIG, "config", "create", name, provider, "--non-interactive"]
         for k, v in options.items():
             if v: args.extend([k, str(v)])
-        
         res = subprocess.run(args, capture_output=True, text=True)
-        if res.returncode == 0:
-            asyncio.create_task(update_health_cache())
-            return {"status": "ok", "method": "manual"}
-        return JSONResponse(status_code=500, content={"message": res.stderr})
+        return {"status": "ok" if res.returncode == 0 else "error"}
+        
+@app.post("/api/remotes/submit_code")
+async def submit_auth_code(request: Request):
+    """Recebe o código que o utilizador copiou do Google/Microsoft."""
+    data = await request.json()
+    # Aqui simulamos o envio do código para o processo rclone que ficou à espera
+    # Mas como o rclone create --non-interactive morre, o ideal é criar via argumentos:
+    name = data.get("name")
+    code = data.get("code")
+    # Comando final para criar usando o código recebido
+    cmd = ["rclone", "config", "create", name, data.get("provider"), "config_is_local=false", "token", code, "--non-interactive"]
+    res = subprocess.run(cmd, capture_output=True, text=True)
+    return {"status": "ok" if res.returncode == 0 else "error"}        
 
 @app.get("/")
 async def serve_index(): return FileResponse(os.path.join(WWW_PATH, "index.html"))

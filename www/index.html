@@ -266,22 +266,34 @@
         
         /* Dropdown de Provedores no Modal */
 		#dropdown-box {
-			background-color: #0b111d !important; /* Cor sólida */
+			background-color: #0b111d !important;
 			border: 1px solid #334155 !important;
 			border-radius: 12px;
 			position: absolute;
 			width: 100%;
-			z-index: 9999; /* Z-index altíssimo */
-			bottom: 100%; /* Abre para cima para não ser cortado */
+			z-index: 9999;
+			bottom: 100%; /* Abre para cima */
 			margin-bottom: 8px;
-			max-height: 250px;
-			overflow-y: auto;
-			box-shadow: 0 -10px 25px rgba(0,0,0,0.5);
+			/* Importante: */
+			max-height: 200px;
+			overflow-y: auto; 
+			overflow-x: hidden;
+			box-shadow: 0 -10px 25px rgba(0,0,0,0.8);
 		}
+
+		#dropdown-box::-webkit-scrollbar {
+			width: 4px;
+		}
+		#dropdown-box::-webkit-scrollbar-thumb {
+			background: #3b82f6;
+			border-radius: 10px;
+		}
+
 		.provider-item {
-			display: flex; align-items: center; gap: 10px; padding: 10px;
-			cursor: pointer; transition: 0.2s; border-bottom: 1px solid rgba(255,255,255,0.05);
+			width: 100%;
+			white-space: nowrap;
 		}
+
 		.provider-item:hover { background: rgba(59, 130, 246, 0.1); }
 		.provider-item i { color: #3b82f6; font-size: 14px; }
 		
@@ -733,6 +745,17 @@
 
             <!-- PUXADOR DE REDIMENSIONAMENTO -->
             <div id="mCloud-resizer" class="resizer-handle"></div>
+			<!-- Campo que aparece apenas para OAuth -->
+			<div id="oauth-step-2" class="hidden mt-6 p-4 bg-blue-500/10 border border-blue-500/30 rounded-xl">
+				<p class="text-[10px] text-blue-400 font-bold uppercase mb-3">1. Autoriza no Browser através do link abaixo</p>
+				<a id="auth-link" href="#" target="_blank" class="text-white underline text-xs block mb-4 truncate">Clicar aqui para Autorizar</a>
+				
+				<p class="text-[10px] text-blue-400 font-bold uppercase mb-2">2. Cola o código gerado aqui:</p>
+				<div class="flex gap-2">
+					<input type="text" id="auth-code" placeholder="Cola o código aqui..." class="input-box">
+					<button onclick="confirmAuthCode()" class="bg-green-600 px-4 rounded text-white font-bold text-xs">OK</button>
+				</div>
+			</div>
         </div>
     </div>
     
@@ -1882,38 +1905,52 @@
 
 		async function submitNewCloud() {
 			const name = document.getElementById('new-cloud-name').value.trim();
-			if (!name || !currentSelectedProviderId) return alert("Preencha o nome e escolha o serviço.");
-
-			const payload = {
-				name: name, provider: currentSelectedProviderId,
-				options: {
-					user: document.getElementById('cloud-user').value,
-					pass: document.getElementById('cloud-pass').value
-				}
-			};
-
+			const provider = currentSelectedProviderId;
+			
 			const resp = await fetch('/api/remotes/create', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(payload)
+				body: JSON.stringify({ 
+					name, 
+					provider, 
+					options: {
+						user: document.getElementById('cloud-user').value,
+						pass: document.getElementById('cloud-pass').value
+					}
+				})
 			});
 
-			if (resp.ok) {
-				const res = await resp.json();
-				if (res.method === 'browser') {
-					alert("A abrir o navegador para autorização...");
-					// O segredo: Tentamos abrir o servidor local de auth do rclone que está mapeado
-					// Se o utilizador estiver no mesmo PC, isto funciona.
-					window.open(res.auth_url, '_blank');
-				} else {
-					alert("Sucesso! Cloud adicionada.");
-				}
-				document.getElementById('new-cloud-name').value = "";
+			const res = await resp.json();
+			if (res.status === 'awaiting_code') {
+				// Mostra o passo 2
+				document.getElementById('oauth-step-2').classList.remove('hidden');
+				document.getElementById('auth-link').href = res.url;
+				document.getElementById('auth-link').innerText = res.url;
+				// Guardamos o nome e provider para o próximo passo
+				window.currentPendingCloud = { name, provider };
+			} else if (res.status === 'ok') {
+				alert("Sucesso!");
 				renderCloudManager();
-				updateHealth();
+			}
+		}
+		
+		async function confirmAuthCode() {
+			const code = document.getElementById('auth-code').value.trim();
+			const resp = await fetch('/api/remotes/submit_code', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ 
+					...window.currentPendingCloud,
+					code: code 
+				})
+			});
+			
+			if ((await resp.json()).status === 'ok') {
+				alert("Cloud Configurada!");
+				document.getElementById('oauth-step-2').classList.add('hidden');
+				renderCloudManager();
 			} else {
-				const err = await resp.json();
-				alert("Erro: " + err.message);
+				alert("Erro ao validar código.");
 			}
 		}
 		
