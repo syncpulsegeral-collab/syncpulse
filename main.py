@@ -1845,8 +1845,8 @@ async def get_health(): return HEALTH_CACHE
 
 @app.get("/api/remotes/providers")
 def get_rclone_providers():
+    """Obtém a lista de serviços suportados pelo rclone."""
     try:
-        # Usamos timeout para o rclone não travar o arranque da app
         result = subprocess.run(["rclone", "config", "providers"], capture_output=True, text=True, timeout=5)
         stdout = result.stdout
         start = stdout.find('[')
@@ -1854,28 +1854,66 @@ def get_rclone_providers():
         if start != -1 and end != -1:
             data = json.loads(stdout[start:end])
             providers = [{"name": p.get("Name"), "desc": p.get("Description")} for p in data]
+            # Filtramos tipos internos que não interessam ao utilizador
             providers = [p for p in providers if p['name'] not in ['alias', 'crypt', 'union', 'combine']]
             providers.sort(key=lambda x: x["desc"])
             return providers
-    except:
-        pass
+    except Exception as e:
+        print(f"Erro providers: {e}")
     return []
 
 @app.get("/api/remotes/list_with_types")
 def list_remotes_types():
-    """Lê os remotes diretamente do ficheiro via Python."""
+    """Lê os remotes diretamente do ficheiro rclone.conf via Python (mais fiável no Docker)."""
+    print(f">>> [DEBUG] A ler remotes de: {RCLONE_CONFIG}")
+    
     if not os.path.exists(RCLONE_CONFIG):
+        print(">>> [DEBUG] Ficheiro rclone.conf não existe.")
         return []
+
+    # Tenta garantir que o ficheiro é legível (correção de permissões comum no ZimaOS)
+    try:
+        os.chmod(RCLONE_CONFIG, 0o666) 
+    except:
+        pass
+
+    remotes = []
+    
+    # MÉTODO 1: Leitura Direta do Ficheiro (Recomendado para Docker)
     try:
         config = configparser.ConfigParser()
         config.read(RCLONE_CONFIG, encoding='utf-8')
-        remotes = []
+        
         for section in config.sections():
+            # O rclone guarda o tipo na chave 'type' dentro de cada seção [nome]
             r_type = config.get(section, 'type', fallback='unknown')
-            remotes.append({"name": section, "type": r_type})
-        return remotes
+            remotes.append({
+                "name": section,
+                "type": r_type
+            })
+            
+        if remotes:
+            print(f">>> [DEBUG] {len(remotes)} remotes encontrados via ConfigParser.")
+            return remotes
+    except Exception as e:
+        print(f">>> [DEBUG] Erro ao ler ficheiro via Python: {e}")
+
+    # MÉTODO 2: Fallback via binário rclone (se o método 1 falhar)
+    try:
+        result = subprocess.run(
+            ["rclone", "--config", RCLONE_CONFIG, "listremotes", "--long"], 
+            capture_output=True, text=True, timeout=5
+        )
+        if result.returncode == 0:
+            for line in result.stdout.strip().split('\n'):
+                if ':' in line:
+                    parts = line.split(':')
+                    remotes.append({"name": parts[0].strip(), "type": parts[1].strip()})
+            return remotes
     except:
-        return []
+        pass
+
+    return []
 
 @app.post("/api/remotes/create")
 async def create_remote_docker(request: Request):
@@ -1930,20 +1968,7 @@ async def submit_auth_code(request: Request):
             return {"status": "ok"}
         return JSONResponse(status_code=500, content={"message": res.stderr})
     except Exception as e:
-        return JSONResponse(status_code=500, content={"message": str(e)})
-        
-@app.post("/api/remotes/submit_code")
-async def submit_auth_code(request: Request):
-    """Recebe o código que o utilizador copiou do Google/Microsoft."""
-    data = await request.json()
-    # Aqui simulamos o envio do código para o processo rclone que ficou à espera
-    # Mas como o rclone create --non-interactive morre, o ideal é criar via argumentos:
-    name = data.get("name")
-    code = data.get("code")
-    # Comando final para criar usando o código recebido
-    cmd = ["rclone", "config", "create", name, data.get("provider"), "config_is_local=false", "token", code, "--non-interactive"]
-    res = subprocess.run(cmd, capture_output=True, text=True)
-    return {"status": "ok" if res.returncode == 0 else "error"}        
+        return JSONResponse(status_code=500, content={"message": str(e)})       
 
 @app.get("/")
 async def serve_index(): return FileResponse(os.path.join(WWW_PATH, "index.html"))
