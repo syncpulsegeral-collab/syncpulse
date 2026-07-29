@@ -1866,25 +1866,41 @@ def list_remotes_types():
         return [{"name": s, "type": config.get(s, 'type', fallback='cloud')} for s in config.sections()]
     except: return []
 
-@app.post("/api/remotes/create")
+@@app.post("/api/remotes/create")
 async def create_remote_docker(request: Request):
     data = await request.json()
     name, provider = data.get("name").strip(), data.get("provider")
+    
     if provider in ['drive', 'onedrive', 'dropbox', 'pcloud', 'box']:
+        # config_is_local=false força o rclone a gerar o link para copiar/colar
         cmd = ["rclone", "config", "create", name, provider, "config_is_local=false", "--non-interactive"]
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        
         auth_url = ""
-        for _ in range(50):
+        # Lemos mais linhas (100) para garantir que passamos a introdução
+        for _ in range(100):
             line = proc.stdout.readline()
             if not line: break
+            
             if "https://" in line:
                 match = re.search(r'(https://[^\s\n\r]+)', line)
                 if match:
-                    auth_url = match.group(1).strip().split('\\')[0].split(' ')[0].rstrip('.')
-                    if "rclone.org" in auth_url or "google" in auth_url: break
-        if auth_url: return {"status": "awaiting_code", "url": auth_url, "name": name, "provider": provider}
-        return JSONResponse(status_code=500, content={"message": "Falha ao gerar link."})
+                    candidate = match.group(1).strip().rstrip('.').replace('\\n', '').replace('\\', '')
+                    
+                    # REGRA CRÍTICA: Se for o link da documentação, ignoramos e continuamos a ler
+                    if "rclone.org" in candidate:
+                        continue
+                        
+                    # Se chegámos aqui, é o link real (Google, Microsoft, etc)
+                    auth_url = candidate
+                    break
+        
+        if auth_url:
+            return {"status": "awaiting_code", "url": auth_url, "name": name, "provider": provider}
+        return JSONResponse(status_code=500, content={"message": "Não foi possível extrair o link real. Tenta novamente."})
+    
     else:
+        # Modo Manual (Mega/FTP)
         options = data.get("options", {})
         args = ["rclone", "--config", RCLONE_CONFIG, "config", "create", name, provider, "--non-interactive"]
         for k, v in options.items():
