@@ -738,22 +738,19 @@
                     <input type="text" id="cloud-user" placeholder="Utilizador" class="input-box">
                     <input type="password" id="cloud-pass" placeholder="Password" class="input-box">
                 </div>
-                <button onclick="submitNewCloud()" class="w-full mt-4 bg-blue-600 hover:bg-blue-500 text-white font-black py-3 rounded-xl uppercase text-[10px] tracking-widest shadow-lg shadow-blue-500/20">
-                    Criar Ligação
-                </button>
+                <button id="btn-create-cloud" onclick="submitNewCloud()" class="w-full bg-blue-600 text-white py-4 rounded-xl font-black uppercase text-[10px]">
+					Criar Ligação
+				</button>
             </div>
 
             <!-- PUXADOR DE REDIMENSIONAMENTO -->
             <div id="mCloud-resizer" class="resizer-handle"></div>
 			<!-- Campo que aparece apenas para OAuth -->
-			<div id="oauth-step-2" class="hidden mt-6 p-4 bg-blue-500/10 border border-blue-500/30 rounded-xl">
-				<p class="text-[10px] text-blue-400 font-bold uppercase mb-3">1. Autoriza no Browser através do link abaixo</p>
-				<a id="auth-link" href="#" target="_blank" class="text-white underline text-xs block mb-4 truncate">Clicar aqui para Autorizar</a>
-				
-				<p class="text-[10px] text-blue-400 font-bold uppercase mb-2">2. Cola o código gerado aqui:</p>
+			<div id="oauth-step-2" class="hidden mt-4 p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl">
+				<a id="auth-link" href="#" target="_blank" class="text-blue-400 underline text-xs block mb-4">Link de Autorização</a>
 				<div class="flex gap-2">
-					<input type="text" id="auth-code" placeholder="Cola o código aqui..." class="input-box">
-					<button onclick="confirmAuthCode()" class="bg-green-600 px-4 rounded text-white font-bold text-xs">OK</button>
+					<input type="text" id="auth-code" placeholder="Cola o código/token aqui..." class="input-box">
+					<button onclick="confirmAuthCode()" class="bg-green-600 px-4 rounded text-white font-bold">OK</button>
 				</div>
 			</div>
         </div>
@@ -1903,55 +1900,106 @@
 			document.getElementById('manual-auth-fields').classList.toggle('hidden', !manualList.includes(id.toLowerCase()));
 		}
 
-		async function submitNewCloud() {
-			const name = document.getElementById('new-cloud-name').value.trim();
-			const provider = currentSelectedProviderId;
-			
-			const resp = await fetch('/api/remotes/create', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ 
-					name, 
-					provider, 
-					options: {
-						user: document.getElementById('cloud-user').value,
-						pass: document.getElementById('cloud-pass').value
-					}
-				})
-			});
+		// Variáveis Globais (Devem estar no topo do script)
+		let currentSelectedProviderId = ""; 
+		let window_currentPendingCloud = null;
 
-			const res = await resp.json();
-			if (res.status === 'awaiting_code') {
-				document.getElementById('oauth-step-2').classList.remove('hidden');
-				
-				// Garantimos que o link está limpo de espaços antes de atribuir
-				const cleanUrl = res.url.trim();
-				
-				const linkEl = document.getElementById('auth-link');
-				linkEl.href = cleanUrl;
-				linkEl.innerText = cleanUrl;
-				
-				window.currentPendingCloud = { name, provider };
+		async function submitNewCloud() {
+			console.log("Botão clicado!"); // Debug no F12
+
+			const nameInput = document.getElementById('new-cloud-name');
+			const name = nameInput ? nameInput.value.trim() : "";
+			
+			if (!name) {
+				alert("Por favor, dá um nome à tua ligação.");
+				return;
+			}
+			
+			if (!currentSelectedProviderId) {
+				alert("Por favor, seleciona um serviço cloud no menu.");
+				return;
+			}
+
+			// Feedback visual no botão
+			const btn = document.getElementById('btn-create-cloud');
+			const originalText = btn.innerText;
+			btn.innerText = "A PROCESSAR...";
+			btn.disabled = true;
+
+			const payload = {
+				name: name,
+				provider: currentSelectedProviderId,
+				options: {
+					user: document.getElementById('cloud-user').value || "",
+					pass: document.getElementById('cloud-pass').value || ""
+				}
+			};
+
+			try {
+				const resp = await fetch('/api/remotes/create', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify(payload)
+				});
+
+				const res = await resp.json();
+
+				if (res.status === 'awaiting_code') {
+					// MODO BROWSER (Google/OneDrive)
+					document.getElementById('oauth-step-2').classList.remove('hidden');
+					const link = document.getElementById('auth-link');
+					link.href = res.url;
+					link.innerText = "CLICA AQUI PARA AUTORIZAR: " + res.provider.toUpperCase();
+					
+					// Guardamos os dados para o passo do código
+					window_currentPendingCloud = { name: name, provider: res.provider };
+					alert("O link de autorização foi gerado. Clica no link azul que apareceu.");
+				} 
+				else if (res.status === 'ok') {
+					// MODO MANUAL (Mega/FTP)
+					alert("Sucesso! A cloud foi configurada.");
+					nameInput.value = "";
+					document.getElementById('manual-auth-fields').classList.add('hidden');
+					renderCloudManager(); // Recarrega os cartões
+				} 
+				else {
+					alert("Erro do motor: " + (res.message || "Erro desconhecido"));
+				}
+			} catch (e) {
+				console.error(e);
+				alert("Erro ao comunicar com o servidor.");
+			} finally {
+				btn.innerText = originalText;
+				btn.disabled = false;
 			}
 		}
-		
+
 		async function confirmAuthCode() {
 			const code = document.getElementById('auth-code').value.trim();
-			const resp = await fetch('/api/remotes/submit_code', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ 
-					...window.currentPendingCloud,
-					code: code 
-				})
-			});
-			
-			if ((await resp.json()).status === 'ok') {
-				alert("Cloud Configurada!");
-				document.getElementById('oauth-step-2').classList.add('hidden');
-				renderCloudManager();
-			} else {
-				alert("Erro ao validar código.");
+			if (!code) return alert("Cola o código primeiro.");
+
+			try {
+				const resp = await fetch('/api/remotes/submit_code', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ 
+						name: window_currentPendingCloud.name,
+						provider: window_currentPendingCloud.provider,
+						code: code 
+					})
+				});
+				
+				const res = await resp.json();
+				if (res.status === 'ok') {
+					alert("Configuração concluída!");
+					document.getElementById('oauth-step-2').classList.add('hidden');
+					document.getElementById('new-cloud-name').value = "";
+					renderCloudManager();
+				} else {
+					alert("O código foi rejeitado. Verifica se copiaste o token correto.");
+				}
+			} catch (e) {
+				alert("Erro de rede.");
 			}
 		}
 		
