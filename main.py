@@ -1930,31 +1930,25 @@ async def create_remote_docker(request: Request):
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
         
         auth_url = ""
-        for _ in range(50): # Aumentamos o range para garantir que lê o output todo
+        for _ in range(50):
             line = proc.stdout.readline()
             if not line: break
             
-            # Print para veres exatamente o que o rclone está a dizer nos logs do Docker
-            print(f">>> RCLONE OUTPUT: {repr(line)}") 
-
             if "https://" in line:
-                # 1. Encontra onde começa o link
-                start_pos = line.find("https://")
-                # 2. Pega em tudo a partir daí
-                url_part = line[start_pos:]
-                # 3. .split()[0] corta NO PRIMEIRO espaço, \n ou \r que encontrar
-                auth_url = url_part.split()[0]
-                # 4. Limpeza final de caracteres de pontuação que o rclone às vezes mete no fim
-                auth_url = auth_url.strip().rstrip('.').rstrip(')').rstrip('\\')
-                
-                # Se o link for o de setup, ele está pronto
-                if "rclone.org/remote_setup" in auth_url:
-                    break
+                # Esta expressão regular isola APENAS o link, 
+                # ignorando \n, espaços ou a palavra "Execute"
+                match = re.search(r'(https://[^\s\n\r]+)', line)
+                if match:
+                    auth_url = match.group(1).strip()
+                    # Limpeza final: remove pontos ou barras invertidas acidentais no fim
+                    auth_url = auth_url.rstrip('.').replace('\\n', '').replace('\\', '')
+                    
+                    # Se encontrarmos o link de setup ou o da google, paramos
+                    if "rclone.org" in auth_url or "google" in auth_url:
+                        break
         
         if auth_url:
             return {"status": "awaiting_code", "url": auth_url, "name": name, "provider": provider}
-        else:
-            return JSONResponse(status_code=500, content={"message": "Não foi possível gerar o link de autorização. Verifica os logs."})
     
     else:
         # Modo Manual (Mega, FTP, etc)

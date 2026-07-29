@@ -267,18 +267,20 @@
         /* Dropdown de Provedores no Modal */
 		#dropdown-box {
 			background-color: #0b111d !important;
-			border: 1px solid #334155 !important;
+			border: 1px solid #1e293b !important;
 			border-radius: 12px;
 			position: absolute;
 			width: 100%;
-			z-index: 9999;
-			bottom: 100%; /* Abre para cima */
+			z-index: 9999; /* Fica por cima de tudo */
+			bottom: 100%;  /* Abre para cima para não ser cortado pelo fundo do modal */
 			margin-bottom: 8px;
-			/* Importante: */
-			max-height: 200px;
-			overflow-y: auto; 
+			
+			/* LIMITAR ALTURA E CONTROLAR SCROLL INTERNO */
+			max-height: 220px;
+			overflow-y: auto;
 			overflow-x: hidden;
-			box-shadow: 0 -10px 25px rgba(0,0,0,0.8);
+			
+			box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.8);
 		}
 
 		#dropdown-box::-webkit-scrollbar {
@@ -429,7 +431,7 @@
 							<path d="M100 256H160L190 140L256 380L322 140L352 256H412" stroke="#3b82f6" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>
 						</svg>
 					</div>
-					<h2 class="text-xl font-black text-white uppercase tracking-widest">SyncPulse <span class="text-blue-500">v1.0</span></h2>
+					<h2 class="text-xl font-black text-white uppercase tracking-widest">SyncPulse <span class="text-blue-500">beta 2.12</span></h2>
 					<p class="text-[10px] text-slate-500 font-bold uppercase mt-1">ZimaOS Edition</p>
 				</div>
 
@@ -1946,15 +1948,16 @@
 				const res = await resp.json();
 
 				if (res.status === 'awaiting_code') {
-					// MODO BROWSER (Google/OneDrive)
 					document.getElementById('oauth-step-2').classList.remove('hidden');
-					const link = document.getElementById('auth-link');
-					link.href = res.url;
-					link.innerText = "CLICA AQUI PARA AUTORIZAR: " + res.provider.toUpperCase();
 					
-					// Guardamos os dados para o passo do código
-					window_currentPendingCloud = { name: name, provider: res.provider };
-					alert("O link de autorização foi gerado. Clica no link azul que apareceu.");
+					// LIMPEZA ADICIONAL NO FRONTEND
+					const cleanUrl = res.url.replace(/\\n/g, '').replace(/\\/g, '').trim();
+					
+					const linkEl = document.getElementById('auth-link');
+					linkEl.href = cleanUrl;
+					linkEl.innerText = cleanUrl;
+					
+					window.currentPendingCloud = { name: name, provider: res.provider };
 				} 
 				else if (res.status === 'ok') {
 					// MODO MANUAL (Mega/FTP)
