@@ -1922,15 +1922,16 @@
 
 			const res = await resp.json();
 			if (res.status === 'awaiting_code') {
-				// Mostra o passo 2
 				document.getElementById('oauth-step-2').classList.remove('hidden');
-				document.getElementById('auth-link').href = res.url;
-				document.getElementById('auth-link').innerText = res.url;
-				// Guardamos o nome e provider para o próximo passo
+				
+				// Garantimos que o link está limpo de espaços antes de atribuir
+				const cleanUrl = res.url.trim();
+				
+				const linkEl = document.getElementById('auth-link');
+				linkEl.href = cleanUrl;
+				linkEl.innerText = cleanUrl;
+				
 				window.currentPendingCloud = { name, provider };
-			} else if (res.status === 'ok') {
-				alert("Sucesso!");
-				renderCloudManager();
 			}
 		}
 		

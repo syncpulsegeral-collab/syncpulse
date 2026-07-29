@@ -1930,18 +1930,25 @@ async def create_remote_docker(request: Request):
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
         
         auth_url = ""
-        for _ in range(30):
+        for _ in range(50): # Aumentamos o range para garantir que lê o output todo
             line = proc.stdout.readline()
             if not line: break
             
-            # Procuramos o link
+            # Print para veres exatamente o que o rclone está a dizer nos logs do Docker
+            print(f">>> RCLONE OUTPUT: {repr(line)}") 
+
             if "https://" in line:
-                # O regex agora é mais rigoroso: apanha apenas o URL até ao primeiro espaço ou quebra de linha
-                match = re.search(r'(https://[^\s\n\r]+)', line)
-                if match:
-                    auth_url = match.group(1).strip()
-                    # Remove pontos finais ou caracteres estranhos que fiquem no fim do URL
-                    auth_url = auth_url.rstrip('.')
+                # 1. Encontra onde começa o link
+                start_pos = line.find("https://")
+                # 2. Pega em tudo a partir daí
+                url_part = line[start_pos:]
+                # 3. .split()[0] corta NO PRIMEIRO espaço, \n ou \r que encontrar
+                auth_url = url_part.split()[0]
+                # 4. Limpeza final de caracteres de pontuação que o rclone às vezes mete no fim
+                auth_url = auth_url.strip().rstrip('.').rstrip(')').rstrip('\\')
+                
+                # Se o link for o de setup, ele está pronto
+                if "rclone.org/remote_setup" in auth_url:
                     break
         
         if auth_url:
