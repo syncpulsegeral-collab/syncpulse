@@ -309,6 +309,23 @@
 			justify-content: center;
 		}
 
+		#mCloud-content {
+			min-width: 500px;
+			min-height: 400px;
+			display: flex;
+			flex-direction: column;
+			position: relative;
+			/* Adiciona isto para permitir o resize manual do browser se o JS falhar */
+			resize: both; 
+			overflow: hidden; 
+		}
+
+		#cloud-manager-list {
+			flex: 1; /* Faz a lista de cartões ocupar todo o espaço central */
+			overflow-y: auto;
+			padding-right: 10px;
+		}
+
 		.resizer-handle::after {
 			content: "";
 			width: 5px;
@@ -1601,6 +1618,20 @@
 
 		function stopResizeModal() {
 			window.removeEventListener('mousemove', resizeModal);
+		}
+
+		function getIcon(type) {
+			if (!type) return 'cloud';
+			type = type.toLowerCase();
+			if (type.includes('drive')) return 'google-drive';
+			if (type.includes('dropbox')) return 'dropbox';
+			if (type.includes('onedrive')) return 'microsoft';
+			if (type.includes('mega')) return 'cloud';
+			if (type.includes('ftp') || type.includes('sftp')) return 'server';
+			if (type.includes('box')) return 'box';
+			if (type.includes('pcloud')) return 'cloud';
+			if (type.includes('s3')) return 'aws';
+			return 'cloud';
 		}
 
 		// --- CORREÇÃO DA FUNÇÃO DE CARREGAMENTO ---

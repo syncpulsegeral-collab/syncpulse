@@ -1,4 +1,4 @@
-import os, json, asyncio, subprocess, re, typing, time, signal, shutil, hashlib, uuid, platform, httpx
+import os, json, asyncio, subprocess, re, typing, time, signal, shutil, hashlib, uuid, platform, httpx, configparser 
 from urllib.request import Request as UrlRequest, urlopen
 from urllib.error import URLError, HTTPError
 from fastapi import FastAPI, BackgroundTasks, Request, WebSocket, WebSocketDisconnect
@@ -1864,23 +1864,56 @@ def get_rclone_providers():
 
 @app.get("/api/remotes/list_with_types")
 def list_remotes_types():
-    """Lista as clouds configuradas. Retorna vazio se não houver ficheiro."""
+    """Lê os remotes diretamente do ficheiro rclone.conf via Python (mais fiável no Docker)."""
+    print(f">>> [DEBUG] A ler remotes de: {RCLONE_CONFIG}")
+    
     if not os.path.exists(RCLONE_CONFIG):
+        print(">>> [DEBUG] Ficheiro rclone.conf não existe.")
         return []
+
+    # Tenta garantir que o ficheiro é legível (correção de permissões comum no ZimaOS)
     try:
-        # Usamos o comando listremotes --long para obter Nome e Tipo
-        result = subprocess.run(["rclone", "--config", RCLONE_CONFIG, "listremotes", "--long"], 
-                                capture_output=True, text=True, timeout=5)
-        if result.returncode != 0: return []
-        
-        remotes = []
-        for line in result.stdout.strip().split('\n'):
-            if ':' in line:
-                parts = line.split(':')
-                remotes.append({"name": parts[0].strip(), "type": parts[1].strip()})
-        return remotes
+        os.chmod(RCLONE_CONFIG, 0o666) 
     except:
-        return []
+        pass
+
+    remotes = []
+    
+    # MÉTODO 1: Leitura Direta do Ficheiro (Recomendado para Docker)
+    try:
+        config = configparser.ConfigParser()
+        config.read(RCLONE_CONFIG, encoding='utf-8')
+        
+        for section in config.sections():
+            # O rclone guarda o tipo na chave 'type' dentro de cada seção [nome]
+            r_type = config.get(section, 'type', fallback='unknown')
+            remotes.append({
+                "name": section,
+                "type": r_type
+            })
+            
+        if remotes:
+            print(f">>> [DEBUG] {len(remotes)} remotes encontrados via ConfigParser.")
+            return remotes
+    except Exception as e:
+        print(f">>> [DEBUG] Erro ao ler ficheiro via Python: {e}")
+
+    # MÉTODO 2: Fallback via binário rclone (se o método 1 falhar)
+    try:
+        result = subprocess.run(
+            ["rclone", "--config", RCLONE_CONFIG, "listremotes", "--long"], 
+            capture_output=True, text=True, timeout=5
+        )
+        if result.returncode == 0:
+            for line in result.stdout.strip().split('\n'):
+                if ':' in line:
+                    parts = line.split(':')
+                    remotes.append({"name": parts[0].strip(), "type": parts[1].strip()})
+            return remotes
+    except:
+        pass
+
+    return []
 
 @app.post("/api/remotes/create")
 async def create_remote_docker(request: Request):
