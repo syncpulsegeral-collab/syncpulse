@@ -1921,32 +1921,43 @@ async def create_remote_docker(request: Request):
     name = data.get("name").strip()
     provider = data.get("provider")
     
-    # Para OAuth (Drive, OneDrive, etc)
+    # Para serviços de Browser (OAuth)
     if provider in ['drive', 'onedrive', 'dropbox', 'pcloud', 'box']:
-        # Iniciamos o rclone em modo NÃO LOCAL para ele nos dar o link no terminal
-        # Usamos o PIPE para ler o que o rclone escreve
+        # IMPORTANTE: config_is_local=false força o link externo
         cmd = ["rclone", "config", "create", name, provider, "config_is_local=false", "--non-interactive"]
-        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         
-        # Tentamos ler a primeira linha que contém o link de autorização
+        # Abrimos o processo e lemos o output em tempo real
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        
         auth_url = ""
-        for _ in range(20): # Tenta ler durante alguns segundos
+        # Lemos as primeiras 30 linhas à procura do link https://
+        for _ in range(30):
             line = proc.stdout.readline()
-            if "https://" in line:
-                auth_url = line.strip().split("https://")[-1]
-                auth_url = "https://" + auth_url
-                break
+            if not line: break
+            print(f">>> RCLONE DEBUG: {line.strip()}") # Verificável nos logs do Docker
+            
+            # Procuramos o link real do provedor (Google, Microsoft, etc)
+            if "https://" in line and ("accounts.google" in line or "login.microsoft" in line or "authorize" in line):
+                # Limpamos a linha para extrair apenas o URL
+                match = re.search(r'(https://[^\s]+)', line)
+                if match:
+                    auth_url = match.group(1)
+                    break
         
-        return {"status": "awaiting_code", "url": auth_url, "name": name}
+        if auth_url:
+            return {"status": "awaiting_code", "url": auth_url, "name": name, "provider": provider}
+        else:
+            return JSONResponse(status_code=500, content={"message": "Não foi possível gerar o link de autorização. Verifica os logs."})
     
     else:
-        # Modo Manual (Mega, FTP, etc) mantém-se igual
+        # Modo Manual (Mega, FTP, etc)
         options = data.get("options", {})
-        args = ["rclone", "--config", RCLONE_CONFIG, "config", "create", name, provider, "--non-interactive"]
+        args = ["rclone", "config", "create", name, provider, "--non-interactive", "--config", RCLONE_CONFIG]
         for k, v in options.items():
             if v: args.extend([k, str(v)])
+        
         res = subprocess.run(args, capture_output=True, text=True)
-        return {"status": "ok" if res.returncode == 0 else "error"}
+        return {"status": "ok" if res.returncode == 0 else "error", "message": res.stderr}
         
 @app.post("/api/remotes/submit_code")
 async def submit_auth_code(request: Request):
