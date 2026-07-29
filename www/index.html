@@ -1712,6 +1712,102 @@
             refreshUI(); // Força a atualização da lista
         }
         
+		let allRcloneProviders = [];
+		let currentSelectedProviderId = "";
+
+		async function fetchRcloneProviders() {
+			const resp = await fetch('/api/remotes/providers');
+			allRcloneProviders = await resp.json();
+			renderProvidersList(allRcloneProviders);
+		}
+
+		function renderProvidersList(list) {
+			const container = document.getElementById('providers-list-container');
+			container.innerHTML = list.map(p => `
+				<div class="provider-item" onclick="selectCloudProvider('${p.name}', '${p.desc}')">
+					<i class="fas fa-cloud"></i>
+					<div class="flex flex-col">
+						<span class="text-white font-bold text-[11px]">${p.desc}</span>
+						<span class="text-slate-500 text-[9px] uppercase">${p.name}</span>
+					</div>
+				</div>
+			`).join('');
+		}
+
+		function filterProviders(val) {
+			const filtered = allRcloneProviders.filter(p => 
+				p.name.toLowerCase().includes(val.toLowerCase()) || 
+				p.desc.toLowerCase().includes(val.toLowerCase())
+			);
+			renderProvidersList(filtered);
+		}
+
+		function toggleProviderDropdown() {
+			document.getElementById('dropdown-box').classList.toggle('hidden');
+			if (allRcloneProviders.length === 0) fetchRcloneProviders();
+		}
+
+		function selectCloudProvider(id, desc) {
+			currentSelectedProviderId = id;
+			document.getElementById('provider-selected-text').innerText = desc;
+			document.getElementById('provider-selected-text').classList.replace('text-slate-400', 'text-blue-400');
+			document.getElementById('dropdown-box').classList.add('hidden');
+
+			// Mostrar campos de user/pass para Mega, FTP, etc.
+			const manualList = ['mega', 'ftp', 'sftp', 'webdav', 'opendrive'];
+			const manualFields = document.getElementById('manual-auth-fields');
+			
+			if (manualList.includes(id.toLowerCase())) {
+				manualFields.classList.remove('hidden');
+				document.getElementById('btn-create-cloud').innerText = "Criar e Autenticar";
+			} else {
+				manualFields.classList.add('hidden');
+				document.getElementById('btn-create-cloud').innerText = "Criar (Requer Terminal p/ OAuth)";
+			}
+		}
+
+		async function submitNewCloud() {
+			const name = document.getElementById('new-cloud-name').value.trim();
+			if (!name || !currentSelectedProviderId) return alert("Preencha o nome e escolha o serviço.");
+
+			const payload = {
+				name: name,
+				provider: currentSelectedProviderId,
+				options: {
+					user: document.getElementById('cloud-user').value,
+					pass: document.getElementById('cloud-pass').value
+				}
+			};
+
+			const resp = await fetch('/api/remotes/create', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(payload)
+			});
+
+			if (resp.ok) {
+				const res = await resp.json();
+				if (res.method === 'browser') {
+					alert("Cloud criada! Como esta é uma conta Google/OneDrive (OAuth), precisas de abrir o terminal do Docker e correr 'rclone config' para terminar a autorização, ou usar o botão 'Reconnect' no terminal.");
+				} else {
+					alert("Sucesso! Cloud adicionada.");
+				}
+				renderCloudManager(); // Atualiza a lista de clouds
+				updateHealth(); // Atualiza os ícones de saúde
+			} else {
+				const err = await resp.json();
+				alert("Erro: " + err.message);
+			}
+		}
+		
+		window.addEventListener('click', function(e) {
+			const box = document.getElementById('dropdown-box');
+			const view = document.getElementById('provider-selected-view');
+			if (box && !view.contains(e.target) && !box.contains(e.target)) {
+				box.classList.add('hidden');
+			}
+		});
+		
         window.onload = () => { 
             connectWS(); 
             updateHealth(); 
