@@ -671,38 +671,46 @@
             <!-- Lista de Cartões -->
             <div id="cloud-manager-list" class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-10 overflow-y-auto flex-1 pr-2"></div>
 
-            <!-- NOVO TUTORIAL EM PARÁGRAFOS -->
-            <div class="bg-white/5 border border-white/5 rounded-[24px] p-8 shrink-0">
-                <h4 class="text-blue-500 font-black text-xs uppercase mb-6 tracking-widest flex items-center gap-3">
-                    <i class="fas fa-terminal"></i> Como adicionar uma nova Cloud?
-                </h4>
-                
-                <div class="space-y-6">
-                    <div class="step-item">
-                        <div class="step-number">1</div>
-                        <div class="flex-1">
-                            <p class="text-slate-300 text-xs font-bold mb-3">Executa o configurador no terminal do teu ZimaOS:</p>
-                            <div class="cmd-box" onclick="copyToClipboard(this.innerText)">
-                                docker exec -it SyncPulse rclone --config /config/rclone.conf config
-                            </div>
-                        </div>
-                    </div>
+            <!-- TUTORIAL EM PARÁGRAFOS ATUALIZADO -->
+			<div class="bg-white/5 border border-white/5 rounded-[24px] p-8 shrink-0">
+				<h4 class="text-blue-500 font-black text-xs uppercase mb-6 tracking-widest flex items-center gap-3">
+					<i class="fas fa-terminal"></i> Como adicionar uma nova Cloud?
+				</h4>
+				
+				<div class="space-y-6">
+					<!-- PASSO 1 -->
+					<div class="step-item">
+						<div class="step-number">1</div>
+						<div class="flex-1">
+							<p class="text-slate-300 text-xs font-bold mb-3">Executa o configurador no terminal do teu ZimaOS:</p>
+							<div class="cmd-box" onclick="copyToClipboard(this.innerText)">
+								sudo docker exec -it SyncPulse rclone --config /config/rclone.conf config
+							</div>
+						</div>
+					</div>
 
-                    <div class="step-item">
-                        <div class="step-number">2</div>
-                        <p class="text-slate-400 text-[11px] leading-relaxed">
-                            No menu que abrirá no terminal, escolhe <b class="text-white">"n" (New Remote)</b>, dá um nome à conexão (ex: GoogleDrive) e seleciona o fornecedor da lista oficial do Rclone.
-                        </p>
-                    </div>
+					<!-- PASSO 2 -->
+					<div class="step-item">
+						<div class="step-number">2</div>
+						<p class="text-slate-400 text-[11px] leading-relaxed">
+							No menu que abrirá no terminal, escolhe <b class="text-white">"n" (New Remote)</b>, dá um nome à conexão (ex: GoogleDrive) e seleciona o fornecedor da lista.
+						</p>
+					</div>
 
-                    <div class="step-item">
-                        <div class="step-number">3</div>
-                        <p class="text-slate-400 text-[11px] leading-relaxed">
-                            Segue os passos de autenticação. Para serviços como o Google Drive, será gerado um link que deves abrir no teu browser. Após autorizares, volta a esta janela para gerir os teus ficheiros.
-                        </p>
-                    </div>
-                </div>
-            </div>
+					<!-- PASSO 3 -->
+					<div class="step-item">
+						<div class="step-number">3</div>
+						<div class="text-slate-400 text-[11px] leading-relaxed">
+							<p class="mb-2">Responde às perguntas críticas desta forma para garantir a ligação:</p>
+							<div class="bg-black/40 p-3 rounded-lg font-mono text-[10px] space-y-1 border border-white/5">
+								<p><span class="text-slate-500">Edit advanced config?</span> <b class="text-blue-400">n</b></p>
+								<p><span class="text-slate-500">Use web browser to automatically authenticate rclone with remote?</span> <b class="text-blue-400">n</b></p>
+							</div>
+							<p class="mt-2 italic font-bold text-slate-300">Seguir os restantes passos indicados no terminal.</p>
+						</div>
+					</div>
+				</div>
+			</div>
 
             <div id="mCloud-resizer" class="resizer-handle"></div>
         </div>
@@ -1559,6 +1567,19 @@
         function confExp() { let val = expMode === 'local' ? expPath : expRemote + ":" + expPath.replace(/^\//, ''); document.getElementById(expMode === 'local' ? 'in-loc' : 'in-rem').value = val; closeExp(); }
         function closeExp() { document.getElementById('expPop').style.display = 'none'; }
         
+		function getIcon(type) {
+			if (!type) return 'cloud';
+			type = type.toLowerCase();
+			if (type.includes('drive')) return 'google-drive';
+			if (type.includes('dropbox')) return 'dropbox';
+			if (type.includes('onedrive')) return 'microsoft';
+			if (type.includes('mega')) return 'cloud';
+			if (type.includes('box')) return 'box';
+			if (type.includes('ftp') || type.includes('sftp')) return 'server';
+			if (type.includes('pcloud')) return 'cloud';
+			return 'cloud';
+		}
+		
         async function renderCloudManager() {
 			const list = document.getElementById('cloud-manager-list');
 			list.innerHTML = `<div class="col-span-full py-10 text-center animate-pulse text-slate-500 text-xs font-bold uppercase tracking-widest">A sincronizar quotas...</div>`;

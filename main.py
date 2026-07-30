@@ -1840,13 +1840,13 @@ async def delete_cloud_config(name: str):
         
 @app.get("/api/remotes/list_with_quota")
 async def list_remotes_with_quota():
-    """Lista remotes e tenta obter detalhes de quota (espaço) para cada um."""
-    if not os.path.exists(RCLONE_CONFIG): return []
+    if not os.path.exists(RCLONE_CONFIG):
+        return []
     
     try:
-        # 1. Obter a lista de remotes e tipos
-        cmd_list = ["rclone", "--config", RCLONE_CONFIG, "listremotes", "--long"]
-        res_list = subprocess.run(cmd_list, capture_output=True, text=True, timeout=5)
+        # 1. Lista remotes
+        res_list = subprocess.run(["rclone", "--config", RCLONE_CONFIG, "listremotes", "--long"], 
+                                  capture_output=True, text=True, timeout=5)
         if res_list.returncode != 0: return []
         
         remotes = []
@@ -1855,27 +1855,19 @@ async def list_remotes_with_quota():
                 name = line.split(':')[0].strip()
                 r_type = line.split(':')[1].strip()
                 
-                # 2. Tentar obter quota para este remote específico
+                # 2. Tenta quota, mas com timeout curto para não travar a UI
                 quota = {"total": 0, "used": 0, "free": 0, "supported": False}
                 try:
-                    # rclone about <remote>: --json
-                    cmd_about = ["rclone", "--config", RCLONE_CONFIG, "about", f"{name}:", "--json"]
-                    res_about = subprocess.run(cmd_about, capture_output=True, text=True, timeout=3)
+                    res_about = subprocess.run(["rclone", "--config", RCLONE_CONFIG, "about", f"{name}:", "--json"], 
+                                             capture_output=True, text=True, timeout=2)
                     if res_about.returncode == 0:
                         data = json.loads(res_about.stdout)
-                        quota = {
-                            "total": data.get("total", 0),
-                            "used": data.get("used", 0),
-                            "free": data.get("free", 0),
-                            "supported": True
-                        }
-                except: pass # Se o provedor não suportar 'about', mantemos o padrão
+                        quota = { "total": data.get("total", 0), "used": data.get("used", 0), "supported": True }
+                except: pass
                 
                 remotes.append({"name": name, "type": r_type, "quota": quota})
-        
         return remotes
-    except Exception as e:
-        print(f"Erro ao listar quota: {e}")
+    except:
         return []
 
 @app.get("/api/health")
