@@ -177,7 +177,8 @@
         .col-log { width: 45%; padding: 20px 30px; font-family: 'Fira Code', monospace; font-size: 11px; color: #037024; overflow-y: auto; background: rgba(0,0,0,0.1); }
         .prog-label { font-size: 10px; font-weight: 800; color: #475569; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; display: block; }
         .prog-bg { background: #0f172a; height: 8px; border-radius: 4px; overflow: hidden; width: 100%; position: relative; border: 1px solid #1e293b; }
-        #g-bar { 
+        
+		#g-bar { 
             background: #3b82f6 !important; 
             height: 100%; 
             width: 0%; 
@@ -264,44 +265,43 @@
             to { opacity: 1; transform: scale(1); }
         }
         
-        /* Cartões de Cloud */
+        /* Cartões de Cloud Estilizados */
 		.cloud-card {
-			background: #111d29;
+			background: linear-gradient(145deg, #111d29 0%, #0b1420 100%);
 			border: 1px solid #1e293b;
-			border-radius: 16px;
-			padding: 20px;
-			transition: all 0.3s ease;
-			display: flex;
-			flex-direction: column;
-			justify-content: space-between;
-			min-height: 180px;
+			border-radius: 20px;
+			padding: 24px;
+			transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 		}
-		.cloud-card:hover { border-color: #3b82f6; transform: translateY(-2px); }
+		.cloud-card:hover { border-color: #3b82f6; transform: translateY(-3px); box-shadow: 0 10px 30px -10px rgba(59, 130, 246, 0.2); }
 
 		/* Gráfico Circular de Quota */
-		.quota-box {
-			position: relative;
-			width: 60px;
-			height: 60px;
-		}
-		.quota-svg { transform: rotate(-90deg); }
-		.quota-bg { fill: none; stroke: #1e293b; stroke-width: 4; }
-		.quota-fill {
-			fill: none; stroke: #3b82f6; stroke-width: 4;
-			stroke-linecap: round; transition: stroke-dasharray 1s ease;
+		.quota-circle { position: relative; width: 54px; height: 54px; }
+		.quota-circle svg { transform: rotate(-90deg); width: 54px; height: 54px; }
+		.quota-circle circle { fill: none; stroke-width: 4; }
+		.quota-circle .bg { stroke: #1e293b; }
+		.quota-circle .fill { 
+			stroke: #3b82f6; 
+			stroke-linecap: round; 
+			transition: stroke-dasharray 1s ease-in-out; 
 		}
 
 		/* Tutorial Terminal */
+		.step-item { display: flex; gap: 16px; margin-bottom: 16px; }
+		.step-number { 
+			width: 24px; height: 24px; background: #3b82f6; color: white; 
+			border-radius: 6px; display: flex; align-items: center; justify-content: center;
+			font-size: 10px; font-weight: 900; flex-shrink: 0;
+		}
 		.cmd-box {
 			background: #000 !important;
-			border-left: 4px solid #3b82f6;
-			padding: 15px !important;
+			border: 1px solid #1e293b;
+			padding: 12px 20px !important;
 			font-family: 'Fira Code', monospace;
-			font-size: 12px;
-			color: #00d1ff !important;
-			border-radius: 8px;
-			margin: 10px 0;
-			overflow-x: auto;
+			font-size: 13px;
+			color: #38bdf8 !important;
+			border-radius: 12px;
+			cursor: copy;
 		}
     </style>
 </head>
@@ -658,35 +658,49 @@
 
     <!-- GESTOR DE CLOUDS -->
     <div id="mCloud" class="modal-overlay hidden">
-        <div id="mCloud-content" class="bg-slate-900 border border-slate-700 w-[850px] h-[650px] rounded-3xl p-10 shadow-2xl flex flex-col modal-content-resizable">
+        <div id="mCloud-content" class="bg-slate-900 border border-slate-700 w-[900px] h-[700px] rounded-[32px] p-10 shadow-2xl flex flex-col">
             
-            <div class="flex justify-between items-center mb-8 shrink-0">
+            <div class="flex justify-between items-center mb-10 shrink-0">
                 <div>
-                    <h3 class="text-2xl font-black text-white uppercase tracking-tighter">Gestão de Storage</h3>
-                    <p class="text-slate-500 text-[10px] font-bold uppercase tracking-widest mt-1">Conexões Cloud configuradas no Rclone</p>
+                    <h3 class="text-2xl font-black text-white uppercase tracking-tighter">Nuvens Conectadas</h3>
+                    <p class="text-slate-500 text-[10px] font-bold uppercase tracking-[2px] mt-1">Gestão de armazenamento remoto</p>
                 </div>
                 <button onclick="toggleModal('mCloud', false)" class="text-slate-500 hover:text-white text-3xl">&times;</button>
             </div>
 
-            <!-- GRID DE CARTÕES (REMOTE CARDS) -->
-            <div id="cloud-manager-list" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8 overflow-y-auto flex-1 pr-2">
-                <!-- JS injetará os cartões aqui -->
-            </div>
+            <!-- Lista de Cartões -->
+            <div id="cloud-manager-list" class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-10 overflow-y-auto flex-1 pr-2"></div>
 
-            <!-- TUTORIAL TERMINAL (REESTILIZADO) -->
-            <div class="bg-black/20 border border-white/5 rounded-2xl p-6 shrink-0">
-                <h4 class="text-blue-500 font-black text-[10px] uppercase mb-4 tracking-widest flex items-center gap-2">
-                    <i class="fas fa-terminal"></i> Adicionar nova cloud via Terminal
+            <!-- NOVO TUTORIAL EM PARÁGRAFOS -->
+            <div class="bg-white/5 border border-white/5 rounded-[24px] p-8 shrink-0">
+                <h4 class="text-blue-500 font-black text-xs uppercase mb-6 tracking-widest flex items-center gap-3">
+                    <i class="fas fa-terminal"></i> Como adicionar uma nova Cloud?
                 </h4>
-                <p class="text-slate-400 text-[11px] mb-3">Copia e cola o comando abaixo no terminal do teu ZimaOS:</p>
-                <div class="cmd-box">
-                    docker exec -it SyncPulse rclone --config /config/rclone.conf config
-                </div>
-                <div class="flex gap-4 mt-4 opacity-50 text-[9px] font-bold text-slate-500 uppercase">
-                    <span>1. Digita "n"</span>
-                    <span>2. Escolhe o Nome</span>
-                    <span>3. Seleciona o Provedor</span>
-                    <span>4. Segue os passos de Auth</span>
+                
+                <div class="space-y-6">
+                    <div class="step-item">
+                        <div class="step-number">1</div>
+                        <div class="flex-1">
+                            <p class="text-slate-300 text-xs font-bold mb-3">Executa o configurador no terminal do teu ZimaOS:</p>
+                            <div class="cmd-box" onclick="copyToClipboard(this.innerText)">
+                                docker exec -it SyncPulse rclone --config /config/rclone.conf config
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step-item">
+                        <div class="step-number">2</div>
+                        <p class="text-slate-400 text-[11px] leading-relaxed">
+                            No menu que abrirá no terminal, escolhe <b class="text-white">"n" (New Remote)</b>, dá um nome à conexão (ex: GoogleDrive) e seleciona o fornecedor da lista oficial do Rclone.
+                        </p>
+                    </div>
+
+                    <div class="step-item">
+                        <div class="step-number">3</div>
+                        <p class="text-slate-400 text-[11px] leading-relaxed">
+                            Segue os passos de autenticação. Para serviços como o Google Drive, será gerado um link que deves abrir no teu browser. Após autorizares, volta a esta janela para gerir os teus ficheiros.
+                        </p>
+                    </div>
                 </div>
             </div>
 
@@ -1545,11 +1559,89 @@
         function confExp() { let val = expMode === 'local' ? expPath : expRemote + ":" + expPath.replace(/^\//, ''); document.getElementById(expMode === 'local' ? 'in-loc' : 'in-rem').value = val; closeExp(); }
         function closeExp() { document.getElementById('expPop').style.display = 'none'; }
         
-        async function renderCloudManager() { 
-            const r = await fetch('/api/browse/remotes'); const rems = await r.json(); 
-            document.getElementById('cloud-manager-list').innerHTML = rems.map(rem => `<div class="flex justify-between bg-slate-800/40 p-4 rounded-xl border border-slate-800"><span class="text-white font-bold">${rem}</span><button onclick="removeCloud('${rem}')" class="text-red-500 text-[10px] font-black">APAGAR</button></div>`).join(''); 
-        }
+        async function renderCloudManager() {
+			const list = document.getElementById('cloud-manager-list');
+			list.innerHTML = `<div class="col-span-full py-10 text-center animate-pulse text-slate-500 text-xs font-bold uppercase tracking-widest">A sincronizar quotas...</div>`;
+
+			try {
+				const response = await fetch('/api/remotes/list_with_quota');
+				const remotes = await response.json();
+
+				if (remotes.length === 0) {
+					list.innerHTML = `<div class="col-span-full py-16 text-center border-2 border-dashed border-slate-800 rounded-3xl text-slate-600 font-bold uppercase text-xs">Aguardando primeira ligação via terminal</div>`;
+					return;
+				}
+
+				list.innerHTML = remotes.map(r => {
+					const total = r.quota.total || 0;
+					const used = r.quota.used || 0;
+					const percent = total > 0 ? Math.round((used / total) * 100) : 0;
+					
+					// Cálculos para o SVG (Circunferência)
+					const radius = 20;
+					const circumference = 2 * Math.PI * radius;
+					const dashOffset = circumference - (percent / 100) * circumference;
+
+					const formatSize = (bytes) => {
+						if (!bytes || bytes === 0) return "0 B";
+						const i = Math.floor(Math.log(bytes) / Math.log(1024));
+						return (bytes / Math.pow(1024, i)).toFixed(1) + " " + ['B', 'KB', 'MB', 'GB', 'TB'][i];
+					};
+
+					return `
+					<div class="cloud-card">
+						<div class="flex justify-between items-center mb-6">
+							<div class="flex items-center gap-4">
+								<div class="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-500 border border-blue-500/20">
+									<i class="fab fa-${getIcon(r.type)} text-2xl"></i>
+								</div>
+								<div>
+									<h4 class="text-white font-black text-sm tracking-tight">${r.name}</h4>
+									<span class="text-[9px] text-slate-500 uppercase font-black tracking-widest">${r.type}</span>
+								</div>
+							</div>
+							<button onclick="removeCloud('${r.name}')" class="w-10 h-10 rounded-xl hover:bg-red-500/20 text-slate-600 hover:text-red-500 transition-all flex items-center justify-center">
+								<i class="fas fa-trash-alt text-sm"></i>
+							</button>
+						</div>
+
+						<div class="flex items-center gap-5">
+							<div class="quota-circle">
+								<svg>
+									<circle class="bg" cx="27" cy="27" r="20"></circle>
+									<circle class="fill" cx="27" cy="27" r="20" 
+										style="stroke-dasharray: ${circumference}; stroke-dashoffset: ${r.quota.supported ? dashOffset : circumference};">
+									</circle>
+								</svg>
+								<div class="absolute inset-0 flex items-center justify-center text-[10px] font-black text-white">
+									${r.quota.supported ? percent + '%' : '?'}
+								</div>
+							</div>
+							<div class="flex-1">
+								<div class="flex justify-between text-[10px] font-bold mb-1">
+									<span class="text-slate-500 uppercase tracking-tighter">Espaço Usado</span>
+									<span class="text-blue-400">${formatSize(used)}</span>
+								</div>
+								<div class="flex justify-between text-[9px] text-slate-600">
+									<span>Capacidade Total</span>
+									<span>${formatSize(total)}</span>
+								</div>
+							</div>
+						</div>
+					</div>`;
+				}).join('');
+
+			} catch (e) {
+				list.innerHTML = `<div class="text-red-500 text-xs p-10 text-center font-bold">Falha na ligação ao motor de storage.</div>`;
+			}
+		}
         
+		// Auxiliar para copiar comando
+		function copyToClipboard(text) {
+			navigator.clipboard.writeText(text);
+			alert("Comando copiado para a área de transferência!");
+		}
+		
         async function removeCloud(name) {
 			if (!confirm(`Tens a certeza que queres apagar a ligação "${name}"?`)) return;
 
