@@ -1,4 +1,4 @@
-import os, json, asyncio, subprocess, re, typing, time, signal, shutil, hashlib, uuid, platform, httpx, configparser 
+import os, json, asyncio, subprocess, re, typing, time, signal, shutil, hashlib, uuid, platform, httpx
 from urllib.request import Request as UrlRequest, urlopen
 from urllib.error import URLError, HTTPError
 from fastapi import FastAPI, BackgroundTasks, Request, WebSocket, WebSocketDisconnect
@@ -1837,83 +1837,49 @@ async def delete_cloud_config(name: str):
     except Exception as e:
         print(f">>> [API] Erro ao processar pedido: {e}")
         return JSONResponse(status_code=500, content={"message": str(e)})
+        
+@app.get("/api/remotes/list_with_quota")
+async def list_remotes_with_quota():
+    """Lista remotes e tenta obter detalhes de quota (espaço) para cada um."""
+    if not os.path.exists(RCLONE_CONFIG): return []
+    
+    try:
+        # 1. Obter a lista de remotes e tipos
+        cmd_list = ["rclone", "--config", RCLONE_CONFIG, "listremotes", "--long"]
+        res_list = subprocess.run(cmd_list, capture_output=True, text=True, timeout=5)
+        if res_list.returncode != 0: return []
+        
+        remotes = []
+        for line in res_list.stdout.strip().split('\n'):
+            if ':' in line:
+                name = line.split(':')[0].strip()
+                r_type = line.split(':')[1].strip()
+                
+                # 2. Tentar obter quota para este remote específico
+                quota = {"total": 0, "used": 0, "free": 0, "supported": False}
+                try:
+                    # rclone about <remote>: --json
+                    cmd_about = ["rclone", "--config", RCLONE_CONFIG, "about", f"{name}:", "--json"]
+                    res_about = subprocess.run(cmd_about, capture_output=True, text=True, timeout=3)
+                    if res_about.returncode == 0:
+                        data = json.loads(res_about.stdout)
+                        quota = {
+                            "total": data.get("total", 0),
+                            "used": data.get("used", 0),
+                            "free": data.get("free", 0),
+                            "supported": True
+                        }
+                except: pass # Se o provedor não suportar 'about', mantemos o padrão
+                
+                remotes.append({"name": name, "type": r_type, "quota": quota})
+        
+        return remotes
+    except Exception as e:
+        print(f"Erro ao listar quota: {e}")
+        return []
 
 @app.get("/api/health")
 async def get_health(): return HEALTH_CACHE
-
-
-# --- ENDPOINTS GESTÃO DE CLOUDS (ESTÁVEIS) ---
-
-@app.get("/api/remotes/providers")
-def get_rclone_providers():
-    try:
-        res = subprocess.run(["rclone", "config", "providers"], capture_output=True, text=True, timeout=5)
-        stdout = res.stdout
-        start, end = stdout.find('['), stdout.rfind(']') + 1
-        if start != -1:
-            data = json.loads(stdout[start:end])
-            providers = [{"name": p.get("Name"), "desc": p.get("Description")} for p in data]
-            return sorted([p for p in providers if p['name'] not in ['alias', 'crypt', 'union']], key=lambda x: x["desc"])
-    except: pass
-    return []
-
-@app.get("/api/remotes/list_with_types")
-def list_remotes_types():
-    if not os.path.exists(RCLONE_CONFIG): return []
-    try:
-        config = configparser.ConfigParser()
-        config.read(RCLONE_CONFIG, encoding='utf-8')
-        return [{"name": s, "type": config.get(s, 'type', fallback='cloud')} for s in config.sections()]
-    except: return []
-
-@app.post("/api/remotes/create")
-async def create_remote_docker(request: Request):
-    data = await request.json()
-    name, provider = data.get("name").strip(), data.get("provider")
-    
-    if provider in ['drive', 'onedrive', 'dropbox', 'pcloud', 'box']:
-        # config_is_local=false força o rclone a gerar o link para copiar/colar
-        cmd = ["rclone", "config", "create", name, provider, "config_is_local=false", "--non-interactive"]
-        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-        
-        auth_url = ""
-        # Lemos mais linhas (100) para garantir que passamos a introdução
-        for _ in range(100):
-            line = proc.stdout.readline()
-            if not line: break
-            
-            if "https://" in line:
-                match = re.search(r'(https://[^\s\n\r]+)', line)
-                if match:
-                    candidate = match.group(1).strip().rstrip('.').replace('\\n', '').replace('\\', '')
-                    
-                    # REGRA CRÍTICA: Se for o link da documentação, ignoramos e continuamos a ler
-                    if "rclone.org" in candidate:
-                        continue
-                        
-                    # Se chegámos aqui, é o link real (Google, Microsoft, etc)
-                    auth_url = candidate
-                    break
-        
-        if auth_url:
-            return {"status": "awaiting_code", "url": auth_url, "name": name, "provider": provider}
-        return JSONResponse(status_code=500, content={"message": "Não foi possível extrair o link real. Tenta novamente."})
-    
-    else:
-        # Modo Manual (Mega/FTP)
-        options = data.get("options", {})
-        args = ["rclone", "--config", RCLONE_CONFIG, "config", "create", name, provider, "--non-interactive"]
-        for k, v in options.items():
-            if v: args.extend([k, str(v)])
-        res = subprocess.run(args, capture_output=True, text=True)
-        return {"status": "ok" if res.returncode == 0 else "error"}
-
-@app.post("/api/remotes/submit_code")
-async def submit_auth_code(request: Request):
-    data = await request.json()
-    cmd = ["rclone", "config", "create", data.get("name"), data.get("provider"), "config_is_local=false", "token", data.get("code"), "--non-interactive"]
-    res = subprocess.run(cmd, capture_output=True, text=True)
-    return {"status": "ok" if res.returncode == 0 else "error"}      
 
 @app.get("/")
 async def serve_index(): return FileResponse(os.path.join(WWW_PATH, "index.html"))
