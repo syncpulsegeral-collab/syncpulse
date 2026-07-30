@@ -11,10 +11,10 @@
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
         :root { --bg-dark: #050a12; --bg-sidebar: #0b111d; --bg-card: #16202c; --border: #1e293b; --text-dim: #94a3b8; }
         * { scrollbar-width: thin; scrollbar-color: rgba(100, 116, 139, .45) transparent; }
-        *::-webkit-scrollbar { width: 7px; height: 7px; }
+        *::-webkit-scrollbar { width: 5px; height: 5px; }
         *::-webkit-scrollbar-track { background: transparent; }
-        *::-webkit-scrollbar-thumb { background: rgba(100, 116, 139, .38); border: 2px solid transparent; border-radius: 999px; background-clip: padding-box; }
-        *::-webkit-scrollbar-thumb:hover { background-color: rgba(148, 163, 184, .62); }
+        *::-webkit-scrollbar-thumb { background: rgba(100, 116, 139, .26); border: 1px solid transparent; border-radius: 999px; background-clip: padding-box; }
+        *::-webkit-scrollbar-thumb:hover { background-color: rgba(148, 163, 184, .5); }
         body { background: #242424; font-family: 'Inter', sans-serif; height: 100vh; display: flex; overflow: hidden; margin:0; }
         
         .sidebar { width: 280px; background: var(--bg-sidebar); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 20px; flex-shrink: 0; }
@@ -328,16 +328,23 @@
 
 		/* PUXADOR DE RESIZE */
 		.resizer-handle {
-			width: 24px;
-			height: 24px;
+			width: 42px;
+			height: 42px;
 			position: absolute;
-			right: 0;
-			bottom: 0;
+			right: 12px;
+			bottom: 12px;
 			cursor: nwse-resize;
 			z-index: 1001;
-			background: linear-gradient(135deg, transparent 50%, #3b82f6 50%);
-			border-bottom-right-radius: 32px;
+			display: grid;
+			place-items: center;
+			background: rgba(59, 130, 246, .18);
+			border: 1px solid rgba(96, 165, 250, .55);
+			border-radius: 12px;
+			color: #93c5fd;
+			touch-action: none;
+			transition: background .15s ease, transform .15s ease;
 		}
+		.resizer-handle:hover { background: rgba(59, 130, 246, .35); transform: scale(1.06); }
 		@media (max-width: 700px) {
 			#mCloud-content { min-width: 0; min-height: 0; padding: 1.5rem; border-radius: 24px; }
 			.resizer-handle { display: none; }
@@ -596,8 +603,8 @@
     
         <div class="pt-6 border-t border-slate-800">
             <select id="lPick" class="lang-select" onchange="setLang(this.value)">
+                <option value="en" selected>EN English</option>
                 <option value="pt">PT Português</option>
-                <option value="en">EN English</option>
                 <option value="fr">FR Français</option>
                 <option value="es">ES Español</option>
                 <option value="de">DE Deutche</option>
@@ -754,7 +761,7 @@
 			</div>
 
 			<!-- PUXADOR DE RESIZE -->
-			<div id="mCloud-resizer" class="resizer-handle"></div>
+			<div id="mCloud-resizer" class="resizer-handle" title="Resize modal" aria-label="Resize modal" role="button"><i class="fas fa-up-right-and-down-left-from-center"></i></div>
 		</div>
 	</div>
     
@@ -841,7 +848,7 @@
                 </div>
                 
                 <div class="text-center opacity-70 text-[11px] font-mono text-slate-500 pt-2">
-                    SyncPulse ZIMAOS EDITION<br>VERSION 1.0
+                    SyncPulse ZIMAOS EDITION<br>VERSION 1.1
                 </div>
             </div>
 
@@ -916,6 +923,13 @@
 				// Clouds Modal
 				clouds_title: "Connected Clouds",
 				clouds_subtitle: "Remote storage management",
+				clouds_loading: "Synchronizing quotas...",
+				clouds_empty: "No clouds configured",
+				clouds_used: "Used",
+				clouds_total: "Total",
+				clouds_connection_error: "Unable to contact the sync engine.",
+				clouds_remove_confirm: "Are you sure you want to delete the connection \"{name}\"?",
+				clouds_command_copied: "Command copied to the clipboard.",
 				used_space: "Used Space",
 				total_capacity: "Total Capacity",
 				no_clouds: "No clouds configured",
@@ -1199,6 +1213,11 @@
             license_desc: 'Eine Lizenz schaltet Synchronisierung und Automatisierung frei.', license_active: 'Aktiv', license_inactive: 'Inaktiv', license_email_placeholder: 'Lizenz-E-Mail', license_device_placeholder: 'Gerätename', license_key_placeholder: 'Lizenzschlüssel', license_activate_btn: 'Lizenz aktivieren', license_note: 'Ohne Lizenz können Sie Aufgaben nur simulieren.', pref_sim_title: 'Automatische Simulation', pref_sim_desc: 'Vor der echten Übertragung eine Simulation ausführen.', pref_sim_note: 'Ohne Vorschau startet die Synchronisierung sofort.', useful_links: 'Nützliche Links', status_inactive: 'Inaktiv', status_active: 'Aktiv', status_sim: 'Simulation läuft', hist_title: 'Aktivitätsverlauf', hist_empty: 'Keine Einträge gefunden.', hist_view_err: 'Fehler anzeigen', hist_success: 'Erfolgreich', hist_error: 'Fehler', hist_sim: 'Simulation', hist_sync: 'Synchronisierung', file_skipped: 'KEINE ÄNDERUNG', file_error: 'FEHLER'
         });
 
+        Object.assign(i18n.pt, { clouds_loading: 'A sincronizar quotas...', clouds_empty: 'Sem clouds configuradas', clouds_used: 'Usado', clouds_total: 'Total', clouds_connection_error: 'Não foi possível contactar o motor de sincronização.', clouds_remove_confirm: 'Tens a certeza que queres apagar a ligação "{name}"?', clouds_command_copied: 'Comando copiado para a área de transferência.' });
+        Object.assign(i18n.es, { clouds_loading: 'Sincronizando cuotas...', clouds_empty: 'No hay nubes configuradas', clouds_used: 'Usado', clouds_total: 'Total', clouds_connection_error: 'No se pudo contactar con el motor de sincronización.', clouds_remove_confirm: '¿Seguro que deseas eliminar la conexión "{name}"?', clouds_command_copied: 'Comando copiado al portapapeles.' });
+        Object.assign(i18n.fr, { clouds_loading: 'Synchronisation des quotas...', clouds_empty: 'Aucun cloud configuré', clouds_used: 'Utilisé', clouds_total: 'Total', clouds_connection_error: 'Impossible de contacter le moteur de synchronisation.', clouds_remove_confirm: 'Voulez-vous vraiment supprimer la connexion « {name} » ?', clouds_command_copied: 'Commande copiée dans le presse-papiers.' });
+        Object.assign(i18n.de, { clouds_loading: 'Kontingente werden synchronisiert...', clouds_empty: 'Keine Clouds konfiguriert', clouds_used: 'Belegt', clouds_total: 'Gesamt', clouds_connection_error: 'Die Synchronisierungs-Engine konnte nicht erreicht werden.', clouds_remove_confirm: 'Möchten Sie die Verbindung „{name}“ wirklich löschen?', clouds_command_copied: 'Befehl wurde in die Zwischenablage kopiert.' });
+
         const licenseI18n = {
             pt: { title: 'Ativação da licença', desc: 'A licença desbloqueia sincronização e automatismos.', active: 'Ativa', inactive: 'Inativa', email: 'Email da licença', device: 'Nome do dispositivo (ex.: NAS da Sala)', key: 'Chave de licença', activate: 'Ativar licença', note: 'Sem licença, pode simular, mas não iniciar/parar sincronizações nem usar processos automáticos.', success: 'Licença ativada. Todos os recursos estão disponíveis.', invalid: 'Licença inválida ou inativa. A simulação continua disponível.', unavailable: 'Não foi possível validar a licença.', maxDevices: 'Número máximo de dispositivos atingido. Efetue a gestão dos dispositivos no portal.', blocked: 'Ative a licença para sincronizar.' },
             en: { title: 'License activation', desc: 'The license unlocks synchronization and automation.', active: 'Active', inactive: 'Inactive', email: 'License email', device: 'Device name (e.g. Living Room NAS)', key: 'License key', activate: 'Activate license', note: 'Without a license, you can simulate, but cannot start/stop synchronizations or use automated processes.', success: 'License activated. All features are available.', invalid: 'License is invalid or inactive. Simulation remains available.', unavailable: 'The license could not be validated.', maxDevices: 'Maximum number of devices reached. Manage your devices in the portal.', blocked: 'Activate the license to synchronize.' },
@@ -1246,7 +1265,7 @@
             });
             applyLicenseTranslations();
 
-            localStorage.setItem('smartsync_language', lang);
+            localStorage.setItem('syncpulse_language_v2', lang);
             refreshUI();
         }
 
@@ -1649,7 +1668,7 @@
         function initializeApp() { 
             connectWS(); 
             updateHealth(); 
-            setLang(localStorage.getItem('smartsync_language') || 'en'); 
+            setLang(localStorage.getItem('syncpulse_language_v2') || 'en'); 
             loadSettingsUI(); // Chama a função de carregar
             restoreSidebarState();
             setInterval(updateHealth, 30000); 
@@ -1776,14 +1795,15 @@
 		
         async function renderCloudManager() {
 			const list = document.getElementById('cloud-manager-list');
-			list.innerHTML = `<div class="col-span-full py-10 text-center animate-pulse text-slate-500 text-xs font-bold uppercase tracking-widest">A sincronizar quotas...</div>`;
+			const text = i18n[lang] || i18n.en;
+			list.innerHTML = `<div class="col-span-full py-10 text-center animate-pulse text-slate-500 text-xs font-bold uppercase tracking-widest">${text.clouds_loading}</div>`;
 
 			try {
 				const response = await fetch('/api/remotes/list_with_quota');
 				const remotes = await response.json();
 
 				if (remotes.length === 0) {
-					list.innerHTML = `<div class="col-span-full py-16 text-center border-2 border-dashed border-slate-800 rounded-3xl text-slate-600 font-bold uppercase text-xs">Sem clouds configuradas</div>`;
+					list.innerHTML = `<div class="col-span-full py-16 text-center border-2 border-dashed border-slate-800 rounded-3xl text-slate-600 font-bold uppercase text-xs">${text.clouds_empty}</div>`;
 					return;
 				}
 
@@ -1830,11 +1850,11 @@
 							</div>
 							<div class="flex-1">
 								<div class="flex justify-between text-[10px] font-bold mb-1">
-									<span class="text-slate-500 uppercase">Usado</span>
+									<span class="text-slate-500 uppercase">${text.clouds_used}</span>
 									<span class="text-blue-400 font-black">${formatSize(used)}</span>
 								</div>
 								<div class="flex justify-between items-center pt-1 border-t border-white/5">
-									<span class="text-[9px] text-slate-600 font-bold uppercase">Total</span>
+									<span class="text-[9px] text-slate-600 font-bold uppercase">${text.clouds_total}</span>
 									<span class="text-slate-400 font-bold text-[10px]">${formatSize(total)}</span>
 								</div>
 							</div>
@@ -1842,18 +1862,19 @@
 					</div>`;
 				}).join('');
 			} catch (e) {
-				list.innerHTML = `<div class="col-span-full text-red-500 text-xs p-10 text-center font-bold">ERRO DE LIGAÇÃO AO MOTOR</div>`;
+				list.innerHTML = `<div class="col-span-full text-red-500 text-xs p-10 text-center font-bold">${text.clouds_connection_error}</div>`;
 			}
 		}
         
 		// Auxiliar para copiar comando
 		function copyToClipboard(text) {
 			navigator.clipboard.writeText(text);
-			alert("Comando copiado para a área de transferência!");
+			alert((i18n[lang] || i18n.en).clouds_command_copied);
 		}
 		
         async function removeCloud(name) {
-			if (!confirm(`Tens a certeza que queres apagar a ligação "${name}"?`)) return;
+			const text = i18n[lang] || i18n.en;
+			if (!confirm(text.clouds_remove_confirm.replace('{name}', name))) return;
 
 			try {
 				const response = await fetch(`/api/clouds/remove/${encodeURIComponent(name)}`, {
