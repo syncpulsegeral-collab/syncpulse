@@ -31,4 +31,5 @@ jobs:
           push: true
           # Usamos letras minúsculas para o owner para evitar erros
           tags: |
-            ghcr.io/${{ github.repository_owner }}/syncpulse:beta-2.3
+            ghcr.io/${{ github.repository_owner }}/syncpulse:latest
+            ghcr.io/${{ github.repository_owner }}/syncpulse:V1.1

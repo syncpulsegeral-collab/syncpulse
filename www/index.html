@@ -166,9 +166,10 @@
 
         /* A Barra de Redimensionamento */
         .h-resizer {
-            height: 4px;
+            height: 6px;
             background: var(--border);
             cursor: row-resize;
+            touch-action: none;
             transition: background 0.2s;
             z-index: 10;
         }
@@ -848,7 +849,7 @@
                 </div>
                 
                 <div class="text-center opacity-70 text-[11px] font-mono text-slate-500 pt-2">
-                    SyncPulse ZIMAOS EDITION<br>VERSION 1.1
+                    SyncPulse ZIMAOS EDITION<br>VERSION 1.0
                 </div>
             </div>
 
@@ -1274,6 +1275,43 @@
         let lastScrollIdx = -1; // Memória do último ficheiro centrado
 
         let expandedTasks = {}; // Controla o estado de expansão por tarefa
+
+        const topPanel = document.getElementById('top-panel');
+        const bottomPanel = document.getElementById('bottom-panel');
+        const horizontalResizer = document.getElementById('h-resizer');
+
+        function setTopPanelHeight(height, persist = false) {
+            if (!topPanel || !bottomPanel) return;
+            const mainHeight = topPanel.parentElement.clientHeight;
+            const minTop = 150;
+            const minBottom = 200;
+            const safeHeight = Math.max(minTop, Math.min(height, mainHeight - minBottom - 4));
+            topPanel.style.height = `${safeHeight}px`;
+            topPanel.style.flex = 'none';
+            if (persist) localStorage.setItem('smartsync_top_height', String(safeHeight));
+        }
+
+        if (horizontalResizer && topPanel) {
+            horizontalResizer.addEventListener('pointerdown', (event) => {
+                event.preventDefault();
+                horizontalResizer.setPointerCapture(event.pointerId);
+                horizontalResizer.classList.add('is-dragging');
+                const mainTop = topPanel.parentElement.getBoundingClientRect().top;
+
+                const onMove = (moveEvent) => setTopPanelHeight(moveEvent.clientY - mainTop);
+                const onUp = () => {
+                    setTopPanelHeight(topPanel.offsetHeight, true);
+                    horizontalResizer.classList.remove('is-dragging');
+                    horizontalResizer.removeEventListener('pointermove', onMove);
+                    horizontalResizer.removeEventListener('pointerup', onUp);
+                    horizontalResizer.removeEventListener('pointercancel', onUp);
+                };
+
+                horizontalResizer.addEventListener('pointermove', onMove);
+                horizontalResizer.addEventListener('pointerup', onUp);
+                horizontalResizer.addEventListener('pointercancel', onUp);
+            }, { passive: false });
+        }
 
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
@@ -2037,8 +2075,7 @@
             }
             const savedHeight = localStorage.getItem('smartsync_top_height');
             if (savedHeight) {
-                topPanel.style.height = savedHeight;
-                topPanel.style.flex = 'none';
+                setTopPanelHeight(Number(savedHeight));
             }
         });
 
