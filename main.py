@@ -555,40 +555,6 @@ async def refresh_automation_services():
       
 
 
-import shutil
-
-def bootstrap_folders():
-    # Pastas onde o código está guardado internamente na imagem
-    SOURCE_APP = "/app_dist"
-    SOURCE_WWW = "/www_dist"
-    
-    # Destinos (Volumes montados no ZimaOS)
-    TARGET_APP = "/app"
-    TARGET_WWW = "/www"
-    TARGET_CONFIG = "/config"
-
-    # Criar pasta config se não existir
-    os.makedirs(TARGET_CONFIG, exist_ok=True)
-
-    # Se a pasta /app estiver vazia (ou sem o main.py), copia os ficheiros
-    if not os.path.exists(os.path.join(TARGET_APP, "main.py")):
-        print("A inicializar pasta /app no host...")
-        os.makedirs(TARGET_APP, exist_ok=True)
-        for item in os.listdir(SOURCE_APP):
-            s = os.path.join(SOURCE_APP, item)
-            d = os.path.join(TARGET_APP, item)
-            if os.path.isfile(s): shutil.copy2(s, d)
-
-    # Isto vai atualizar o frontend em todos os arranques:
-        print(">>> A atualizar frontend no volume do ZimaOS...")
-        shutil.copytree(src_www, dst_www, dirs_exist_ok=True)
-        os.system(f"chmod -R 777 {dst_www}")
-
-# EXECUTAR O BOOTSTRAP ANTES DE QUALQUER OUTRA COISA
-bootstrap_folders()
-
-
-
 # --- WATCHDOG / TAREFAS EM TEMPO REAL ---
 
 if HAS_WATCHDOG:
