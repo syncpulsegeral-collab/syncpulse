@@ -346,7 +346,10 @@
             <!-- TIER 1 -->
             <div class="tier-card glass p-10 rounded-[40px] flex flex-col">
                 <h3 class="text-xs font-black uppercase tracking-widest text-slate-400 mb-4">Basic</h3>
-                <div class="text-5xl font-black mb-8 text-white">5€</div>
+                <div class="flex items-baseline gap-1 mb-8">
+					<span class="text-5xl font-black text-white">5€</span>
+					<span class="text-sm font-medium text-slate-500 uppercase tracking-widest" data-i18n="per_year">/ ano</span>
+				</div>
                 <ul class="text-sm space-y-4 mb-12 flex-1 text-slate-300">
                     <li class="flex items-center"><i class="fas fa-check text-cyan-400 mr-3"></i> <b data-i18n="tier1_device">1 Dispositivo</b></li>
                     <li class="flex items-center"><i class="fas fa-check text-cyan-400 mr-3"></i> <span data-i18n="tier_panel">Painel Web</span></li>
@@ -358,7 +361,10 @@
             <!-- TIER 2 -->
             <div class="tier-card glass p-10 rounded-[40px] border-blue-500/50 flex flex-col bg-blue-500/5">
                 <h3 class="text-xs font-black uppercase tracking-widest text-blue-400 mb-4">Family</h3>
-                <div class="text-5xl font-black mb-8 text-white">10€</div>
+                <div class="flex items-baseline gap-1 mb-8">
+					<span class="text-5xl font-black text-white">10€</span>
+					<span class="text-sm font-medium text-slate-500 uppercase tracking-widest" data-i18n="per_year">/ ano</span>
+				</div>
                 <ul class="text-sm space-y-4 mb-12 flex-1 text-white">
                     <li class="flex items-center"><i class="fas fa-check text-blue-400 mr-3"></i> <b data-i18n="tier2_device">3 Dispositivos</b></li>
                     <li class="flex items-center"><i class="fas fa-check text-blue-400 mr-3"></i> <span data-i18n="tier_panel">Painel Web</span></li>
@@ -371,7 +377,10 @@
             <!-- TIER 3 -->
             <div class="tier-card glass p-10 rounded-[40px] flex flex-col">
                 <h3 class="text-xs font-black uppercase tracking-widest text-purple-400 mb-4">Power</h3>
-                <div class="text-5xl font-black mb-8 text-white">20€</div>
+                <div class="flex items-baseline gap-1 mb-8">
+					<span class="text-5xl font-black text-white">20€</span>
+					<span class="text-sm font-medium text-slate-500 uppercase tracking-widest" data-i18n="per_year">/ ano</span>
+				</div>
                 <ul class="text-sm space-y-4 mb-12 flex-1 text-slate-300">
                     <li class="flex items-center"><i class="fas fa-check text-purple-400 mr-3"></i> <b data-i18n="tier3_device">5 Dispositivos</b></li>
                     <li class="flex items-center"><i class="fas fa-check text-purple-400 mr-3"></i> <span data-i18n="tier_panel">Painel Web</span></li>
@@ -565,7 +574,11 @@
 				mount_screen_1: "Ir às Definições da App",
 				mount_screen_2: "Verificar campo /mnt",
 				mount_warning: "Certifique-se de que o caminho do Host corresponde ao seu disco (ex: /media/HDD).",
-				btn_download_full: "Descarregar ficheiro .yaml"
+				btn_download_full: "Descarregar ficheiro .yaml",
+				per_year: "/ ano",
+				status_available: "Disponível",
+				status_soon: "Brevemente",
+				install_desc: "Escolha a sua plataforma e descarregue o instalador oficial."
 			},
 			en: {
 				nav_showcase: "Screens", nav_plans: "Plans", nav_account: "Account", nav_contact: "Contact",
@@ -602,7 +615,11 @@
 				mount_screen_1: "Go to App Settings",
 				mount_screen_2: "Check /mnt field",
 				mount_warning: "Ensure the Host path matches your drive (e.g., /media/HDD).",
-				btn_download_full: "Download .yaml file"
+				btn_download_full: "Download .yaml file",
+				per_year: "/ year",
+				status_available: "Available",
+				status_soon: "Coming Soon",
+				install_desc: "Choose your platform and download the official installer."
 
 			},
 			fr: {
@@ -640,7 +657,11 @@
 				mount_screen_1: "Accédez aux paramètres de l'application.",
 				mount_screen_2: "Vérifiez le champ /mnt.",
 				mount_warning: "Assurez-vous que le chemin hôte correspond à votre disque (par exemple, /media/HDD).",
-				btn_download_full: "Téléchargez le fichier .yaml."
+				btn_download_full: "Téléchargez le fichier .yaml.",
+				per_year: "/ an",
+				status_available: "Disponible",
+				status_soon: "Bientôt disponible",
+				install_desc: "Choisissez votre plateforme et téléchargez le programme d'installation officiel."
 			},
 			es: {
 				nav_showcase: "Capturas", nav_plans: "Planes", nav_account: "Cuenta", nav_contact: "Contacto",
@@ -677,7 +698,11 @@
 				mount_screen_1: "Ve a Configuración de la aplicación",
 				mount_screen_2: "Verifica el campo /mnt",
 				mount_warning: "Asegúrate de que la ruta del host coincida con tu disco (por ejemplo, /media/HDD).",
-				btn_download_full: "Descarga el archivo .yaml"
+				btn_download_full: "Descarga el archivo .yaml",
+				per_year: "/ año",
+				status_available: "Disponible",
+				status_soon: "Próximamente",
+				install_desc: "Elige tu plataforma y descarga el instalador oficial."
 
 			},
 			de: {
@@ -715,7 +740,11 @@
 				mount_screen_1: "Gehen Sie zu den App-Einstellungen.",
 				mount_screen_2: "Überprüfen Sie das Feld „/mnt",
 				mount_warning: "Stellen Sie sicher, dass der Host-Pfad mit Ihrer Festplatte übereinstimmt (z. B. „/media/HDD“).",
-				btn_download_full: "Laden Sie die .yaml-Datei herunter."
+				btn_download_full: "Laden Sie die .yaml-Datei herunter.",
+				per_year: "/ Jahr",
+				status_available: "Verfügbar",
+				status_soon: "Demnächst verfügbar",
+				install_desc: "Wählen Sie Ihre Plattform und laden Sie das offizielle Installationsprogramm herunter."
 			}
 		};
 
