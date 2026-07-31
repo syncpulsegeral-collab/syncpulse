@@ -411,12 +411,10 @@
 								<i class="fas fa-box absolute -right-2 -bottom-2 text-4xl opacity-10 group-hover:scale-110 transition-transform"></i>
 								<h4 class="text-white font-bold text-xs uppercase mb-1">ZimaOS</h4>
 								<p class="text-[9px] text-cyan-400 font-black uppercase mb-4 tracking-widest">Disponível</p>
-								<a href="https://downgit.github.io/#/home?url=https://github.com/syncpulsegeral-collab/syncpulse/blob/main/Downloads/ZimaOS/SyncPulse.yml" 
-								   download="SyncPulse.yml" 
-								   target="_blank"
+								<button onclick="forceDownload('https://raw.githubusercontent.com/syncpulsegeral-collab/syncpulse/main/Downloads/ZimaOS/SyncPulse.yml', 'SyncPulse.yml')" 
 								   class="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-white bg-cyan-600 hover:bg-cyan-500 px-4 py-2 rounded-lg transition-all">
 									<i class="fas fa-download"></i> Get YAML
-								</a>
+								</button>
 							</div>
 
 							<!-- Windows -->
@@ -734,7 +732,24 @@
 			});
 			document.documentElement.lang = lang;
 		}
-
+		
+		function forceDownload(url, filename) {
+			fetch(url)
+				.then(response => response.blob())
+				.then(blob => {
+					const blobUrl = window.URL.createObjectURL(blob);
+					const a = document.createElement('a');
+					a.style.display = 'none';
+					a.href = blobUrl;
+					a.download = filename; // Força o nome do ficheiro
+					document.body.appendChild(a);
+					a.click();
+					window.URL.revokeObjectURL(blobUrl);
+					document.body.removeChild(a);
+				})
+				.catch(() => alert('Erro ao descarregar o ficheiro.'));
+		}
+		
 		window.onload = () => {
 			// Carrega o idioma (o que já tinhas)
 			changeLang('pt');
