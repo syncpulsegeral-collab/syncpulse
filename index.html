@@ -385,168 +385,119 @@
         </div>
     </section>
 	
-	<!-- SECTION: INSTALLATION V9.0 -->
+	<!-- SECTION: INSTALLATION MULTI-PLATFORM V10.0 -->
 	<section id="install" class="py-24 px-6 border-t border-white/5">
 		<div class="max-w-6xl mx-auto">
 			<div class="text-center mb-16">
 				<h2 class="text-3xl font-black uppercase tracking-widest mb-4" data-i18n="nav_install">Instalação</h2>
-				<p class="text-slate-500 text-sm max-w-2xl mx-auto" data-i18n="install_desc">Siga o guia oficial para configurar o SyncPulse no seu ZimaOS.</p>
+				<p class="text-slate-500 text-sm max-w-2xl mx-auto" data-i18n="install_desc">Selecione a sua plataforma e siga os passos de configuração.</p>
 			</div>
 
 			<div class="grid lg:grid-cols-2 gap-12 items-start">
 				
-				<!-- COLUNA ESQUERDA: CÓDIGOS YAML -->
+				<!-- COLUNA ESQUERDA: PLATAFORMAS & WATCHTOWER -->
 				<div class="space-y-8">
 					
-					<!-- PASSO 1: SyncPulse -->
+					<!-- PASSO 1: Escolha de Plataforma -->
 					<div class="space-y-4">
 						<div class="flex items-center gap-3">
 							<div class="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white text-xs font-bold">1</div>
-							<h3 class="text-white font-bold uppercase text-sm tracking-wider">SyncPulse Engine</h3>
+							<h3 class="text-white font-bold uppercase text-sm tracking-wider" data-i18n="step_1_title">Escolha a Plataforma</h3>
 						</div>
-						<div class="bg-black/40 rounded-3xl border border-slate-800 p-6 shadow-2xl relative group">
-							<button onclick="copyYAML('yaml-content')" class="absolute top-4 right-6 text-slate-500 hover:text-cyan-400 text-xs font-bold transition-all">
-								<i class="fas fa-copy"></i>
-							</button>
-							<pre id="yaml-content" class="text-cyan-500/90 font-mono text-[10px] leading-relaxed overflow-x-auto whitespace-pre">
-			name: syncpulse
-				services:
-				  syncpulse:
-					cpu_shares: 90
-					command: []
-					container_name: SyncPulse
-					deploy:
-					  resources:
-						limits:
-						  memory: 8264380416
-						reservations:
-						  devices: []
-					environment:
-					  - PYTHONUNBUFFERED=1
-					  - TZ=Europe/Lisbon
-					image: ghcr.io/syncpulsegeral-collab/syncpulse:latest
-					labels:
-					  icon: https://github.com/syncpulsegeral-collab/syncpulse/raw/main/logo_splash.png
-					ports:
-					  - target: 8181
-						published: "8181"
-						protocol: tcp
-					privileged: true
-					restart: always
-					user: root
-					volumes:
-					  - type: bind
-						source: /DATA/AppData/SyncPulse/config
-						target: /config
-					  - type: bind
-						source: /DATA/AppData/SyncPulse/app
-						target: /app
-					  - type: bind
-						source: /DATA/AppData/SyncPulse/www
-						target: /www
-					  - type: bind
-						source: /mnt
-						target: /mnt
-					  - type: bind
-						source: /etc/machine-id
-						target: /etc/machine-id
-					devices: []
-					cap_add: []
-					network_mode: bridge
-				x-casaos:
-				  author: self
-				  category: self
-				  hostname: ""
-				  icon: https://github.com/syncpulsegeral-collab/syncpulse/raw/main/logo_splash.png
-				  index: /
-				  is_uncontrolled: false
-				  main: syncpulse
-				  port_map: "8181"
-				  scheme: http
-				  store_app_id: syncpulse
-				  title:
-					custom: SyncPulse
-					en_us: syncpulse</pre>
+						
+						<div class="grid grid-cols-2 gap-4">
+							<!-- ZimaOS / Docker -->
+							<div class="dash-card p-6 border-cyan-500/30 bg-cyan-500/5 relative overflow-hidden group">
+								<i class="fas fa-box absolute -right-2 -bottom-2 text-4xl opacity-10 group-hover:scale-110 transition-transform"></i>
+								<h4 class="text-white font-bold text-xs uppercase mb-1">ZimaOS</h4>
+								<p class="text-[9px] text-cyan-400 font-black uppercase mb-4 tracking-widest">Disponível</p>
+								<a href="downloads/syncpulse.yaml" download class="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-white bg-cyan-600 hover:bg-cyan-500 px-4 py-2 rounded-lg transition-all">
+									<i class="fas fa-download"></i> Get YAML
+								</a>
+							</div>
+
+							<!-- Windows -->
+							<div class="dash-card p-6 opacity-40 border-slate-800 bg-slate-900/50">
+								<h4 class="text-slate-400 font-bold text-xs uppercase mb-1">Windows</h4>
+								<p class="text-[9px] text-amber-500 font-black uppercase mb-4 tracking-widest">Brevemente</p>
+								<div class="text-[10px] text-slate-600 font-bold uppercase">v1.1 EXE</div>
+							</div>
+
+							<!-- macOS -->
+							<div class="dash-card p-6 opacity-40 border-slate-800 bg-slate-900/50">
+								<h4 class="text-slate-400 font-bold text-xs uppercase mb-1">macOS</h4>
+								<p class="text-[9px] text-amber-500 font-black uppercase mb-4 tracking-widest">Brevemente</p>
+								<div class="text-[10px] text-slate-600 font-bold uppercase">v1.1 DMG</div>
+							</div>
+
+							<!-- Linux -->
+							<div class="dash-card p-6 opacity-40 border-slate-800 bg-slate-900/50">
+								<h4 class="text-slate-400 font-bold text-xs uppercase mb-1">Linux</h4>
+								<p class="text-[9px] text-amber-500 font-black uppercase mb-4 tracking-widest">Brevemente</p>
+								<div class="text-[10px] text-slate-600 font-bold uppercase">v1.1 BIN</div>
+							</div>
 						</div>
 					</div>
 
-					<!-- PASSO 2: Watchtower (Expert Tip) -->
-					<div class="p-6 rounded-3xl bg-cyan-500/5 border border-cyan-500/10 relative group/wt">
-						<div class="flex items-center gap-3 mb-4">
-							<div class="w-8 h-8 rounded-full bg-cyan-500 flex items-center justify-center text-black text-xs">
+					<!-- PASSO 3: Watchtower (Recomendação) -->
+					<div class="space-y-4">
+						<div class="flex items-center gap-3">
+							<div class="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center text-cyan-400 text-xs font-bold">3</div>
+							<h3 class="text-white font-bold uppercase text-sm tracking-wider" data-i18n="watchtower_title">Updates Automáticos</h3>
+						</div>
+						<div class="p-6 rounded-3xl bg-cyan-500/5 border border-cyan-500/10 flex gap-5 items-center">
+							<div class="w-12 h-12 rounded-full bg-cyan-500/20 flex items-center justify-center text-cyan-400 text-xl shrink-0">
 								<i class="fas fa-magic"></i>
 							</div>
 							<div>
-								<h3 class="text-white font-bold uppercase text-xs tracking-widest" data-i18n="watchtower_title">Updates Automáticos</h3>
-								<p class="text-[10px] text-slate-500" data-i18n="watchtower_subtitle">Recomendado</p>
+								<p class="text-[11px] text-slate-400 leading-relaxed">
+									<b class="text-white uppercase text-[10px] tracking-widest block mb-1" data-i18n="watchtower_subtitle">Dica de Especialista</b>
+									<span data-i18n="watchtower_desc">Recomendamos a instalação do <b>Watchtower</b> no seu ZimaOS. Ele garante que o SyncPulse é atualizado silenciosamente sempre que lançamos melhorias.</span>
+								</p>
 							</div>
-							<button onclick="copyYAML('wt-content')" class="ml-auto text-slate-500 hover:text-cyan-400 text-xs transition-all">
-								<i class="fas fa-copy"></i>
-							</button>
 						</div>
-						<pre id="wt-content" class="text-[10px] text-slate-600 font-mono overflow-x-auto mb-4">
-	version: '3'
-	services:
-	  watchtower:
-		image: containrrr/watchtower
-		container_name: watchtower
-		restart: always
-		volumes:
-		  - /var/run/docker.sock:/var/run/docker.sock
-		environment:
-		  - WATCHTOWER_POLL_INTERVAL=3600
-		  - WATCHTOWER_CLEANUP=true</pre>
-						<p class="text-[10px] text-slate-500 leading-relaxed" data-i18n="watchtower_desc">O Watchtower garante que a sua App é atualizada silenciosamente mal lançamos uma melhoria no GitHub.</p>
 					</div>
 				</div>
 
-				<!-- COLUNA DIREITA: CONFIGURAÇÃO DE DISCOS (O TEU PEDIDO) -->
-				<div class="space-y-8 lg:pt-2">
+				<!-- COLUNA DIREITA: CONFIGURAÇÃO DE DISCOS (MANTIDA) -->
+				<div class="space-y-8">
 					<div class="flex items-center gap-3">
-						<div class="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center text-cyan-400 text-xs font-bold">2</div>
+						<div class="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white text-xs font-bold">2</div>
 						<h3 class="text-white font-bold uppercase text-sm tracking-wider" data-i18n="step_2_title">Configuração de Discos</h3>
 					</div>
 					
-					<div class="glass p-6 rounded-3xl border-slate-800">
-						<p class="text-xs text-slate-400 leading-relaxed mb-6" data-i18n="mount_tip">
-							<b>Importante:</b> Para que o SyncPulse consiga ler os teus ficheiros, deves mapear o teu disco físico do ZimaOS (Host) para a pasta interna <code class="text-cyan-400">/mnt</code> da App.
+					<div class="glass p-6 rounded-[32px] border-slate-800">
+						<p class="text-xs text-slate-400 leading-relaxed mb-8" data-i18n="mount_tip">
+							<b>Importante (ZimaOS):</b> Para o SyncPulse ler os seus discos, deve mapear o caminho host para a pasta interna <code class="text-cyan-400">/mnt</code> nas definições do contentor.
 						</p>
 
-						<div class="space-y-6">
+						<div class="grid sm:grid-cols-2 gap-6">
 							<!-- Screen 1 -->
-							<div class="space-y-2">
-								<p class="text-[10px] text-slate-500 font-bold uppercase" data-i18n="mount_screen_1">1. Abrir Definições do Contentor</p>
-								<div class="img-container shadow-xl" onclick="openLightbox('img/mount_step1.png')">
-									<img src="Screens/Volume_1.jpg" alt="Settings" class="w-full opacity-80 hover:opacity-100 transition-opacity">
+							<div class="space-y-3">
+								<p class="text-[9px] text-slate-500 font-black uppercase tracking-widest" data-i18n="mount_screen_1">1. Abrir Definições</p>
+								<div class="img-container shadow-xl" onclick="openLightbox('Screens/Volume_1.jpg')">
+									<img src="Screens/Volume_1.jpg" class="w-full opacity-80 hover:opacity-100 transition-opacity">
 								</div>
 							</div>
 
 							<!-- Screen 2 -->
-							<div class="space-y-2">
-								<p class="text-[10px] text-slate-500 font-bold uppercase" data-i18n="mount_screen_2">2. Ajustar "Host Path" no volume /mnt</p>
-								<div class="img-container shadow-xl" onclick="openLightbox('img/mount_step2.png')">
-									<img src="Screens/Volume_2.jpg" alt="Volumes" class="w-full opacity-80 hover:opacity-100 transition-opacity">
+							<div class="space-y-3">
+								<p class="text-[9px] text-slate-500 font-black uppercase tracking-widest" data-i18n="mount_screen_2">2. Mapear /mnt</p>
+								<div class="img-container shadow-xl" onclick="openLightbox('Screens/Volume_2.jpg')">
+									<img src="Screens/Volume_2.jpg" class="w-full opacity-80 hover:opacity-100 transition-opacity">
 								</div>
 							</div>
 						</div>
 
-						<div class="mt-6 p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex gap-3 items-start">
-							<i class="fas fa-info-circle text-amber-500 text-xs mt-0.5"></i>
-							<p class="text-[10px] text-amber-200/60 leading-relaxed" data-i18n="mount_warning">
-								Verifica se o caminho do Host começa por <span class="text-amber-500 font-mono">/media/...</span> para garantir acesso total aos teus dados.
+						<div class="mt-8 p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex gap-3 items-center">
+							<i class="fas fa-info-circle text-amber-500 text-xs"></i>
+							<p class="text-[10px] text-amber-200/60 font-medium" data-i18n="mount_warning">
+								Use caminhos que comecem por <span class="text-amber-500">/media/...</span> para acesso total.
 							</p>
 						</div>
 					</div>
 				</div>
 
-			</div>
-
-			<!-- Botão de Download Final -->
-			<div class="mt-16 text-center">
-				<button onclick="downloadYAML()" class="inline-flex items-center gap-3 bg-slate-800 hover:bg-slate-700 text-white px-10 py-5 rounded-2xl font-black uppercase text-xs tracking-[0.2em] transition-all shadow-2xl border border-white/5">
-					<i class="fas fa-file-download text-cyan-400 text-lg"></i>
-					<span data-i18n="btn_download_full">Download syncpulse.yaml</span>
-				</button>
 			</div>
 		</div>
 	</section>

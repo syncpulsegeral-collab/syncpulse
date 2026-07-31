@@ -1,0 +1,44 @@
+services:
+  syncpulse:
+    command: null
+    container_name: Syncpulse
+    entrypoint: null
+    hostname: Syncpulse
+    image: ghcr.io/syncpulsegeral-collab/syncpulse:latest
+    labels:
+      icon: https://github.com/syncpulsegeral-collab/syncpulse/raw/main/logo_splash.png
+    network_mode: bridge
+    ports:
+      - mode: ingress
+        target: 8181
+        published: "8181"
+        protocol: tcp
+    restart: unless-stopped
+    volumes:
+      - type: bind
+        source: /media/ZimaOS-HD/AppData/SyncPulse/app
+        target: /app
+      - type: bind
+        source: /media/ZimaOS-HD/AppData/SyncPulse/config
+        target: /config
+      - type: bind
+        source: /media/ZimaOS-HD/AppData/SyncPulse/www
+        target: /www
+      - type: bind
+        source: /mnt
+        target: /mnt
+x-casaos:
+  author: self
+  category: self
+  hostname: ""
+  icon: https://github.com/syncpulsegeral-collab/syncpulse/raw/main/logo_splash.png
+  index: /
+  is_uncontrolled: false
+  main: syncpulse
+  port_map: "8181"
+  scheme: http
+  store_app_id: syncpulse
+  title:
+    custom: SyncPulse
+    en_us: syncpulse
+name: joyful_kharytonov
