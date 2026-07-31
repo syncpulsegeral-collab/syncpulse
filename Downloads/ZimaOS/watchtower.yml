@@ -1,0 +1,40 @@
+services:
+  watchtower:
+    cpu_shares: 90
+    command: []
+    container_name: watchtower
+    deploy:
+      resources:
+        limits:
+          memory: 7.7GB
+        reservations: {}
+      placement: {}
+    entrypoint: null
+    environment:
+      WATCHTOWER_CLEANUP: "true"
+      WATCHTOWER_INCLUDE_STOPPED: "true"
+      WATCHTOWER_POLL_INTERVAL: "3600"
+    image: containrrr/watchtower:latest
+    labels:
+      icon: https://icon.casaos.io/main/all/watchtower.png
+    network_mode: bridge
+    restart: no
+    volumes:
+      - type: bind
+        source: /var/run/docker.sock
+        target: /var/run/docker.sock
+x-casaos:
+  author: self
+  category: self
+  hostname: 100.93.232.83
+  icon: https://icon.casaos.io/main/all/watchtower.png
+  index: /
+  is_uncontrolled: false
+  main: watchtower
+  port_map: ""
+  scheme: http
+  store_app_id: watchtower
+  title:
+    custom: watchtower
+    en_us: watchtower
+name: watchtower
