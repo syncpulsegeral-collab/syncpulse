@@ -3,7 +3,7 @@ services:
     command: null
     container_name: Syncpulse
     entrypoint: null
-    hostname: Syncpulse
+    hostname: ""
     image: ghcr.io/syncpulsegeral-collab/syncpulse:latest
     labels:
       icon: https://github.com/syncpulsegeral-collab/syncpulse/raw/main/logo_splash.png
@@ -41,4 +41,4 @@ x-casaos:
   title:
     custom: SyncPulse
     en_us: syncpulse
-name: joyful_kharytonov
+name: Syncpulse
