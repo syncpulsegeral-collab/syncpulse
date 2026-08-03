@@ -1,7 +1,7 @@
 services:
   syncpulse:
     command: null
-    container_name: Syncpulse
+    container_name: SyncPulse
     entrypoint: null
     hostname: ""
     image: ghcr.io/syncpulsegeral-collab/syncpulse:latest
@@ -34,7 +34,7 @@ x-casaos:
   icon: https://github.com/syncpulsegeral-collab/syncpulse/raw/main/logo_splash.png
   index: /
   is_uncontrolled: false
-  main: syncpulse
+  main: SyncPulse
   port_map: "8181"
   scheme: http
   store_app_id: syncpulse
