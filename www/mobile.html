@@ -1,118 +1,135 @@
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>SyncPulse Mobile</title>
-<link rel="icon" type="image/svg+xml" href="logo.svg">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-<script src="https://cdn.tailwindcss.com"></script>
-<style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
-    :root {
-        --bg: #050a12; --bg-elevated: #0b111d; --card: #111d29; --card-alt: #162635;
-        --border: #1e293b; --text: #ffffff; --text-dim: #94a3b8; --text-faint: #475569;
-        --accent: #3b82f6; --orange: #f97316; --green: #22c55e; --red: #ef4444;
-    }
-    html[data-theme="light"] {
-        --bg: #eef1f6; --bg-elevated: #ffffff; --card: #ffffff; --card-alt: #eaf1ff;
-        --border: #e1e7ef; --text: #0f172a; --text-dim: #5b6b82; --text-faint: #94a3b8;
-    }
-    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; scrollbar-width: none; }
-    *::-webkit-scrollbar { display: none; }
-    body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>SyncPulse - Mobile Zima</title>
+	<link rel="icon" type="image/svg+xml" href="logo.svg">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+        :root { 
+            --bg: #050a12; --bg-elevated: #0b111d; --card: #111d29; --card-alt: #162635;
+            --border: #1e293b; --text: #ffffff; --text-dim: #94a3b8; --text-faint: #475569;
+            --accent: #3b82f6; --orange: #f97316; --green: #22c55e; --red: #ef4444;
+        }
+        html[data-theme="light"] {
+            --bg: #eef1f6; --bg-elevated: #ffffff; --card: #ffffff; --card-alt: #eaf1ff;
+            --border: #e1e7ef; --text: #0f172a; --text-dim: #5b6b82; --text-faint: #94a3b8;
+        }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; scrollbar-width: none; }
+        *::-webkit-scrollbar { display: none; }
+        body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
 
-    /* Top Bar */
-    .topbar { padding: max(15px, env(safe-area-inset-top)) 20px 12px; background: var(--bg-elevated); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
-    .conn-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--red); transition: 0.3s; }
-    .conn-dot.online { background: var(--green); box-shadow: 0 0 8px var(--green); }
+        /* Top Bar */
+        .topbar { padding: max(15px, env(safe-area-inset-top)) 20px 12px; background: var(--bg-elevated); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        .conn-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--red); transition: 0.3s; }
+        .conn-dot.online { background: var(--green); box-shadow: 0 0 8px var(--green); }
 
-    /* Views */
-    .view { display: none; flex: 1; overflow-y: auto; padding: 15px 15px 100px; }
-    .view.active { display: block; animation: fadeIn 0.2s ease; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        /* Views */
+        .view { display: none; flex: 1; overflow-y: auto; padding: 15px 15px 100px; }
+        .view.active { display: block; animation: fadeIn 0.2s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
-    .section-title { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: var(--text-dim); margin: 5px 0 15px; }
+        .section-title { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: var(--text-dim); margin: 5px 0 15px; }
 
-    /* Cards */
-    .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; margin-bottom: 12px; position: relative; border-left: 3px solid transparent; }
-    .card.running { border-left-color: var(--accent); background: var(--card-alt); }
-    .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-    .card-title { font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
-    .badge { font-size: 10px; background: rgba(30, 41, 59, 0.8); padding: 3px 10px; border-radius: 15px; color: var(--text-dim); font-weight: 800; }
-    
-    .path-line { font-size: 10.5px; color: var(--text-faint); margin-bottom: 3px; font-family: monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .path-line b { color: var(--text-dim); min-width: 18px; display: inline-block; }
-    .meta-row { color: var(--accent); font-size: 11px; font-weight: 700; display: flex; align-items: center; gap: 14px; margin: 12px 0 8px; }
-    .last-sync { font-style: italic; font-size: 9.5px; color: var(--text-faint); margin-bottom: 12px; }
+        /* Cards */
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; margin-bottom: 12px; position: relative; border-left: 3px solid transparent; }
+        .card.running { border-left-color: var(--accent); background: var(--card-alt); }
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .card-title { font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+        .badge { font-size: 10px; background: rgba(30, 41, 59, 0.8); padding: 3px 12px; border-radius: 15px; color: var(--text-dim); font-weight: 800; }
+        
+        .path-line { font-size: 10.5px; color: #475569; margin-bottom: 3px; font-family: monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .path-line b { color: var(--text-dim); min-width: 18px; display: inline-block; }
+        .meta-row { color: var(--accent); font-size: 11px; font-weight: 700; display: flex; align-items: center; gap: 14px; margin: 12px 0 8px; }
+        .last-sync { font-style: italic; font-size: 9.5px; color: #475569; margin-bottom: 12px; }
 
-    .card-footer { padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center; }
-    .btn-action { font-size: 10.5px; font-weight: 900; text-transform: uppercase; display: flex; align-items: center; gap: 6px; background: none; border: none; }
-    .btn-sim { color: var(--orange); }
-    .btn-play { color: var(--accent); }
-    .btn-stop { color: var(--red); }
-    .icon-history { color: var(--text-faint); font-size: 15px; padding: 5px; }
+        .card-footer { padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center; }
+        .btn-action { font-size: 10.5px; font-weight: 900; text-transform: uppercase; display: flex; align-items: center; gap: 6px; background: none; border: none; }
+        .btn-sim { color: var(--orange); }
+        .btn-play { color: var(--accent); }
+        .btn-stop { color: var(--red); }
+        .icon-history { color: #475569; font-size: 15px; padding: 5px; }
 
-    /* Progress UI */
-    .prog-bg { background: #070e1e; height: 6px; border-radius: 10px; overflow: hidden; border: 1px solid var(--border); }
-    .prog-fill { height: 100%; background: var(--accent); width: 0%; transition: width 0.4s ease; box-shadow: 0 0 10px var(--accent); }
+        /* Progress UI */
+        .prog-bg { background: #070e1e; height: 6px; border-radius: 10px; overflow: hidden; border: 1px solid var(--border); }
+        .prog-fill { height: 100%; background: var(--accent); width: 0%; transition: width 0.4s ease; box-shadow: 0 0 10px var(--accent); }
 
-    /* File List */
-    .file-row { padding: 12px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.1); }
-    .back-btn { color: var(--accent); font-weight: 800; font-size: 12px; margin-bottom: 15px; display: flex; align-items: center; gap: 6px; }
+        /* File List */
+        .file-row { padding: 12px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.1); }
+        .back-btn { color: var(--accent); font-weight: 800; font-size: 12px; margin-bottom: 15px; display: flex; align-items: center; gap: 6px; }
 
-    /* Bottom Nav */
-    .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; height: 75px; background: var(--bg-elevated); border-top: 1px solid var(--border); display: grid; grid-template-columns: repeat(4, 1fr); z-index: 1000; padding-bottom: env(safe-area-inset-bottom); }
-    .nav-item { display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--text-faint); font-size: 9px; font-weight: 700; text-transform: uppercase; gap: 4px; border:none; background:none; }
-    .nav-item.active { color: var(--accent); }
-    .nav-item i { font-size: 18px; }
+        /* Bottom Nav */
+        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; height: 75px; background: var(--bg-nav); border-top: 1px solid var(--border); display: grid; grid-template-columns: repeat(4, 1fr); z-index: 1000; padding-bottom: env(safe-area-inset-bottom); }
+        .nav-item { display: flex; flex-direction: column; align-items: center; justify-content: center; color: #475569; font-size: 9px; font-weight: 700; text-transform: uppercase; gap: 4px; border:none; background:none; }
+        .nav-item.active { color: var(--accent); }
+        .nav-item i { font-size: 18px; }
 
-    /* Language/Theme Btns */
-    .lang-btn { padding: 12px; background: var(--card); border: 1px solid var(--border); border-radius: 10px; color: var(--text-dim); font-weight: 800; font-size: 11px; text-align: center; }
-    .lang-btn.active { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
-    .theme-btn { flex: 1; padding: 10px; border-radius: 10px; font-size: 11px; font-weight: 800; color: var(--text-dim); }
-    .theme-btn.active { background: var(--accent); color: white; }
-</style>
+        /* Language/Theme Btns */
+        .lang-btn { padding: 12px; background: var(--card); border: 1px solid var(--border); border-radius: 10px; color: var(--text-dim); font-weight: 800; font-size: 11px; text-align: center; }
+        .lang-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(59,130,246,0.1); }
+        .theme-btn { flex: 1; padding: 10px; border-radius: 10px; font-size: 11px; font-weight: 800; color: var(--text-dim); }
+        .theme-btn.active { background: var(--accent); color: white; }
+    </style>
 </head>
 <body>
 
+  <!-- CABEÇALHO COM LOGÓTIPO ADAPTÁVEL (Branco no Escuro / Preto no Claro + Pulse Azul) -->
   <div class="topbar">
     <div class="flex items-center gap-3">
         <div id="conn-dot" class="conn-dot"></div>
         <div>
-            <h1 class="text-white font-black uppercase text-sm tracking-tight">SyncPulse</h1>
+            <h1 class="font-black uppercase text-sm tracking-tight" style="color: var(--text)">Sync<span class="text-blue-500">Pulse</span></h1>
             <span class="text-[8px] text-slate-500 font-bold uppercase tracking-widest">ZimaOS Edition</span>
         </div>
     </div>
   </div>
 
-  <div class="view active" id="view-home"><div class="section-title" data-i18n="home_title">Execução</div><div id="home-list"></div></div>
-  <div class="view" id="view-clouds"><div class="section-title" data-i18n="clouds_title">Clouds</div><div id="clouds-list"></div></div>
-  <div class="view" id="view-tasks"><div class="section-title" data-i18n="tasks_title">Tarefas</div><div id="tasks-list"></div></div>
+  <!-- VIEW: HOME (ATIVAS) -->
+  <div class="view active" id="view-home">
+    <div class="section-title" data-i18n="home_title">Tarefas em execução</div>
+    <div id="home-list"></div>
+  </div>
 
-  <!-- SUB-PÁGINAS -->
+  <!-- VIEW: CLOUDS -->
+  <div class="view" id="view-clouds">
+    <div class="section-title" data-i18n="clouds_title">Clouds Ligadas</div>
+    <div id="clouds-list"></div>
+  </div>
+
+  <!-- VIEW: TAREFAS (TODAS) -->
+  <div class="view" id="view-tasks">
+    <div class="section-title" data-i18n="tasks_title">Todas as tarefas</div>
+    <div id="tasks-list"></div>
+  </div>
+
+  <!-- SUB-VIEW: LISTA DE FICHEIROS -->
   <div class="view" id="view-files">
-    <button class="back-btn" onclick="switchTab('tasks')"><i class="fas fa-arrow-left"></i> <span data-i18n="back">VOLTAR</span></button>
+    <div class="back-header back-btn cursor-pointer" onclick="switchTab('tasks')"><i class="fas fa-arrow-left"></i> <span data-i18n="back">VOLTAR</span></div>
     <div id="files-header" class="mb-4"></div>
     <div id="file-list-content"></div>
   </div>
 
+  <!-- SUB-VIEW: HISTÓRICO -->
   <div class="view" id="view-history">
-    <button class="back-btn" onclick="switchTab('tasks')"><i class="fas fa-arrow-left"></i> <span data-i18n="back">VOLTAR</span></button>
-    <div id="history-header" class="mb-4"></div>
-    <div id="history-list-content"></div>
+    <div class="back-header back-btn cursor-pointer" onclick="switchTab('tasks')"><i class="fas fa-arrow-left"></i> <span data-i18n="back">VOLTAR</span></div>
+    <div class="section-title" data-i18n="hist_title">Histórico de Atividade</div>
+    <div id="history-content"></div>
   </div>
 
+  <!-- VIEW: DEFINIÇÕES -->
   <div class="view" id="view-settings">
     <div class="section-title" data-i18n="nav_settings">Definições</div>
-    <div class="bg-slate-900/40 p-5 rounded-2xl border border-white/5 mb-4">
+    <div class="settings-group bg-slate-900/40 p-5 rounded-2xl border border-white/5 mb-4">
         <div class="section-title" style="margin-bottom:10px" data-i18n="settings_theme">Aparência</div>
         <div class="flex bg-black/40 p-1 rounded-xl">
             <button id="t-dark" class="theme-btn" onclick="setTheme('dark')">Dark</button>
             <button id="t-light" class="theme-btn" onclick="setTheme('light')">Light</button>
         </div>
     </div>
-    <div class="bg-slate-900/40 p-5 rounded-2xl border border-white/5">
+    <div class="settings-group bg-slate-900/40 p-5 rounded-2xl border border-white/5">
         <div class="section-title" style="margin-bottom:10px" data-i18n="settings_language">Idioma</div>
         <div class="grid grid-cols-3 gap-2" id="lang-btns-container"></div>
     </div>
@@ -127,23 +144,25 @@
 
 <script>
 const i18n = {
-    en: { nav_home: "Home", nav_clouds: "Clouds", nav_tasks: "Tasks", nav_settings: "Settings", home_title: "Running tasks", clouds_title: "Connected Clouds", clouds_loading: "Loading clouds...", tasks_title: "All Tasks", back: "BACK", status_active: "Active", status_sim: "Simulating", status_inactive: "Inactive", status_done: "Completed", btn_sim: "Simulate", btn_start: "Start", btn_stop: "Stop", last_sync: "Last sync", mode_bi: "Bisync", mode_up: "Upload", mode_down: "Download", opt_real: "Real-time", daily: "Daily", settings_theme: "Appearance", settings_language: "Language", hist_sim: "Simulation", hist_sync: "Sync", hist_success: "Success", hist_error: "Error", file_pending: "Pending" },
-    pt: { nav_home: "Home", nav_clouds: "Clouds", nav_tasks: "Tarefas", nav_settings: "Definições", home_title: "Tarefas em execução", clouds_title: "Clouds Ligadas", clouds_loading: "A carregar clouds...", tasks_title: "Todas as tarefas", back: "VOLTAR", status_active: "Ativo", status_sim: "Simulando", status_inactive: "Inativo", status_done: "Concluído", btn_sim: "Simular", btn_start: "Iniciar", btn_stop: "Parar", last_sync: "Última sinc", mode_bi: "Bisync", mode_up: "Local->Cloud", mode_down: "Cloud->Local", opt_real: "Tempo Real", daily: "Diário", settings_theme: "Aparência", settings_language: "Idioma", hist_sim: "Simulação", hist_sim: "Simulação", hist_sync: "Sincronização", hist_success: "Sucesso", hist_error: "Erro", file_pending: "Pendente" },
-    es: { nav_home: "Inicio", nav_clouds: "Nubes", nav_tasks: "Tareas", nav_settings: "Ajustes", home_title: "Tareas en curso", clouds_title: "Nubes Conectadas", clouds_loading: "Cargando nubes...", tasks_title: "Todas las tareas", back: "VOLVER", status_active: "Activo", status_sim: "Simulando", status_inactive: "Inactivo", status_done: "Hecho", btn_sim: "Simular", btn_start: "Iniciar", btn_stop: "Parar", last_sync: "Ult. sinc", mode_bi: "Bisync", mode_up: "Subida", mode_down: "Bajada", opt_real: "Tiempo Real", daily: "Diario", settings_theme: "Apariencia", settings_language: "Idioma", hist_sim: "Simulación", hist_sync: "Sincronización", hist_success: "Éxito", hist_error: "Error", file_pending: "Pendiente" },
-    fr: { nav_home: "Accueil", nav_clouds: "Clouds", nav_tasks: "Tâches", nav_settings: "Réglages", home_title: "Tâches en cours", clouds_title: "Clouds Connectés", clouds_loading: "Chargement...", tasks_title: "Toutes les tâches", back: "RETOUR", status_active: "Actif", status_sim: "Simulation", status_inactive: "Inactif", status_done: "Terminé", btn_sim: "Simuler", btn_start: "Démarrer", btn_stop: "Arrêter", last_sync: "Dern. sync", mode_bi: "Bisync", mode_up: "Envoi", mode_down: "Réception", opt_real: "Temps Réel", daily: "Quotidien", settings_theme: "Apparence", settings_language: "Langue", hist_sim: "Simulation", hist_sync: "Sinc", hist_success: "Succès", hist_error: "Erreur", file_pending: "En attente" },
-    de: { nav_home: "Start", nav_clouds: "Clouds", nav_tasks: "Aufgaben", nav_settings: "Einstellungen", home_title: "Laufende Aufgaben", clouds_title: "Verbundene Clouds", clouds_loading: "Wird geladen...", tasks_title: "Alle Aufgaben", back: "ZURÜCK", status_active: "Aktiv", status_sim: "Simulieren", status_inactive: "Inaktiv", status_done: "Fertig", btn_sim: "Simulieren", btn_start: "Starten", btn_stop: "Stoppen", last_sync: "Letzte Sinc", mode_bi: "Bisync", mode_up: "Upload", mode_down: "Download", opt_real: "Echtzeit", daily: "Täglich", settings_theme: "Aussehen", settings_language: "Sprache", hist_sim: "Simulation", hist_sync: "Sync", hist_success: "Erfolg", hist_error: "Fehler", file_pending: "Ausstehend" }
+    en: { nav_home: "Home", nav_clouds: "Clouds", nav_tasks: "Tasks", nav_settings: "Settings", home_title: "Running tasks", clouds_title: "Connected Clouds", tasks_title: "All Tasks", back: "BACK", status_active: "Active", status_sim: "Simulating", status_inactive: "Inactive", status_done: "Completed", btn_sim: "Simulate", btn_start: "Start", btn_stop: "Stop", last_sync: "Last sync", mode_bi: "Bisync", mode_up: "Upload", mode_down: "Download", opt_real: "Real-time", daily: "Daily", settings_theme: "Appearance", settings_language: "Language", hist_title: "Activity History", hist_sim: "Simulation", hist_sync: "Sync", hist_success: "Success", hist_error: "Error", file_pending: "Pending" },
+    pt: { nav_home: "Home", nav_clouds: "Clouds", nav_tasks: "Tarefas", nav_settings: "Definições", home_title: "Tarefas em execução", clouds_title: "Clouds Ligadas", tasks_title: "Todas as tarefas", back: "VOLTAR", status_active: "Ativo", status_sim: "Simulando", status_inactive: "Inativo", status_done: "Concluído", btn_sim: "Simular", btn_start: "Iniciar", btn_stop: "Parar", last_sync: "Última sinc", mode_bi: "Bisync", mode_up: "Local->Cloud", mode_down: "Cloud->Local", opt_real: "Tempo Real", daily: "Diário", settings_theme: "Aparência", settings_language: "Idioma", hist_title: "Histórico de Atividade", hist_sim: "Simulação", hist_sync: "Sincronização", hist_success: "Sucesso", hist_error: "Erro", file_pending: "Pendente" },
+    es: { nav_home: "Inicio", nav_clouds: "Nubes", nav_tasks: "Tareas", nav_settings: "Ajustes", home_title: "Tareas en curso", clouds_title: "Nubes Conectadas", tasks_title: "Todas las tareas", back: "VOLVER", status_active: "Activo", status_sim: "Simulando", status_inactive: "Inactivo", status_done: "Hecho", btn_sim: "Simular", btn_start: "Iniciar", btn_stop: "Parar", last_sync: "Ult. sinc", mode_bi: "Bisync", mode_up: "Subida", mode_down: "Bajada", opt_real: "Tiempo Real", daily: "Diario", settings_theme: "Apariencia", settings_language: "Idioma", hist_title: "Historial de Actividad", hist_sim: "Simulación", hist_sync: "Sincronización", hist_success: "Éxito", hist_error: "Error", file_pending: "Pendiente" },
+    fr: { nav_home: "Accueil", nav_clouds: "Clouds", nav_tasks: "Tâches", nav_settings: "Réglages", home_title: "Tâches en cours", clouds_title: "Clouds Connectés", tasks_title: "Toutes les tâches", back: "RETOUR", status_active: "Actif", status_sim: "Simulation", status_inactive: "Inactif", status_done: "Terminé", btn_sim: "Simuler", btn_start: "Démarrer", btn_stop: "Arrêter", last_sync: "Dern. sync", mode_bi: "Bisync", mode_up: "Envoi", mode_down: "Réception", opt_real: "Temps Réel", daily: "Quotidien", settings_theme: "Apparence", settings_language: "Langue", hist_title: "Historique", hist_sim: "Simulation", hist_sync: "Sinc", hist_success: "Succès", hist_error: "Erreur", file_pending: "En attente" },
+    de: { nav_home: "Start", nav_clouds: "Clouds", nav_tasks: "Aufgaben", nav_settings: "Einstellungen", home_title: "Laufende Aufgaben", clouds_title: "Verbundene Clouds", tasks_title: "Alle Aufgaben", back: "ZURÜCK", status_active: "Aktiv", status_sim: "Simulieren", status_inactive: "Inaktiv", status_done: "Fertig", btn_sim: "Simulieren", btn_start: "Starten", btn_stop: "Stoppen", last_sync: "Letzte Sinc", mode_bi: "Bisync", mode_up: "Upload", mode_down: "Download", opt_real: "Echtzeit", daily: "Täglich", settings_theme: "Aussehen", settings_language: "Sprache", hist_title: "Aktivitätsverlauf", hist_sim: "Simulation", hist_sync: "Sync", hist_success: "Erfolg", hist_error: "Fehler", file_pending: "Ausstehend" }
 };
 
-let lang = localStorage.getItem('syncpulse_language_v2') || 'en';
+let lang = localStorage.getItem('syncpulse_language_v2') || 'pt';
 let theme = localStorage.getItem('syncpulse_theme') || 'dark';
 let tasks = [], STATE = { running:{}, stats:{}, active_files:{}, finished_files:{}, all_files:{}, failed_files:{}, skipped_files:{} }, socket;
 let currentTid = null;
 
 function t() { return i18n[lang] || i18n.en; }
 
-/* --- Navegação e Tabs --- */
 function switchTab(tab) {
-    currentTid = null;
+    // Só limpamos o currentTid quando saímos para uma aba principal
+    if (tab !== 'files' && tab !== 'history') {
+        currentTid = null;
+    }
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     
@@ -152,7 +171,7 @@ function switchTab(tab) {
     if(view) view.classList.add('active');
     if(nav) nav.classList.add('active');
     
-    if(tab === 'clouds') loadClouds();
+    if(tab === 'clouds') renderClouds();
 }
 
 /* --- Renderização Principal --- */
@@ -163,9 +182,7 @@ function renderCard(tk) {
     const stats = STATE.stats[tid] || { percent: 0 };
     const activeFile = (STATE.active_files[tid] && STATE.active_files[tid][0]) || null;
     const hasErrors = STATE.failed_files[tid]?.length > 0;
-
     const syncLabel = tk.type === 'bisync' ? t().mode_bi : (tk.type === 'upload' ? t().mode_up : t().mode_down);
-    const triggerText = tk.trigger === 'real' ? t().opt_real : (tk.interval === 'daily' ? `${t().daily} ${tk.daily_time}` : tk.interval);
 
     let statusText = t().status_inactive;
     if (status === 'active') statusText = t().status_active;
@@ -173,7 +190,7 @@ function renderCard(tk) {
     if (status === 'idle' && stats.percent === 100) statusText = t().status_done;
 
     return `
-    <div class="card ${isRunning ? 'running' : ''}" onclick="openFiles('${tk.id}')">
+    <div class="card ${isRunning ? 'active-border' : ''}" onclick="openFiles('${tk.id}')">
         <div class="card-header">
             <div class="card-title"><div class="status-dot ${isRunning ? 'active' : ''}"></div><span>${tk.name}</span></div>
             <div class="flex items-center gap-2">
@@ -185,20 +202,20 @@ function renderCard(tk) {
             <div class="py-2">
                 <div class="path-line" style="color:var(--accent)">${activeFile ? activeFile.name : '...'}</div>
                 <div class="prog-bg"><div class="prog-fill" style="width:${stats.percent}%"></div></div>
-                <div class="flex justify-between mt-1 text-[9px] font-black uppercase text-slate-500"><span>Progress</span><span>${stats.percent}%</span></div>
+                <div class="flex justify-between mt-1 text-[9px] font-black text-slate-500 uppercase"><span>Progress</span><span>${stats.percent}%</span></div>
             </div>
         ` : `
             <div class="path-line"><b>L:</b>${tk.local}</div>
             <div class="path-line"><b>C:</b>${tk.remote}</div>
-            <div class="meta-row"><span><i class="fas fa-rotate"></i> ${syncLabel}</span><span><i class="fas fa-clock"></i> ${triggerText}</span></div>
+            <div class="meta-row"><span><i class="fas fa-rotate"></i> ${syncLabel}</span><span><i class="fas fa-clock"></i> ${tk.interval || 'Tempo Real'}</span></div>
             <div class="last-sync">${t().last_sync}: ${tk.last_sync || '---'}</div>
         `}
         <div class="card-footer">
             <div class="flex gap-4">
                 ${isRunning ? 
-                    `<button class="btn-action btn-stop" onclick="event.stopPropagation(); stopSync('${tk.id}')"><i class="fas fa-stop"></i> ${t().btn_stop}</button>` :
-                    `<button class="btn-action btn-sim" onclick="event.stopPropagation(); startSync('${tk.id}', true)"><i class="fas fa-flask"></i> ${t().btn_sim}</button>
-                     <button class="btn-action btn-play" onclick="event.stopPropagation(); startSync('${tk.id}', false)"><i class="fas fa-play"></i> ${t().btn_start}</button>`
+                    `<button class="btn-action" style="color:var(--red)" onclick="event.stopPropagation(); stopSync('${tk.id}')"><i class="fas fa-stop"></i> ${t().btn_stop}</button>` :
+                    `<button class="btn-action" style="color:var(--orange)" onclick="event.stopPropagation(); startSync('${tk.id}', true)"><i class="fas fa-flask"></i> ${t().btn_sim}</button>
+                     <button class="btn-action" style="color:var(--accent)" onclick="event.stopPropagation(); startSync('${tk.id}', false)"><i class="fas fa-play"></i> ${t().btn_start}</button>`
                 }
             </div>
             <i class="fas fa-history icon-history" onclick="event.stopPropagation(); showHistory('${tk.id}')"></i>
@@ -207,48 +224,61 @@ function renderCard(tk) {
 }
 
 function renderAll() {
-    document.getElementById('home-list').innerHTML = tasks.filter(tk => (STATE.running[tk.id] || 'idle') !== 'idle').map(renderCard).join('') || `<div class="p-10 text-center opacity-30 text-xs italic">Nada em execução</div>`;
+    document.getElementById('home-list').innerHTML = tasks.filter(tk => (STATE.running[tk.id] || 'idle') !== 'idle').map(renderCard).join('') || '<div class="p-10 text-center opacity-30 text-xs italic">Nada em execução</div>';
     document.getElementById('tasks-list').innerHTML = tasks.map(renderCard).join('');
     if(currentTid && document.getElementById('view-files').classList.contains('active')) renderFiles();
 }
 
 /* --- Sub-páginas: Ficheiros e Histórico --- */
-function openFiles(id) { currentTid = id; switchTab('files'); renderFiles(); }
+function openFiles(id) { 
+    currentTid = String(id); 
+    switchTab('files'); 
+    renderFiles(); 
+}
 
 function renderFiles() {
     const tk = tasks.find(t => String(t.id) === currentTid);
     const container = document.getElementById('file-list-content');
     if(!tk) return;
-    document.getElementById('files-header').innerHTML = `<h2 class="text-xl font-black">${tk.name}</h2><p class="text-[9px] text-blue-500 uppercase font-black">${tk.type}</p>`;
+    document.getElementById('files-header').innerHTML = `<h2 class="text-xl font-black">${tk.name}</h2><p class="text-[10px] text-blue-500 uppercase font-black tracking-widest">${tk.type}</p>`;
     const all = STATE.all_files[currentTid] || [];
     container.innerHTML = all.map(f => {
         let color = "#475569", icon = "fa-clock", lbl = t().file_pending;
         if(STATE.finished_files[currentTid]?.includes(f)) { color="var(--green)"; icon="fa-circle-check"; lbl="OK"; }
-        if(STATE.failed_files[currentTid]?.includes(f)) { color="var(--red)"; icon="fa-circle-xmark"; lbl=t().hist_error; }
-        if(STATE.skipped_files[currentTid]?.includes(f)) { color="var(--orange)"; icon="fa-equals"; lbl="Inalterado"; }
+        else if(STATE.failed_files[currentTid]?.includes(f)) { color="var(--red)"; icon="fa-circle-xmark"; lbl="Erro"; }
+        else if(STATE.skipped_files[currentTid]?.includes(f)) { color="var(--orange)"; icon="fa-equals"; lbl="Inalterado"; }
         const active = STATE.active_files[currentTid]?.find(a => a.name === f);
         if(active) { color="var(--accent)"; icon="fa-sync fa-spin"; lbl=active.progress+"%"; }
         return `<div class="file-row"><span class="text-xs truncate mr-4" style="color:${color}"><i class="fas ${icon} mr-3"></i>${f.split('/').pop()}</span><span class="text-[8px] font-black uppercase" style="color:${color}">${lbl}</span></div>`;
-    }).join('') || `<p class="p-10 text-center opacity-30 text-xs">Sem ficheiros</p>`;
+    }).join('') || '<p class="p-10 text-center opacity-30 text-xs">Sem ficheiros detetados</p>';
 }
 
 async function showHistory(id) {
-    currentTid = id; switchTab('history');
+    currentTid = String(id); 
+    switchTab('history');
     const tk = tasks.find(t => String(t.id) === String(id));
     document.getElementById('history-header').innerHTML = `<h3 class="font-black text-lg">${tk ? tk.name : ''}</h3>`;
-    const r = await fetch(`/api/history/${id}`);
-    const data = await r.json();
-    document.getElementById('history-list-content').innerHTML = data.map(h => `
-        <div class="card">
-            <div class="flex justify-between items-center mb-2">
-                <span class="badge ${h.type === 'Simulação' ? 'text-orange-500' : 'text-blue-500'}">${h.type === 'Simulação' ? t().hist_sim : t().hist_sync}</span>
-                <span class="text-[10px] text-slate-500 font-mono">${h.date}</span>
-            </div>
-            <div class="flex justify-between items-center">
-                <span class="text-xs font-bold">${h.mode}</span>
-                <span class="text-[10px] font-black uppercase" style="color:${h.status==='Sucesso'?'var(--green)':'var(--red)'}">${h.status==='Sucesso'?t().hist_success:t().hist_error}</span>
-            </div>
-        </div>`).join('') || `<p class="p-10 text-center opacity-30 text-xs">Sem histórico</p>`;
+    const list = document.getElementById('history-list-content');
+    list.innerHTML = '<p class="text-center py-10 opacity-30 text-xs">A carregar...</p>';
+    try {
+        const r = await fetch(`/api/history/${id}`);
+        const data = await r.json();
+        list.innerHTML = data.map(h => {
+            const isSim = h.type === 'Simulação';
+            const isSuccess = h.status === 'Sucesso';
+            return `
+            <div class="card">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="badge ${isSim ? 'text-orange-500' : 'text-blue-500'}">${isSim ? t().hist_sim : t().hist_sync}</span>
+                    <span class="text-[10px] text-slate-500 font-mono">${h.date}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-xs font-bold">${h.mode}</span>
+                    <span class="text-[10px] font-black uppercase" style="color:${isSuccess ? 'var(--green)' : 'var(--red)'}">${isSuccess ? t().hist_success : t().hist_error}</span>
+                </div>
+            </div>`;
+        }).join('') || '<p class="p-10 text-center opacity-30 text-xs">Sem histórico</p>';
+    } catch(e) { list.innerHTML = '<p class="text-center py-10 text-red-500 text-xs">Erro ao carregar histórico</p>'; }
 }
 
 /* --- Definições --- */
@@ -257,7 +287,14 @@ function setTheme(t) {
     document.getElementById('t-dark').className = t === 'dark' ? 'theme-btn active' : 'theme-btn';
     document.getElementById('t-light').className = t === 'light' ? 'theme-btn active' : 'theme-btn';
 }
-function setLang(l) { lang = l; localStorage.setItem('syncpulse_language_v2', l); location.reload(); }
+function setLang(l) { lang = l; localStorage.setItem('syncpulse_language_v2', l); translateUI(); renderLangBtns(); renderAll(); }
+function translateUI() { document.querySelectorAll('[data-i18n]').forEach(el => { const text = t()[el.dataset.i18n]; if(text) el.textContent = text; }); }
+function renderLangBtns() {
+    const langs = ['pt', 'en', 'es', 'fr', 'de'];
+    document.getElementById('lang-btns-container').innerHTML = langs.map(l => `
+        <button class="lang-btn ${l===lang?'active':''}" onclick="setLang('${l}')">${l.toUpperCase()}</button>
+    `).join('');
+}
 
 /* --- WebSocket e APIs --- */
 function connect() {
@@ -272,30 +309,32 @@ function connect() {
         renderAll();
     };
 }
-function translateUI() { document.querySelectorAll('[data-i18n]').forEach(el => { const k = el.dataset.i18n; if(t()[k]) el.textContent = t()[k]; }); }
 
 async function loadClouds() {
     const list = document.getElementById('clouds-list');
-    list.innerHTML = `<div class="p-10 text-center animate-pulse text-xs text-slate-500 font-bold uppercase">${t().clouds_loading}</div>`;
-    try {
-        const r = await fetch('/api/remotes/list_with_quota');
-        const data = await r.json();
-        list.innerHTML = data.map(c => {
-            const p = c.quota.total ? Math.round((c.quota.used/c.quota.total)*100) : 0;
-            const fmt = (b) => (b/1e9).toFixed(1) + " GB";
-            return `<div class="card"><div class="flex justify-between items-center mb-3"><span class="font-bold text-sm text-white">${c.name}</span><span class="text-blue-400 font-black text-xs">${p}%</span></div><div class="prog-bg"><div class="prog-fill" style="width:${p}%"></div></div><div class="flex justify-between mt-2 text-[9px] font-bold text-slate-500 uppercase"><span>Used: ${fmt(c.quota.used)}</span><span>Total: ${fmt(c.quota.total)}</span></div></div>`;
-        }).join('');
-    } catch(e) {}
+    const r = await fetch('/api/remotes/list_with_quota');
+    const data = await r.json();
+    list.innerHTML = data.map(c => {
+        const p = c.quota.total ? Math.round((c.quota.used/c.quota.total)*100) : 0;
+        const fmt = (b) => (b/1e9).toFixed(1) + " GB";
+        return `
+        <div class="card">
+            <div class="flex justify-between items-center mb-4">
+                <div class="card-title"><i class="fab fa-cloud text-blue-500"></i><span>${c.name}</span></div>
+                <div class="text-blue-400 font-black text-xs">${p}%</div>
+            </div>
+            <div class="prog-bg"><div class="prog-fill" style="width:${p}%"></div></div>
+            <div class="flex justify-between mt-2 text-[9px] font-bold text-slate-500 uppercase">
+                <span>Used: ${fmt(c.quota.used)}</span><span>Total: ${fmt(c.quota.total)}</span>
+            </div>
+        </div>`;
+    }).join('');
 }
 
 async function startSync(id, sim) { await fetch(`/api/sync/${id}?simulate=${sim}`, {method:'POST'}); }
 async function stopSync(id) { await fetch(`/api/sync/stop/${id}`, {method:'POST'}); }
 
-window.onload = () => {
-    connect(); setTheme(theme);
-    const langs = ['en', 'pt', 'es', 'fr', 'de'];
-    document.getElementById('lang-btns-container').innerHTML = langs.map(l => `<button class="lang-btn ${l===lang?'active':''}" onclick="setLang('${l}')">${l.toUpperCase()}</button>`).join('');
-};
+window.onload = () => { connect(); setTheme(theme); renderLangBtns(); };
 </script>
 </body>
 </html>
