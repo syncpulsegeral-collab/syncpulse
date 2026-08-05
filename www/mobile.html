@@ -1,162 +1,529 @@
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SyncPulse Mobile</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
-        :root { --accent: #3b82f6; --bg: #050a12; --card: #0b111d; }
-        body { background: var(--bg); color: white; font-family: 'Inter', sans-serif; margin: 0; height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
-        .page-view { display: none; flex: 1; overflow-y: auto; padding: 20px; padding-bottom: 100px; }
-        .page-view.active { display: block; animation: fadeIn 0.2s ease-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; height: 75px; background: rgba(11, 17, 29, 0.95); backdrop-filter: blur(10px); border-top: 1px solid #1e293b; display: grid; grid-template-columns: repeat(4, 1fr); z-index: 1000; padding-bottom: env(safe-area-inset-bottom); }
-        .nav-item { display: flex; flex-direction: column; align-items: center; justify-content: center; color: #64748b; font-size: 10px; font-weight: 700; text-transform: uppercase; gap: 4px; }
-        .nav-item.active { color: var(--accent); }
-        .m-card { background: var(--card); border: 1px solid #1e293b; border-radius: 20px; padding: 16px; margin-bottom: 12px; }
-        .quota-bar { height: 6px; background: #1e293b; border-radius: 10px; overflow: hidden; margin-top: 8px; }
-        .quota-fill { height: 100%; background: var(--accent); transition: width 1s ease; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>SyncPulse - Mobile</title>
+<link rel="icon" type="image/svg+xml" href="logo.svg">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+  :root {
+    --bg: #050a12;
+    --bg-elevated: #0b111d;
+    --card: #111d29;
+    --card-alt: #162635;
+    --border: #1e293b;
+    --text: #ffffff;
+    --text-dim: #94a3b8;
+    --text-faint: #475569;
+    --accent: #3b82f6;
+    --accent-dim: rgba(59,130,246,0.12);
+    --orange: #f97316;
+    --green: #22c55e;
+    --red: #ef4444;
+  }
+  html[data-theme="light"] {
+    --bg: #eef1f6;
+    --bg-elevated: #ffffff;
+    --card: #ffffff;
+    --card-alt: #eaf1ff;
+    --border: #e1e7ef;
+    --text: #0f172a;
+    --text-dim: #5b6b82;
+    --text-faint: #94a3b8;
+    --accent: #2563eb;
+    --accent-dim: rgba(37,99,235,0.1);
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  * { scrollbar-width: none; }
+  *::-webkit-scrollbar { display: none; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transition: background 0.25s, color 0.25s;
+  }
+
+  /* ---------- Top bar ---------- */
+  .topbar {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: max(16px, env(safe-area-inset-top)) 18px 14px;
+    background: var(--bg-elevated);
+    border-bottom: 1px solid var(--border);
+  }
+  .topbar-title { display: flex; align-items: center; gap: 10px; }
+  .topbar-title h1 { font-size: 15px; font-weight: 800; letter-spacing: -0.02em; margin: 0; }
+  .topbar-title span { font-size: 9px; color: var(--text-dim); font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
+  .conn-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--red); flex-shrink: 0; transition: background 0.3s; }
+  .conn-dot.online { background: var(--green); box-shadow: 0 0 6px var(--green); }
+
+  /* ---------- Views ---------- */
+  .view { display: none; flex: 1; overflow-y: auto; padding: 16px 16px 90px; }
+  .view.active { display: block; }
+  .section-title { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim); margin: 4px 0 12px; }
+
+  .empty-state {
+    text-align: center; padding: 60px 20px; color: var(--text-faint);
+    border: 2px dashed var(--border); border-radius: 18px; font-size: 12px; font-weight: 700;
+  }
+  .empty-state i { font-size: 26px; display: block; margin-bottom: 10px; color: var(--text-faint); }
+
+  /* ---------- Task cards (shared Home + Tarefas) ---------- */
+  .card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+    padding: 16px; margin-bottom: 12px; border-left: 3px solid transparent;
+  }
+  .card.running { border-left-color: var(--accent); background: var(--card-alt); }
+  .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 10px; }
+  .card-title { font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 9px; min-width: 0; }
+  .card-title span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-faint); flex-shrink: 0; }
+  .status-dot.active { background: var(--green); box-shadow: 0 0 8px var(--green); }
+  .badge { font-size: 10px; background: var(--accent-dim); padding: 3px 10px; border-radius: 15px; color: var(--text-dim); font-weight: 800; white-space: nowrap; }
+
+  .path-line { font-size: 10.5px; color: var(--text-faint); margin-bottom: 3px; font-family: 'SF Mono', monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .path-line b { color: var(--text-dim); margin-right: 4px; }
+
+  .meta-row { color: var(--accent); font-size: 11px; font-weight: 700; display: flex; align-items: center; gap: 14px; margin: 12px 0 8px; }
+  .meta-row i { font-size: 10px; }
+  .last-sync { font-style: italic; font-size: 9.5px; color: var(--text-faint); margin-bottom: 10px; }
+
+  .progress-wrap { margin: 10px 0; }
+  .progress-file { font-size: 10px; color: var(--text-dim); margin-bottom: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .prog-bg { background: rgba(148,163,184,0.12); height: 6px; border-radius: 4px; overflow: hidden; border: 1px solid var(--border); }
+  .prog-fill { background: var(--accent); height: 100%; width: 0%; border-radius: 4px; transition: width 0.4s; box-shadow: 0 0 8px rgba(59,130,246,0.5); }
+
+  .card-footer { padding-top: 12px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+  .btn-action { font-size: 10.5px; font-weight: 800; display: flex; align-items: center; gap: 6px; text-transform: uppercase; padding: 7px 12px; border-radius: 8px; background: transparent; border: none; }
+  .btn-sim { color: var(--orange); }
+  .btn-play { color: var(--accent); }
+  .btn-stop { color: var(--red); }
+  .btn-action.disabled { opacity: 0.35; }
+  .icon-history { color: var(--text-faint); font-size: 14px; padding: 6px; }
+
+  /* ---------- Cloud cards ---------- */
+  .cloud-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; margin-bottom: 12px; }
+  .cloud-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+  .cloud-icon { width: 40px; height: 40px; border-radius: 10px; background: var(--accent-dim); display: flex; align-items: center; justify-content: center; color: var(--accent); flex-shrink: 0; }
+  .cloud-name { font-size: 13.5px; font-weight: 800; }
+  .cloud-type { font-size: 9px; color: var(--text-faint); text-transform: uppercase; font-weight: 800; letter-spacing: 0.06em; }
+  .quota-row { display: flex; justify-content: space-between; font-size: 10.5px; font-weight: 700; margin-bottom: 6px; }
+  .quota-row .used { color: var(--accent); font-weight: 800; }
+  .quota-row .label { color: var(--text-dim); text-transform: uppercase; font-size: 9.5px; }
+  .quota-foot { display: flex; justify-content: space-between; font-size: 9.5px; color: var(--text-faint); font-weight: 700; margin-top: 6px; }
+
+  /* ---------- Settings ---------- */
+  .settings-block { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 18px; margin-bottom: 16px; }
+  .settings-label { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim); margin-bottom: 12px; }
+  .theme-toggle { display: flex; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 4px; gap: 4px; }
+  .theme-opt { flex: 1; text-align: center; padding: 10px; border-radius: 7px; font-size: 12px; font-weight: 700; color: var(--text-dim); display: flex; align-items: center; justify-content: center; gap: 7px; }
+  .theme-opt.active { background: var(--accent); color: #fff; }
+  .lang-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .lang-opt { padding: 12px 6px; border-radius: 9px; border: 1px solid var(--border); background: var(--bg); text-align: center; font-size: 11px; font-weight: 800; color: var(--text-dim); }
+  .lang-opt.active { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+
+  /* ---------- Bottom nav ---------- */
+  .bottom-nav {
+    position: fixed; left: 0; right: 0; bottom: 0; display: flex;
+    background: var(--bg-elevated); border-top: 1px solid var(--border);
+    padding: 8px 6px max(8px, env(safe-area-inset-bottom));
+    z-index: 50;
+  }
+  .nav-item {
+    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;
+    padding: 6px 0; color: var(--text-faint); background: none; border: none; font-family: inherit;
+  }
+  .nav-item i { font-size: 17px; }
+  .nav-item span { font-size: 9.5px; font-weight: 700; }
+  .nav-item.active { color: var(--accent); }
+</style>
 </head>
 <body>
 
-    <header class="p-5 border-b border-white/5 flex justify-between items-center bg-[#050a12] sticky top-0 z-50">
-        <h1 class="font-black text-lg tracking-tighter uppercase">Sync<span class="text-blue-500">Pulse</span></h1>
-        <div class="flex items-center gap-2">
-            <span id="conn-status" class="text-[8px] font-black text-slate-500 uppercase">Online</span>
-            <div class="w-2 h-2 rounded-full bg-green-500"></div>
+  <div class="topbar">
+    <div class="topbar-title">
+      <div class="conn-dot" id="conn-dot"></div>
+      <div>
+        <h1>SyncPulse</h1>
+        <span>ZimaOS Edition</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- HOME -->
+  <div class="view active" id="view-home">
+    <div class="section-title" data-i18n="home_title">Tarefas em execução</div>
+    <div id="home-list"></div>
+  </div>
+
+  <!-- CLOUDS -->
+  <div class="view" id="view-clouds">
+    <div class="section-title" data-i18n="clouds_title">Clouds ligadas</div>
+    <div id="clouds-list"></div>
+  </div>
+
+  <!-- TAREFAS -->
+  <div class="view" id="view-tasks">
+    <div class="section-title" data-i18n="tasks_title">Todas as tarefas</div>
+    <div id="tasks-list"></div>
+  </div>
+
+  <!-- DEFINIÇÕES -->
+  <div class="view" id="view-settings">
+    <div class="section-title" data-i18n="settings_title">Definições</div>
+
+    <div class="settings-block">
+      <div class="settings-label" data-i18n="settings_theme">Aparência</div>
+      <div class="theme-toggle">
+        <button class="theme-opt" id="opt-dark" onclick="setTheme('dark')"><i class="fas fa-moon"></i> <span data-i18n="theme_dark">Escuro</span></button>
+        <button class="theme-opt" id="opt-light" onclick="setTheme('light')"><i class="fas fa-sun"></i> <span data-i18n="theme_light">Claro</span></button>
+      </div>
+    </div>
+
+    <div class="settings-block">
+      <div class="settings-label" data-i18n="settings_language">Idioma</div>
+      <div class="lang-grid" id="lang-grid"></div>
+    </div>
+  </div>
+
+  <div class="bottom-nav">
+    <button class="nav-item active" data-tab="home" onclick="switchTab('home')">
+      <i class="fas fa-house"></i><span data-i18n="nav_home">Home</span>
+    </button>
+    <button class="nav-item" data-tab="clouds" onclick="switchTab('clouds')">
+      <i class="fas fa-cloud"></i><span data-i18n="nav_clouds">Clouds</span>
+    </button>
+    <button class="nav-item" data-tab="tasks" onclick="switchTab('tasks')">
+      <i class="fas fa-list-check"></i><span data-i18n="nav_tasks">Tarefas</span>
+    </button>
+    <button class="nav-item" data-tab="settings" onclick="switchTab('settings')">
+      <i class="fas fa-gear"></i><span data-i18n="nav_settings">Definições</span>
+    </button>
+  </div>
+
+<script>
+/* ==================== i18n ==================== */
+const i18n = {
+  pt: { nav_home:"Home", nav_clouds:"Clouds", nav_tasks:"Tarefas", nav_settings:"Definições",
+    home_title:"Tarefas em execução", home_empty_title:"Nada em execução", home_empty_sub:"As tarefas ativas aparecem aqui em tempo real.",
+    clouds_title:"Clouds ligadas", clouds_used:"Usado", clouds_total:"Total", clouds_empty:"Nenhuma cloud configurada", clouds_loading:"A carregar clouds...", clouds_error:"Não foi possível ligar ao servidor.",
+    tasks_title:"Todas as tarefas", tasks_empty:"Ainda não há tarefas criadas",
+    settings_title:"Definições", settings_theme:"Aparência", theme_dark:"Escuro", theme_light:"Claro", settings_language:"Idioma",
+    mode_up:"Upload", mode_down:"Download", mode_bi:"Bidirecional",
+    status_active:"Ativo", status_sim:"Simulação", status_inactive:"Inativo", status_done:"Concluído",
+    last_sync:"Última sinc.", btn_simulate:"Simular", btn_start:"Iniciar", btn_stop:"Parar", opt_real:"Tempo real", daily:"Diário" },
+  en: { nav_home:"Home", nav_clouds:"Clouds", nav_tasks:"Tasks", nav_settings:"Settings",
+    home_title:"Running tasks", home_empty_title:"Nothing running", home_empty_sub:"Active tasks appear here in real time.",
+    clouds_title:"Connected Clouds", clouds_used:"Used", clouds_total:"Total", clouds_empty:"No clouds configured", clouds_loading:"Loading clouds...", clouds_error:"Could not reach the server.",
+    tasks_title:"All tasks", tasks_empty:"No tasks created yet",
+    settings_title:"Settings", settings_theme:"Appearance", theme_dark:"Dark", theme_light:"Light", settings_language:"Language",
+    mode_up:"Upload", mode_down:"Download", mode_bi:"Bidirectional",
+    status_active:"Active", status_sim:"Simulating", status_inactive:"Inactive", status_done:"Done",
+    last_sync:"Last sync", btn_simulate:"Simulate", btn_start:"Start", btn_stop:"Stop", opt_real:"Real-time", daily:"Daily" },
+  es: { nav_home:"Inicio", nav_clouds:"Nubes", nav_tasks:"Tareas", nav_settings:"Ajustes",
+    home_title:"Tareas en ejecución", home_empty_title:"Nada en ejecución", home_empty_sub:"Las tareas activas aparecen aquí en tiempo real.",
+    clouds_title:"Nubes conectadas", clouds_used:"Usado", clouds_total:"Total", clouds_empty:"No hay nubes configuradas", clouds_loading:"Cargando nubes...", clouds_error:"No se pudo conectar al servidor.",
+    tasks_title:"Todas las tareas", tasks_empty:"Aún no hay tareas creadas",
+    settings_title:"Ajustes", settings_theme:"Apariencia", theme_dark:"Oscuro", theme_light:"Claro", settings_language:"Idioma",
+    mode_up:"Subida", mode_down:"Descarga", mode_bi:"Bidireccional",
+    status_active:"Activo", status_sim:"Simulando", status_inactive:"Inactivo", status_done:"Hecho",
+    last_sync:"Última sinc.", btn_simulate:"Simular", btn_start:"Iniciar", btn_stop:"Detener", opt_real:"Tiempo real", daily:"Diario" },
+  fr: { nav_home:"Accueil", nav_clouds:"Clouds", nav_tasks:"Tâches", nav_settings:"Réglages",
+    home_title:"Tâches en cours", home_empty_title:"Rien en cours", home_empty_sub:"Les tâches actives apparaissent ici en temps réel.",
+    clouds_title:"Clouds connectés", clouds_used:"Utilisé", clouds_total:"Total", clouds_empty:"Aucun cloud configuré", clouds_loading:"Chargement des clouds...", clouds_error:"Connexion au serveur impossible.",
+    tasks_title:"Toutes les tâches", tasks_empty:"Aucune tâche créée",
+    settings_title:"Réglages", settings_theme:"Apparence", theme_dark:"Sombre", theme_light:"Clair", settings_language:"Langue",
+    mode_up:"Envoi", mode_down:"Téléchargement", mode_bi:"Bidirectionnel",
+    status_active:"Actif", status_sim:"Simulation", status_inactive:"Inactif", status_done:"Terminé",
+    last_sync:"Dern. sync.", btn_simulate:"Simuler", btn_start:"Démarrer", btn_stop:"Arrêter", opt_real:"Temps réel", daily:"Quotidien" },
+  de: { nav_home:"Start", nav_clouds:"Clouds", nav_tasks:"Aufgaben", nav_settings:"Einstellungen",
+    home_title:"Laufende Aufgaben", home_empty_title:"Nichts läuft", home_empty_sub:"Aktive Aufgaben erscheinen hier in Echtzeit.",
+    clouds_title:"Verbundene Clouds", clouds_used:"Belegt", clouds_total:"Gesamt", clouds_empty:"Keine Clouds konfiguriert", clouds_loading:"Clouds werden geladen...", clouds_error:"Server nicht erreichbar.",
+    tasks_title:"Alle Aufgaben", tasks_empty:"Noch keine Aufgaben erstellt",
+    settings_title:"Einstellungen", settings_theme:"Erscheinungsbild", theme_dark:"Dunkel", theme_light:"Hell", settings_language:"Sprache",
+    mode_up:"Upload", mode_down:"Download", mode_bi:"Bidirektional",
+    status_active:"Aktiv", status_sim:"Simulation", status_inactive:"Inaktiv", status_done:"Fertig",
+    last_sync:"Letzte Sync.", btn_simulate:"Simulieren", btn_start:"Starten", btn_stop:"Stoppen", opt_real:"Echtzeit", daily:"Täglich" }
+};
+const LANG_LABELS = { pt:"PT", en:"EN", es:"ES", fr:"FR", de:"DE" };
+
+let lang = localStorage.getItem('syncpulse_language_v2') || 'pt';
+if (!i18n[lang]) lang = 'pt';
+let theme = localStorage.getItem('syncpulse_theme') || 'dark';
+
+let tasks = [];
+let STATE = { running:{}, stats:{}, active_files:{}, failed_files:{}, license_active:false };
+let socket;
+
+/* ==================== Helpers ==================== */
+function t() { return i18n[lang] || i18n.pt; }
+
+function formatSize(bytes) {
+  if (!bytes || bytes === 0) return "0 B";
+  const i = Math.floor(Math.log(bytes) / Math.log(1024));
+  return (bytes / Math.pow(1024, i)).toFixed(1) + " " + ['B','KB','MB','GB','TB'][i];
+}
+
+function getIcon(type) {
+  if (!type) return 'cloud';
+  type = type.toLowerCase();
+  if (type.includes('drive')) return 'google-drive';
+  if (type.includes('dropbox')) return 'dropbox';
+  if (type.includes('onedrive')) return 'microsoft';
+  if (type.includes('box')) return 'archive';
+  if (type.includes('ftp') || type.includes('sftp')) return 'server';
+  return 'cloud';
+}
+
+/* ==================== Theme & language ==================== */
+function setTheme(t) {
+  theme = t;
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem('syncpulse_theme', theme);
+  document.getElementById('opt-dark').classList.toggle('active', theme === 'dark');
+  document.getElementById('opt-light').classList.toggle('active', theme === 'light');
+}
+
+function setLang(l) {
+  if (!i18n[l]) return;
+  lang = l;
+  localStorage.setItem('syncpulse_language_v2', lang);
+  applyStaticI18n();
+  renderLangGrid();
+  renderHome();
+  renderTasks();
+  renderClouds(lastCloudsData);
+}
+
+function applyStaticI18n() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (t()[key]) el.textContent = t()[key];
+  });
+}
+
+function renderLangGrid() {
+  const grid = document.getElementById('lang-grid');
+  grid.innerHTML = Object.keys(LANG_LABELS).map(code => `
+    <button class="lang-opt ${code === lang ? 'active' : ''}" onclick="setLang('${code}')">${LANG_LABELS[code]}</button>
+  `).join('');
+}
+
+/* ==================== Tabs ==================== */
+let lastCloudsData = [];
+function switchTab(tab) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('view-' + tab).classList.add('active');
+  document.querySelector(`.nav-item[data-tab="${tab}"]`).classList.add('active');
+  if (tab === 'clouds') loadClouds();
+}
+
+/* ==================== WebSocket ==================== */
+function connectWS() {
+  const proto = location.protocol === 'https:' ? 'wss://' : 'ws://';
+  socket = new WebSocket(proto + location.host + '/ws');
+
+  socket.onopen = () => document.getElementById('conn-dot').classList.add('online');
+  socket.onclose = () => {
+    document.getElementById('conn-dot').classList.remove('online');
+    setTimeout(connectWS, 3000);
+  };
+  socket.onerror = () => socket.close();
+
+  socket.onmessage = (ev) => {
+    const data = JSON.parse(ev.data);
+    if (data.type === 'init') {
+      tasks = data.tasks || [];
+      STATE = data.state || STATE;
+    } else if (data.type === 'update') {
+      STATE = data.state || STATE;
+    }
+    renderHome();
+    renderTasks();
+  };
+}
+
+/* ==================== Home (running tasks) ==================== */
+function renderHome() {
+  const list = document.getElementById('home-list');
+  const running = tasks.filter(tk => (STATE.running[String(tk.id)] || 'idle') !== 'idle');
+
+  if (running.length === 0) {
+    list.innerHTML = `<div class="empty-state"><i class="fas fa-wave-square"></i>
+      <div>${t().home_empty_title}</div>
+      <div style="font-weight:500; margin-top:4px; opacity:.8;">${t().home_empty_sub}</div>
+    </div>`;
+    return;
+  }
+
+  list.innerHTML = running.map(tk => {
+    const tid = String(tk.id);
+    const status = STATE.running[tid] || 'idle';
+    const stats = STATE.stats[tid] || {};
+    const percent = stats.percent || 0;
+    const activeFile = (STATE.active_files[tid] && STATE.active_files[tid][0]) || null;
+    const statusText = status === 'simulating' ? t().status_sim : t().status_active;
+
+    return `
+    <div class="card running">
+      <div class="card-header">
+        <div class="card-title"><div class="status-dot active"></div><span>${tk.name}</span></div>
+        <div class="badge">${statusText}</div>
+      </div>
+      <div class="progress-wrap">
+        <div class="progress-file">${activeFile ? activeFile.name : '...'}</div>
+        <div class="prog-bg"><div class="prog-fill" style="width:${activeFile ? activeFile.progress : percent}%"></div></div>
+      </div>
+      <div class="card-footer">
+        <button class="btn-action btn-stop" onclick="stopSync('${tk.id}')"><i class="fas fa-stop"></i> ${t().btn_stop}</button>
+        <i class="fas fa-history icon-history" onclick="switchTab('tasks')"></i>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ==================== Tarefas (all tasks) ==================== */
+function renderTasks() {
+  const list = document.getElementById('tasks-list');
+  if (tasks.length === 0) {
+    list.innerHTML = `<div class="empty-state"><i class="fas fa-inbox"></i>${t().tasks_empty}</div>`;
+    return;
+  }
+
+  list.innerHTML = tasks.map(tk => {
+    const tid = String(tk.id);
+    const status = STATE.running[tid] || 'idle';
+    const isRunning = status !== 'idle';
+    const licenseActive = STATE.license_active === true;
+    const hasErrors = STATE.failed_files[tid] && STATE.failed_files[tid].length > 0;
+
+    const syncLabel = tk.type === 'bisync' ? t().mode_bi : (tk.type === 'upload' ? t().mode_up : t().mode_down);
+    const triggerText = tk.trigger === 'real' ? t().opt_real : (tk.interval === 'daily' ? `${t().daily} ${tk.daily_time || '03:00'}` : (tk.interval || '—'));
+
+    let statusText = t().status_inactive;
+    const stats = STATE.stats[tid] || null;
+    if (status === 'active') statusText = t().status_active;
+    if (status === 'simulating') statusText = t().status_sim;
+    if (status === 'idle' && stats && stats.percent === 100) statusText = t().status_done;
+
+    return `
+    <div class="card ${isRunning ? 'running' : ''}">
+      <div class="card-header">
+        <div class="card-title"><div class="status-dot ${isRunning ? 'active' : ''}"></div><span>${tk.name}</span></div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          ${hasErrors ? '<i class="fas fa-triangle-exclamation" style="color:#eab308;font-size:12px;"></i>' : ''}
+          <div class="badge">${statusText}</div>
         </div>
-    </header>
+      </div>
+      <div class="path-line"><b>L:</b>${tk.local}</div>
+      <div class="path-line"><b>C:</b>${tk.remote}</div>
+      <div class="meta-row">
+        <span><i class="fas fa-rotate"></i> ${syncLabel}</span>
+        <span><i class="fas fa-clock"></i> ${triggerText}</span>
+      </div>
+      <div class="last-sync">${t().last_sync}: ${tk.last_sync || '—'}</div>
+      <div class="card-footer">
+        <button class="btn-action btn-sim" onclick="startSync('${tk.id}', true)"><i class="fas fa-flask"></i> ${t().btn_simulate}</button>
+        <button class="btn-action ${isRunning ? 'btn-stop' : 'btn-play'} ${!licenseActive ? 'disabled' : ''}"
+          onclick="${licenseActive ? (isRunning ? `stopSync('${tk.id}')` : `startSync('${tk.id}', false)`) : ''}">
+          <i class="fas ${isRunning ? 'fa-stop' : 'fa-play'}"></i> ${isRunning ? t().btn_stop : t().btn_start}
+        </button>
+        <i class="fas fa-history icon-history" onclick="showHistory('${tk.id}')"></i>
+      </div>
+    </div>`;
+  }).join('');
+}
 
-    <main id="main-content" class="flex-1 overflow-hidden flex flex-col">
-        <!-- PÁGINA 1: HOME -->
-        <div id="page-home" class="page-view active">
-            <h2 class="text-xs font-black text-slate-500 uppercase tracking-widest mb-4">Resumo do Sistema</h2>
-            <div class="m-card flex items-center justify-between bg-blue-600/5 border-blue-500/20">
-                <div>
-                    <p class="text-[10px] text-slate-400 font-bold uppercase">Tarefas Ativas</p>
-                    <p id="home-tasks-count" class="text-4xl font-black text-white">0</p>
-                </div>
-                <div class="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center">
-                    <i class="fas fa-play text-blue-500"></i>
-                </div>
-            </div>
-            <div id="home-storage-list"></div>
+async function startSync(id, simulate) {
+  try {
+    await fetch(`/api/sync/${id}?simulate=${simulate ? 'true' : 'false'}`, { method: 'POST' });
+  } catch (e) { console.error(e); }
+}
+async function stopSync(id) {
+  try {
+    await fetch(`/api/sync/stop/${id}`, { method: 'POST' });
+  } catch (e) { console.error(e); }
+}
+function showHistory(id) {
+  // Placeholder simples: pode evoluir para um ecrã de histórico dedicado.
+  fetch(`/api/history/${id}`).then(r => r.json()).then(h => {
+    alert(h.length ? h.slice(-5).map(x => JSON.stringify(x)).join('\\n') : '—');
+  });
+}
+
+/* ==================== Clouds ==================== */
+async function loadClouds() {
+  const list = document.getElementById('clouds-list');
+  list.innerHTML = `<div class="empty-state"><i class="fas fa-circle-notch fa-spin"></i>${t().clouds_loading}</div>`;
+  try {
+    const res = await fetch('/api/remotes/list_with_quota');
+    const remotes = await res.json();
+    lastCloudsData = remotes;
+    renderClouds(remotes);
+  } catch (e) {
+    list.innerHTML = `<div class="empty-state"><i class="fas fa-plug-circle-xmark"></i>${t().clouds_error}</div>`;
+  }
+}
+
+function renderClouds(remotes) {
+  const list = document.getElementById('clouds-list');
+  if (!remotes) return;
+  if (remotes.length === 0) {
+    list.innerHTML = `<div class="empty-state"><i class="fas fa-cloud"></i>${t().clouds_empty}</div>`;
+    return;
+  }
+
+  list.innerHTML = remotes.map(r => {
+    const total = r.quota.total || 0;
+    const used = r.quota.used || 0;
+    const percent = total > 0 ? Math.round((used / total) * 100) : 0;
+    const supported = r.quota.supported;
+
+    return `
+    <div class="cloud-card">
+      <div class="cloud-head">
+        <div class="cloud-icon"><i class="fab fa-${getIcon(r.type)}"></i></div>
+        <div>
+          <div class="cloud-name">${r.name}</div>
+          <div class="cloud-type">${r.type}</div>
         </div>
+      </div>
+      <div class="quota-row">
+        <span class="label">${t().clouds_used}</span>
+        <span class="used">${supported ? formatSize(used) : '—'}</span>
+      </div>
+      <div class="prog-bg"><div class="prog-fill" style="width:${supported ? percent : 0}%"></div></div>
+      <div class="quota-foot">
+        <span>${supported ? percent + '%' : t().clouds_error === '' ? '' : '?'}</span>
+        <span>${t().clouds_total}: ${supported ? formatSize(total) : '—'}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
 
-        <!-- PÁGINA 2: CLOUDS -->
-        <div id="page-storage" class="page-view">
-            <h2 class="text-xs font-black text-slate-500 uppercase tracking-widest mb-4">Minhas Clouds</h2>
-            <div id="mobile-cloud-list"></div>
-        </div>
-
-        <!-- PÁGINA 3: TAREFAS -->
-        <div id="page-tasks" class="page-view">
-            <h2 class="text-xs font-black text-slate-500 uppercase tracking-widest mb-4">Lista de Tarefas</h2>
-            <div id="mobile-task-list"></div>
-        </div>
-
-        <!-- PÁGINA 4: MENU -->
-        <div id="page-settings" class="page-view">
-            <h2 class="text-xs font-black text-slate-500 uppercase tracking-widest mb-6">Definições</h2>
-            <div class="m-card">
-                <p class="text-blue-400 font-bold text-sm mb-1">Licença Ativa</p>
-                <p class="text-slate-500 text-[10px] uppercase">ZimaOS Hybrid Edition</p>
-            </div>
-            <button onclick="location.reload()" class="w-full py-4 bg-slate-800 rounded-2xl font-black text-[10px] uppercase tracking-widest">Atualizar Interface</button>
-        </div>
-    </main>
-
-    <nav class="bottom-nav">
-        <div class="nav-item active" onclick="changePage('home', this)"><i class="fas fa-th-large text-xl"></i><span>Home</span></div>
-        <div class="nav-item" onclick="changePage('storage', this)"><i class="fas fa-cloud text-xl"></i><span>Clouds</span></div>
-        <div class="nav-item" onclick="changePage('tasks', this)"><i class="fas fa-list-ul text-xl"></i><span>Tarefas</span></div>
-        <div class="nav-item" onclick="changePage('settings', this)"><i class="fas fa-bars text-xl"></i><span>Menu</span></div>
-    </nav>
-
-    <script>
-        const API = window.location.origin;
-        let globalTasks = [];
-
-        function formatBytes(bytes) {
-            if (!bytes || bytes === 0) return "0 B";
-            const i = Math.floor(Math.log(bytes) / Math.log(1024));
-            return (bytes / Math.pow(1024, i)).toFixed(1) + " " + ['B', 'KB', 'MB', 'GB', 'TB'][i];
-        }
-
-        async function fetchData() {
-			try {
-				const r = await fetch(`${API}/api/tasks`);
-				if (r.ok) {
-					// GUARDA NA VARIÁVEL GLOBAL
-					globalTasks = await r.json(); 
-					renderTasks(globalTasks);
-					document.getElementById('home-tasks-count').innerText = globalTasks.length;
-				}
-			} catch (e) {
-				console.error("Erro:", e);
-			}
-		}
-
-        function renderClouds(clouds) {
-            const list = clouds.map(rem => {
-                const percent = rem.quota.total > 0 ? Math.round((rem.quota.used / rem.quota.total) * 100) : 0;
-                return `
-                <div class="m-card">
-                    <div class="flex justify-between items-start mb-2">
-                        <div>
-                            <h4 class="font-bold text-white text-sm">${rem.name}</h4>
-                            <p class="text-[9px] text-slate-500 uppercase">${rem.type}</p>
-                        </div>
-                        <div class="text-right">
-                            <p class="text-blue-400 font-black text-[11px]">${percent}%</p>
-                            <p class="text-[8px] text-slate-600 uppercase font-bold">${formatBytes(rem.quota.used)} / ${formatBytes(rem.quota.total)}</p>
-                        </div>
-                    </div>
-                    <div class="quota-bar"><div class="quota-fill" style="width: ${percent}%"></div></div>
-                </div>`;
-            }).join('');
-            
-            document.getElementById('mobile-cloud-list').innerHTML = list || '<p class="text-center text-slate-500 text-xs">Sem clouds.</p>';
-            document.getElementById('home-storage-list').innerHTML = list; // Resumo na home
-        }
-
-        function renderTasks(tasks) {
-            const list = tasks.map(t => `
-                <div class="m-card">
-                    <div class="flex justify-between items-center mb-3">
-                        <span class="text-[10px] font-black text-white uppercase">${t.name}</span>
-                        <span class="text-[8px] px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 font-bold uppercase">${t.type}</span>
-                    </div>
-                    <div class="space-y-1 mb-4 opacity-60">
-                        <p class="text-[9px] truncate"><i class="fas fa-folder mr-1"></i> ${t.local}</p>
-                        <p class="text-[9px] truncate"><i class="fas fa-cloud mr-1"></i> ${t.remote}</p>
-                    </div>
-                    <div class="flex gap-2">
-                        <button class="flex-1 py-3 bg-blue-600 rounded-xl text-[9px] font-black uppercase text-white">Iniciar</button>
-                        <button class="px-5 py-3 bg-slate-800 rounded-xl text-[9px] font-black uppercase text-slate-400">Log</button>
-                    </div>
-                </div>`).join('');
-            
-            document.getElementById('mobile-task-list').innerHTML = list || '<p class="text-center text-slate-500 text-xs py-10">Nenhuma tarefa configurada.</p>';
-        }
-
-        function changePage(pageId, element) {
-            document.querySelectorAll('.page-view').forEach(v => v.classList.remove('active'));
-            document.getElementById('page-' + pageId).classList.add('active');
-            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-            element.classList.add('active');
-            
-            // Re-fetch ao trocar para garantir que o "undefined" não aparece
-            if (pageId === 'home') document.getElementById('home-tasks-count').innerText = globalTasks.length;
-        }
-
-        window.onload = fetchData;
-        // Atualiza os dados a cada 10 segundos automaticamente
-        setInterval(fetchData, 10000);
-    </script>
+/* ==================== Init ==================== */
+function init() {
+  setTheme(theme);
+  applyStaticI18n();
+  renderLangGrid();
+  renderHome();
+  renderTasks();
+  connectWS();
+}
+document.addEventListener('DOMContentLoaded', init);
+</script>
 </body>
 </html>
