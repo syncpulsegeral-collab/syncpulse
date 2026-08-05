@@ -77,46 +77,51 @@
   <div class="topbar">
     <div class="flex items-center gap-3">
         <div id="conn-dot" class="conn-dot"></div>
-        <h1 class="font-black uppercase text-sm tracking-tight" style="color: var(--text)">Sync<span style="color: var(--accent)">Pulse</span></h1>
+        <div>
+            <!-- LOGO CORRIGIDO: Sync muda de cor com tema, Pulse fica azul -->
+            <h1 class="font-black uppercase text-sm tracking-tight" style="color: var(--text)">Sync<span style="color: var(--accent)">Pulse</span></h1>
+            <span class="text-[8px] text-slate-500 font-bold uppercase tracking-widest">M Edition</span>
+        </div>
     </div>
-    <span class="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Mobile Edition</span>
   </div>
 
-  <div class="view active" id="view-home"><div id="home-list"></div></div>
-  <div class="view" id="view-clouds"><div id="clouds-list"></div></div>
-  <div class="view" id="view-tasks"><div id="tasks-list"></div></div>
+  <div class="view active" id="view-home"><div class="section-title" data-i18n="home_title">Execução</div><div id="home-list"></div></div>
+  <div class="view" id="view-clouds"><div class="section-title" data-i18n="clouds_title">Clouds Ligadas</div><div id="clouds-list"></div></div>
+  <div class="view" id="view-tasks"><div class="section-title" data-i18n="tasks_title">Todas as tarefas</div><div id="tasks-list"></div></div>
 
+  <!-- SUB-PÁGINAS -->
   <div class="view" id="view-files">
-    <div class="mb-4 text-blue-500 font-bold text-xs" onclick="switchTab('tasks')"><i class="fas fa-arrow-left mr-2"></i> VOLTAR</div>
+    <div class="back-btn cursor-pointer" onclick="switchTab('tasks')"><i class="fas fa-arrow-left"></i> <span data-i18n="back">VOLTAR</span></div>
     <div id="files-header" class="mb-4"></div>
-    <div id="files-content"></div>
+    <div id="files-list-content"></div>
   </div>
 
   <div class="view" id="view-history">
-    <div class="mb-4 text-blue-500 font-bold text-xs" onclick="switchTab('tasks')"><i class="fas fa-arrow-left mr-2"></i> VOLTAR</div>
-    <div id="history-content"></div>
+    <div class="back-btn cursor-pointer" onclick="switchTab('tasks')"><i class="fas fa-arrow-left"></i> <span data-i18n="back">VOLTAR</span></div>
+    <div id="history-header" class="mb-4"></div>
+    <div id="history-list-content"></div>
   </div>
 
   <div class="view" id="view-settings">
-    <div class="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-6">Definições</div>
-    <div class="bg-[var(--card)] p-5 rounded-2xl border border-[var(--border)] mb-4">
-        <span class="quota-label block mb-4">Aparência</span>
-        <div class="flex bg-[var(--bg)] p-1 rounded-xl">
-            <button id="btn-dark" class="flex-1 py-2 text-[10px] font-bold uppercase rounded-lg" onclick="setTheme('dark')">Escuro</button>
-            <button id="btn-light" class="flex-1 py-2 text-[10px] font-bold uppercase rounded-lg" onclick="setTheme('light')">Claro</button>
+    <div class="section-title" data-i18n="nav_settings">Definições</div>
+    <div class="settings-group">
+        <div class="section-title" style="margin-bottom:10px" data-i18n="settings_theme">Aparência</div>
+        <div class="flex bg-slate-900/50 p-1 rounded-xl">
+            <button id="btn-dark" class="theme-btn" onclick="setTheme('dark')">Dark</button>
+            <button id="btn-light" class="theme-btn" onclick="setTheme('light')">Light</button>
         </div>
     </div>
-    <div class="bg-[var(--card)] p-5 rounded-2xl border border-[var(--border)]">
-        <span class="quota-label block mb-4">Idioma</span>
-        <div class="grid grid-cols-3 gap-2" id="lang-btns"></div>
+    <div class="settings-group">
+        <div class="section-title" style="margin-bottom:10px" data-i18n="settings_language">Idioma</div>
+        <div class="grid grid-cols-3 gap-2" id="lang-btns-container"></div>
     </div>
   </div>
 
   <nav class="bottom-nav">
-    <div class="nav-item active" data-tab="home" onclick="switchTab('home')"><i class="fas fa-house"></i><span>Home</span></div>
-    <div class="nav-item" data-tab="clouds" onclick="switchTab('clouds')"><i class="fas fa-cloud"></i><span>Clouds</span></div>
-    <div class="nav-item" data-tab="tasks" onclick="switchTab('tasks')"><i class="fas fa-list-check"></i><span>Tarefas</span></div>
-    <div class="nav-item" data-tab="settings" onclick="switchTab('settings')"><i class="fas fa-gear"></i><span>Definições</span></div>
+    <button class="nav-item active" data-tab="home" onclick="switchTab('home')"><i class="fas fa-house"></i><span data-i18n="nav_home">Home</span></button>
+    <button class="nav-item" data-tab="clouds" onclick="switchTab('clouds')"><i class="fas fa-cloud"></i><span data-i18n="nav_clouds">Clouds</span></button>
+    <button class="nav-item" data-tab="tasks" onclick="switchTab('tasks')"><i class="fas fa-list-check"></i><span data-i18n="nav_tasks">Tarefas</span></button>
+    <button class="nav-item" data-tab="settings" onclick="switchTab('settings')"><i class="fas fa-gear"></i><span data-i18n="nav_settings">Menu</span></button>
   </nav>
 
 <script>
@@ -128,30 +133,44 @@ const i18n = {
     de: { nav_home:"Start", nav_clouds:"Clouds", nav_tasks:"Aufgaben", nav_settings:"Einstellungen", home_title:"Laufende Aufgaben", clouds_title:"Verbundene Clouds", clouds_loading:"Wird geladen...", tasks_title:"Alle Aufgaben", back:"ZURÜCK", status_active:"Aktiv", status_sim:"Simulieren", status_inactive:"Inaktiv", status_done: "Fertig", btn_sim:"Simulieren", btn_start:"Starten", btn_stop:"Stoppen", last_sync:"Letzte Sinc", mode_bi:"Bisync", mode_up:"Upload", mode_down:"Download", opt_real:"Echtzeit", daily:"Täglich", settings_theme:"Aussehen", settings_language:"Sprache", hist_sim:"Simulation", hist_sync:"Sync", hist_success:"Erfolg", hist_error:"Fehler", file_pending:"Ausstehend" }
 };
 
-let lang = localStorage.getItem('syncpulse_language_v2') || 'pt';
+let lang = localStorage.getItem('syncpulse_language_v2') || 'en';
 let theme = localStorage.getItem('syncpulse_theme') || 'dark';
-let tasks = [], STATE = { running:{}, stats:{}, active_files:{}, finished_files:{}, all_files:{}, failed_files:{}, skipped_files:{} }, socket, currentTid = null;
+let tasks = [], STATE = { running:{}, stats:{}, active_files:{}, finished_files:{}, all_files:{}, failed_files:{}, skipped_files:{} }, socket;
+let currentTid = null;
 
-function t() { return i18n[lang] || i18n.pt; }
+function t() { return i18n[lang] || i18n.en; }
 
+/* --- Navegação e Abas --- */
 function switchTab(tab) {
+    // Só reseta o currentTid se mudar para uma aba principal que não seja detalhe
     if (tab !== 'files' && tab !== 'history') currentTid = null;
+    
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    document.getElementById('view-' + tab).classList.add('active');
-    document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
+    
+    const view = document.getElementById('view-' + tab);
+    // Correção: Se carregar em Menu, abre view-settings
+    const realViewId = (tab === 'settings') ? 'view-settings' : 'view-' + tab;
+    const targetView = document.getElementById(realViewId);
+    const navItem = document.querySelector(`[data-tab="${tab}"]`);
+    
+    if(targetView) targetView.classList.add('active');
+    if(navItem) navItem.classList.add('active');
+    
     if(tab === 'clouds') loadClouds();
 }
 
+/* --- Renderização dos Cartões --- */
 function renderCard(tk) {
     const tid = String(tk.id);
     const status = STATE.running[tid] || 'idle';
     const isRunning = status !== 'idle';
     const stats = STATE.stats[tid] || { percent: 0 };
     const activeFile = (STATE.active_files[tid] && STATE.active_files[tid][0]) || null;
-    
-    const modeLabel = tk.type === 'upload' ? t().mode_up : (tk.type === 'download' ? t().mode_down : t().mode_bi);
-    const triggerText = tk.trigger === 'real' ? 'Tempo Real' : tk.interval;
+    const hasErrors = STATE.failed_files[tid]?.length > 0;
+
+    const syncLabel = tk.type === 'bisync' ? t().mode_bi : (tk.type === 'upload' ? t().mode_up : t().mode_down);
+    const triggerText = tk.trigger === 'real' ? t().opt_real : (tk.interval === 'daily' ? `${t().daily} ${tk.daily_time}` : tk.interval);
 
     let statusText = t().status_inactive;
     if (status === 'active') statusText = t().status_active;
@@ -161,8 +180,11 @@ function renderCard(tk) {
     return `
     <div class="card ${isRunning ? 'active-border' : ''}" onclick="openFiles('${tk.id}')">
         <div class="card-header">
-            <div class="card-title"><span>${tk.name}</span></div>
-            <div class="badge">${statusText}</div>
+            <div class="card-title"><div class="status-dot ${isRunning ? 'active' : ''}"></div><span>${tk.name}</span></div>
+            <div class="flex items-center gap-2">
+                ${hasErrors ? '<i class="fas fa-triangle-exclamation text-orange-500 text-[12px]"></i>' : ''}
+                <div class="badge">${statusText}</div>
+            </div>
         </div>
         ${isRunning ? `
             <div class="py-2">
@@ -173,15 +195,15 @@ function renderCard(tk) {
         ` : `
             <div class="path-line"><b>L:</b>${tk.local}</div>
             <div class="path-line"><b>C:</b>${tk.remote}</div>
-            <div class="meta-row"><span><i class="fas fa-rotate"></i> ${modeLabel}</span><span><i class="fas fa-clock"></i> ${triggerText}</span></div>
+            <div class="meta-row"><span><i class="fas fa-rotate"></i> ${syncLabel}</span><span><i class="fas fa-clock"></i> ${triggerText}</span></div>
             <div class="last-sync">${t().last_sync}: ${tk.last_sync || '---'}</div>
         `}
         <div class="card-footer">
             <div class="flex gap-4">
                 ${isRunning ? 
-                    `<button class="btn-action btn-stop" onclick="event.stopPropagation(); stopSync('${tk.id}')"><i class="fas fa-stop"></i> ${t().btn_stop}</button>` :
-                    `<button class="btn-action btn-sim" onclick="event.stopPropagation(); startSync('${tk.id}', true)"><i class="fas fa-flask"></i> ${t().btn_sim}</button>
-                     <button class="btn-action btn-play" onclick="event.stopPropagation(); startSync('${tk.id}', false)"><i class="fas fa-play"></i> ${t().btn_start}</button>`
+                    `<button class="btn-action" style="color:var(--red)" onclick="event.stopPropagation(); stopSync('${tk.id}')"><i class="fas fa-stop"></i> ${t().btn_stop}</button>` :
+                    `<button class="btn-action" style="color:var(--orange)" onclick="event.stopPropagation(); startSync('${tk.id}', true)"><i class="fas fa-flask"></i> ${t().btn_sim}</button>
+                     <button class="btn-action" style="color:var(--accent)" onclick="event.stopPropagation(); startSync('${tk.id}', false)"><i class="fas fa-play"></i> ${t().btn_start}</button>`
                 }
             </div>
             <i class="fas fa-history icon-history" onclick="event.stopPropagation(); showHistory('${tk.id}')"></i>
@@ -189,36 +211,23 @@ function renderCard(tk) {
     </div>`;
 }
 
-async function loadClouds() {
-    const list = document.getElementById('clouds-list');
-    list.innerHTML = `<div class="p-10 text-center animate-pulse text-xs text-slate-500 font-bold uppercase">${t().clouds_loading}</div>`;
-    const r = await fetch('/api/remotes/list_with_quota');
-    const data = await r.json();
-    list.innerHTML = data.map(c => {
-        const p = c.quota.total ? Math.round((c.quota.used/c.quota.total)*100) : 0;
-        const fmt = (b) => (b/1e9).toFixed(1) + " GB";
-        return `
-        <div class="card">
-            <div class="flex justify-between items-center mb-4">
-                <div class="card-title"><i class="fab fa-apple text-blue-500"></i><span>${c.name}</span></div>
-                <div class="text-blue-400 font-black text-xs">${p}%</div>
-            </div>
-            <div class="flex justify-between items-end mb-1"><span class="quota-label">Usado</span><span class="quota-val">${fmt(c.quota.used)}</span></div>
-            <div class="prog-bg"><div class="prog-fill" style="width:${p}%"></div></div>
-            <div class="flex justify-between mt-1"><span class="quota-label">Capacidade</span><span class="quota-val" style="opacity:0.6">${fmt(c.quota.total)}</span></div>
-        </div>`;
-    }).join('');
+function renderAll() {
+    document.getElementById('home-list').innerHTML = tasks.filter(tk => (STATE.running[tk.id] || 'idle') !== 'idle').map(renderCard).join('') || `<div class="p-10 text-center opacity-30 text-xs italic">Nada em execução</div>`;
+    document.getElementById('tasks-list').innerHTML = tasks.map(renderCard).join('');
+    if(currentTid && document.getElementById('view-files').classList.contains('active')) renderFiles();
 }
 
-function openFiles(id) { currentTid = id; switchTab('files'); renderFiles(); }
+/* --- Sub-páginas --- */
+function openFiles(id) { currentTid = String(id); switchTab('files'); renderFiles(); }
 
 function renderFiles() {
     const tk = tasks.find(t => String(t.id) === currentTid);
-    if(!tk) return;
-    document.getElementById('files-header').innerHTML = `<h2 class="text-lg font-black">${tk.name}</h2><p class="text-[9px] text-blue-500 uppercase font-black">${tk.type}</p>`;
+    const container = document.getElementById('files-list-content');
+    if(!tk || !container) return;
+    document.getElementById('files-header').innerHTML = `<h2 class="text-xl font-black">${tk.name}</h2><p class="text-[9px] text-blue-500 uppercase font-black">${tk.type}</p>`;
     const all = STATE.all_files[currentTid] || [];
-    document.getElementById('files-content').innerHTML = all.map(f => {
-        let color = "#475569", icon = "fa-clock", lbl = "Pendente";
+    container.innerHTML = all.map(f => {
+        let color = "#475569", icon = "fa-clock", lbl = t().file_pending;
         if(STATE.finished_files[currentTid]?.includes(f)) { color="var(--green)"; icon="fa-circle-check"; lbl="OK"; }
         if(STATE.failed_files[currentTid]?.includes(f)) { color="var(--red)"; icon="fa-circle-xmark"; lbl="Erro"; }
         if(STATE.skipped_files[currentTid]?.includes(f)) { color="var(--orange)"; icon="fa-equals"; lbl="Inalterado"; }
@@ -229,33 +238,51 @@ function renderFiles() {
 }
 
 async function showHistory(id) {
-    currentTid = id; switchTab('history');
-    const r = await fetch(`/api/history/${id}`);
-    const data = await r.json();
-    document.getElementById('history-content').innerHTML = data.map(h => {
-        const isSim = h.type === 'Simulação';
-        // Ajuste da operação baseado na lógica pedida
-        const opLabel = h.mode === 'upload' ? t().mode_up : (h.mode === 'download' ? t().mode_down : t().mode_bi);
-        return `
-        <div class="card">
-            <div class="flex justify-between items-center mb-2">
-                <span class="badge ${isSim ? 'badge-sim' : 'badge-sync'}">${isSim ? t().status_sim : 'Sincronização'}</span>
-                <span class="text-[10px] text-slate-500 font-mono">${h.date}</span>
-            </div>
-            <div class="flex justify-between items-center">
-                <span class="text-xs font-bold" style="color:var(--text)">${opLabel}</span>
-                <span class="text-[10px] font-black uppercase" style="color:${h.status==='Sucesso'?'var(--green)':'var(--red)'}">${h.status.toUpperCase()}</span>
-            </div>
-        </div>`;
-    }).join('') || '<p class="p-10 text-center opacity-30 text-xs">Sem histórico</p>';
+    currentTid = String(id); switchTab('history');
+    const tk = tasks.find(t => String(t.id) === String(id));
+    const header = document.getElementById('history-header');
+    if(header) header.innerHTML = `<h3 class="font-black text-lg">${tk ? tk.name : ''}</h3>`;
+    try {
+        const r = await fetch(`/api/history/${id}`);
+        const data = await r.json();
+        document.getElementById('history-list-content').innerHTML = data.map(h => `
+            <div class="card">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="badge ${h.type === 'Simulação' ? 'text-orange-500' : 'text-blue-500'}">${h.type === 'Simulação' ? t().hist_sim : t().hist_sync}</span>
+                    <span class="text-[10px] text-slate-500 font-mono">${h.date}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-xs font-bold">${h.mode}</span>
+                    <span class="text-[10px] font-black uppercase" style="color:${h.status==='Sucesso'?'var(--green)':'var(--red)'}">${h.status==='Sucesso'?t().hist_success:t().hist_error}</span>
+                </div>
+            </div>`).join('') || '<p class="p-10 text-center opacity-30 text-xs">Sem histórico</p>';
+    } catch(e) { document.getElementById('history-list-content').innerHTML = '<p class="text-center py-10 text-red-500 text-xs">Erro ao carregar</p>'; }
 }
 
+/* --- Definições --- */
 function setTheme(t) {
     theme = t; document.documentElement.setAttribute('data-theme', t); localStorage.setItem('syncpulse_theme', t);
-    document.getElementById('btn-dark').className = t === 'dark' ? 'flex-1 py-2 text-[10px] font-bold uppercase rounded-lg bg-blue-600 text-white' : 'flex-1 py-2 text-[10px] font-bold uppercase rounded-lg text-slate-500';
-    document.getElementById('btn-light').className = t === 'light' ? 'flex-1 py-2 text-[10px] font-bold uppercase rounded-lg bg-blue-600 text-white' : 'flex-1 py-2 text-[10px] font-bold uppercase rounded-lg text-slate-500';
+    document.getElementById('btn-dark').className = t === 'dark' ? 'theme-btn active' : 'theme-btn';
+    document.getElementById('btn-light').className = t === 'light' ? 'theme-btn active' : 'theme-btn';
+}
+function setLang(l) { lang = l; localStorage.setItem('syncpulse_language_v2', l); location.reload(); }
+function translateUI() { document.querySelectorAll('[data-i18n]').forEach(el => { const k = el.dataset.i18n; if(t()[k]) el.textContent = t()[k]; }); }
+
+async function loadClouds() {
+    const list = document.getElementById('clouds-list');
+    list.innerHTML = `<div class="p-10 text-center animate-pulse text-xs text-slate-500 font-bold uppercase">${t().clouds_loading}</div>`;
+    try {
+        const r = await fetch('/api/remotes/list_with_quota');
+        const data = await r.json();
+        list.innerHTML = data.map(c => {
+            const p = c.quota.total ? Math.round((c.quota.used/c.quota.total)*100) : 0;
+            const fmt = (b) => (b/1e9).toFixed(1) + " GB";
+            return `<div class="card"><div class="flex justify-between items-center mb-3"><span class="font-bold text-sm text-white">${c.name}</span><span class="text-blue-400 font-black text-xs">${p}%</span></div><div class="prog-bg"><div class="prog-fill" style="width:${p}%"></div></div><div class="flex justify-between mt-2 text-[9px] font-bold text-slate-500 uppercase"><span>Used: ${fmt(c.quota.used)}</span><span>Total: ${fmt(c.quota.total)}</span></div></div>`;
+        }).join('');
+    } catch(e) {}
 }
 
+/* --- WebSocket --- */
 function connect() {
     const proto = location.protocol === 'https:' ? 'wss://' : 'ws://';
     socket = new WebSocket(proto + location.host + '/ws');
@@ -263,31 +290,20 @@ function connect() {
     socket.onclose = () => { document.getElementById('conn-dot').classList.remove('online'); setTimeout(connect, 3000); };
     socket.onmessage = (ev) => {
         const d = JSON.parse(ev.data);
-        if(d.type === 'init') { tasks = d.tasks; STATE = d.state; }
+        if(d.type === 'init') { tasks = d.tasks; STATE = d.state; translateUI(); }
         if(d.type === 'update') { STATE = d.state; }
-        renderHome(); renderTasks();
-        if(currentTid && document.getElementById('view-files').classList.contains('active')) renderFiles();
+        renderAll();
     };
 }
 
 async function startSync(id, sim) { await fetch(`/api/sync/${id}?simulate=${sim}`, {method:'POST'}); }
 async function stopSync(id) { await fetch(`/api/sync/stop/${id}`, {method:'POST'}); }
 
-window.onload = () => { 
-    connect(); setTheme(theme); 
+window.onload = () => {
+    connect(); setTheme(theme);
     const langs = ['pt', 'en', 'es', 'fr', 'de'];
-    document.getElementById('lang-btns').innerHTML = langs.map(l => `<button class="lang-btn ${l===lang?'active':''}" onclick="lang='${l}';localStorage.setItem('syncpulse_language_v2','${l}');location.reload();">${l.toUpperCase()}</button>`).join('');
+    document.getElementById('lang-btns-container').innerHTML = langs.map(l => `<button class="lang-btn ${l===lang?'active':''}" onclick="setLang('${l}')">${l.toUpperCase()}</button>`).join('');
 };
-
-function renderHome() {
-    const list = document.getElementById('home-list');
-    const running = tasks.filter(tk => (STATE.running[tk.id] || 'idle') !== 'idle');
-    list.innerHTML = running.length ? running.map(tk => renderCard(tk)).join('') : '<p class="p-10 text-center opacity-30 text-xs italic">Nada em execução</p>';
-}
-
-function renderTasks() {
-    document.getElementById('tasks-list').innerHTML = tasks.map(tk => renderCard(tk)).join('');
-}
 </script>
 </body>
 </html>
