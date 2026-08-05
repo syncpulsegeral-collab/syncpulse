@@ -7,6 +7,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from datetime import datetime
 from contextlib import asynccontextmanager # <--- Garante este import
+from fastapi.middleware.cors import CORSMiddleware
 
 # --- CONFIGURAÇÕES DE CAMINHOS ---
 # Agora apontamos SEMPRE para as pastas dos volumes (/app e /www)
@@ -266,6 +267,13 @@ async def lifespan(app: FastAPI):
 
 # --- 4. AGORA SIM, CRIAR A INSTÂNCIA DA APP ---
 app = FastAPI(lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 class ConnectionManager:
     def __init__(self): self.active_connections = []
