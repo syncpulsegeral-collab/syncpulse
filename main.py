@@ -1645,7 +1645,10 @@ async def update_health_cache():
     except Exception as e:
         print(f">>> [HEALTH] Erro ao atualizar: {e}")
 
-
+@app.get("/api/tasks")
+async def get_tasks_endpoint():
+    """Retorna a lista de tarefas para a interface (Desktop e Mobile)."""
+    return load_tasks() # Esta função já existe no teu código e lê o tasks.json
 
 @app.post("/api/tasks")
 async def post_tasks(request: Request):
@@ -1680,10 +1683,7 @@ async def post_tasks(request: Request):
     sync_scheduled_tasks(tasks)
     await manager.broadcast({"type": "init", "tasks": tasks, "state": STATE})
     return {"status": "ok", "tasks": tasks}
-    
-    @app.get("/api/tasks")
-async def get_tasks_mobile():
-    return load_tasks() # Esta função já existe no teu main.py e lê o ficheiro JSON
+
 
 @app.post("/api/settings/legacy")
 async def post_settings(request: Request):
