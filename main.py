@@ -1580,6 +1580,11 @@ def browse_cloud_endpoint(remote: str, path: str = ""):
         print(f"Erro ao navegar na cloud {remote}: {e}")
         return []
 
+@app.get("/api/tasks")
+def get_tasks_mobile():
+    """Retorna a lista de tarefas para a versão mobile."""
+    return load_tasks()
+
 def get_remote_type(remote_name):
     try:
         res = subprocess.check_output(["rclone", "--config", RCLONE_CONFIG, "listremotes", "--long"]).decode()
