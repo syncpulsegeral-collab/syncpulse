@@ -3,337 +3,234 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>SyncPulse - Mobile</title>
-<link rel="icon" type="image/svg+xml" href="logo.svg">
+<title>SyncPulse Mobile</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<script src="https://cdn.tailwindcss.com"></script>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
 
   :root {
-    --bg: #050a12; --bg-elevated: #0b111d; --card: #111d29; --card-alt: #162635;
-    --border: #1e293b; --text: #ffffff; --text-dim: #94a3b8; --text-faint: #475569;
-    --accent: #3b82f6; --accent-dim: rgba(59,130,246,0.12);
-    --orange: #f97316; --green: #22c55e; --red: #ef4444;
-  }
-  html[data-theme="light"] {
-    --bg: #eef1f6; --bg-elevated: #ffffff; --card: #ffffff; --card-alt: #eaf1ff;
-    --border: #e1e7ef; --text: #0f172a; --text-dim: #5b6b82; --text-faint: #94a3b8;
-    --accent: #2563eb; --accent-dim: rgba(37,99,235,0.1);
+    --bg: #050a12; --bg-elevated: #0b111d; --card: #111d29;
+    --border: #1e293b; --text: #ffffff; --accent: #3b82f6;
+    --red: #ef4444; --green: #22c55e; --orange: #f97316;
   }
 
-  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; scrollbar-width: none; }
-  *::-webkit-scrollbar { display: none; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
 
-  body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; height: 100vh; overflow: hidden; display: flex; flex-direction: column; transition: background 0.25s, color 0.25s; }
+  /* Header */
+  .topbar { padding: 20px; background: var(--bg-elevated); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+  .conn-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--red); box-shadow: 0 0 10px var(--red); }
+  .conn-dot.online { background: var(--green); box-shadow: 0 0 10px var(--green); }
 
-  /* ---------- Top bar ---------- */
-  .topbar { flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; padding: max(16px, env(safe-area-inset-top)) 18px 14px; background: var(--bg-elevated); border-bottom: 1px solid var(--border); }
-  .topbar-title { display: flex; align-items: center; gap: 10px; }
-  .topbar-title h1 { font-size: 15px; font-weight: 800; letter-spacing: -0.02em; margin: 0; }
-  .topbar-title span { font-size: 9px; color: var(--text-dim); font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
-  .conn-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--red); flex-shrink: 0; transition: background 0.3s; }
-  .conn-dot.online { background: var(--green); box-shadow: 0 0 6px var(--green); }
+  /* Views */
+  .view { display: none; flex: 1; overflow-y: auto; padding: 20px 20px 100px; }
+  .view.active { display: block; animation: fadeIn 0.3s ease; }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-  /* ---------- Views ---------- */
-  .view { display: none; flex: 1; overflow-y: auto; padding: 16px 16px 100px; }
-  .view.active { display: block; animation: slideIn 0.2s ease-out; }
-  @keyframes slideIn { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); } }
+  /* Cards */
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 20px; margin-bottom: 15px; position: relative; }
+  .card.running { border-left: 4px solid var(--accent); }
+  .badge { font-size: 10px; background: rgba(59, 130, 246, 0.1); color: var(--accent); padding: 4px 12px; border-radius: 12px; font-weight: 800; }
+  
+  .path-text { font-family: monospace; font-size: 10px; color: #64748b; margin: 10px 0; overflow: hidden; text-overflow: ellipsis; }
 
-  .section-title { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim); margin: 4px 0 12px; display: flex; align-items: center; gap: 8px; }
+  /* Progress Bar */
+  .prog-bg { background: #070e1e; height: 8px; border-radius: 10px; margin-top: 10px; border: 1px solid var(--border); overflow: hidden; }
+  .prog-fill { height: 100%; background: var(--accent); width: 0%; transition: width 0.5s; box-shadow: 0 0 10px var(--accent); }
 
-  .empty-state { text-align: center; padding: 60px 20px; color: var(--text-faint); border: 2px dashed var(--border); border-radius: 18px; font-size: 12px; font-weight: 700; }
-  .empty-state i { font-size: 26px; display: block; margin-bottom: 10px; }
-
-  /* ---------- Cards ---------- */
-  .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; margin-bottom: 12px; position: relative; }
-  .card.running { border-left: 3px solid var(--accent); background: var(--card-alt); }
-  .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 10px; }
-  .card-title { font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 9px; min-width: 0; }
-  .badge { font-size: 10px; background: var(--accent-dim); padding: 3px 10px; border-radius: 15px; color: var(--text-dim); font-weight: 800; }
-
-  .path-line { font-size: 10.5px; color: var(--text-faint); margin-bottom: 3px; font-family: monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .meta-row { color: var(--accent); font-size: 11px; font-weight: 700; display: flex; align-items: center; gap: 14px; margin: 12px 0 8px; }
-  .last-sync { font-style: italic; font-size: 9.5px; color: var(--text-faint); }
-
-  /* ---------- File Queue Item ---------- */
-  .file-item { background: rgba(0,0,0,0.15); border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin-bottom: 8px; }
-  .file-info { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; }
-  .file-name { font-size: 12px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
-  .file-status { font-size: 9px; font-weight: 800; text-transform: uppercase; }
-
-  /* ---------- History Item ---------- */
-  .hist-item { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 8px; }
-  .hist-top { display: flex; justify-content: space-between; font-size: 10px; font-weight: 700; margin-bottom: 6px; }
-  .hist-log { font-family: monospace; font-size: 9px; color: var(--red); background: rgba(0,0,0,0.2); padding: 8px; border-radius: 6px; margin-top: 8px; white-space: pre-wrap; display: none; }
-
-  /* ---------- Navigation ---------- */
-  .bottom-nav { position: fixed; left: 0; right: 0; bottom: 0; display: flex; background: var(--bg-elevated); border-top: 1px solid var(--border); padding: 8px 6px max(8px, env(safe-area-inset-bottom)); z-index: 50; }
-  .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 0; color: var(--text-faint); background: none; border: none; }
+  /* Bottom Nav */
+  .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; height: 75px; background: var(--bg-elevated); border-top: 1px solid var(--border); display: grid; grid-template-columns: repeat(4, 1fr); z-index: 100; }
+  .nav-item { display: flex; flex-direction: column; align-items: center; justify-content: center; color: #475569; font-size: 10px; font-weight: 700; text-transform: uppercase; gap: 4px; }
   .nav-item.active { color: var(--accent); }
-  .nav-item i { font-size: 17px; }
-  .nav-item span { font-size: 9.5px; font-weight: 700; }
 
-  .back-btn { padding: 8px 0; color: var(--accent); font-size: 12px; font-weight: 700; display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
+  /* File List */
+  .file-row { padding: 12px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+  .back-btn { color: var(--accent); font-weight: 800; font-size: 12px; margin-bottom: 20px; display: block; }
 </style>
 </head>
 <body>
 
   <div class="topbar">
-    <div class="topbar-title">
-      <div class="conn-dot" id="conn-dot"></div>
-      <div><h1>SyncPulse</h1><span>Mobile</span></div>
+    <div>
+      <h1 class="text-white font-black uppercase tracking-tighter text-lg">Sync<span class="text-blue-500">Pulse</span></h1>
+      <span class="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Mobile Edition</span>
     </div>
+    <div id="conn-dot" class="conn-dot"></div>
   </div>
 
-  <!-- HOME -->
+  <!-- HOME (ATIVAS) -->
   <div class="view active" id="view-home">
-    <div class="section-title" data-i18n="home_title">Execução</div>
+    <h2 class="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-4">Execução em tempo real</h2>
     <div id="home-list"></div>
   </div>
 
   <!-- CLOUDS -->
   <div class="view" id="view-clouds">
-    <div class="section-title" data-i18n="clouds_title">Clouds</div>
+    <h2 class="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-4">Armazenamento Cloud</h2>
     <div id="clouds-list"></div>
   </div>
 
-  <!-- TAREFAS -->
+  <!-- TAREFAS (TODAS) -->
   <div class="view" id="view-tasks">
-    <div class="section-title" data-i18n="tasks_title">Tarefas</div>
+    <h2 class="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-4">Todas as Tarefas</h2>
     <div id="tasks-list"></div>
   </div>
 
-  <!-- SUB-VIEW: DETALHE DA TAREFA (FILA) -->
-  <div class="view" id="view-task-detail">
-    <button class="back-btn" onclick="switchTab('tasks')"><i class="fas fa-chevron-left"></i> Voltar</button>
-    <div id="detail-header" class="mb-4"></div>
-    <div class="section-title">Ficheiros</div>
-    <div id="file-list"></div>
+  <!-- SUB-PÁGINA: LISTA DE FICHEIROS -->
+  <div class="view" id="view-detail">
+    <button class="back-btn" onclick="switchTab('tasks')"><i class="fas fa-arrow-left mr-2"></i> Voltar às Tarefas</button>
+    <div id="detail-header" class="mb-6"></div>
+    <div id="file-list" class="space-y-1"></div>
   </div>
 
-  <!-- SUB-VIEW: HISTÓRICO -->
-  <div class="view" id="view-history">
-    <button class="back-btn" onclick="switchTab('tasks')"><i class="fas fa-chevron-left"></i> Voltar</button>
-    <div id="history-title-area" class="mb-4"></div>
-    <div id="history-list-content"></div>
-  </div>
-
-  <!-- DEFINIÇÕES -->
-  <div class="view" id="view-settings">
-    <div class="section-title">Definições</div>
-    <div class="settings-block">
-        <div class="lang-grid" id="lang-grid"></div>
+  <!-- MENU -->
+  <div class="view" id="view-menu">
+    <h2 class="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-6">Definições</h2>
+    <div class="card">
+        <p class="text-sm font-bold mb-2">Motor: ZimaOS 2.0</p>
+        <p class="text-[10px] text-slate-500 uppercase">Hardware ID detetado</p>
     </div>
+    <button onclick="location.reload()" class="w-full py-4 bg-slate-800 rounded-2xl text-xs font-black uppercase">Reiniciar Interface</button>
   </div>
 
-  <div class="bottom-nav">
-    <button class="nav-item active" data-tab="home" onclick="switchTab('home')"><i class="fas fa-house"></i><span>Home</span></button>
-    <button class="nav-item" data-tab="clouds" onclick="switchTab('clouds')"><i class="fas fa-cloud"></i><span>Clouds</span></button>
-    <button class="nav-item" data-tab="tasks" onclick="switchTab('tasks')"><i class="fas fa-list-check"></i><span>Tarefas</span></button>
-    <button class="nav-item" data-tab="settings" onclick="switchTab('settings')"><i class="fas fa-gear"></i><span>Menu</span></button>
-  </div>
+  <nav class="bottom-nav">
+    <div class="nav-item active" data-tab="home" onclick="switchTab('home')"><i class="fas fa-home text-lg"></i><span>Home</span></div>
+    <div class="nav-item" data-tab="clouds" onclick="switchTab('clouds')"><i class="fas fa-cloud text-lg"></i><span>Clouds</span></div>
+    <div class="nav-item" data-tab="tasks" onclick="switchTab('tasks')"><i class="fas fa-list-ul text-lg"></i><span>Tarefas</span></div>
+    <div class="nav-item" data-tab="menu" onclick="switchTab('menu')"><i class="fas fa-bars text-lg"></i><span>Menu</span></div>
+  </nav>
 
 <script>
-const i18n = {
-  pt: { home_title:"Execução", clouds_title:"Clouds", tasks_title:"Tarefas", home_empty_title:"Nada a correr", home_empty_sub:"Tarefas ativas aparecem aqui.", btn_simulate:"Simular", btn_start:"Iniciar", btn_stop:"Parar", last_sync:"Última sinc", status_active:"Ativo", status_sim:"Simulando", status_done:"Concluído", status_inactive:"Inativo", file_pending: "Pendente", file_done:"Concluído", file_error: "Erro", file_skipped: "Ignorado" },
-  en: { home_title:"Running", clouds_title:"Clouds", tasks_title:"Tasks", home_empty_title:"Nothing running", home_empty_sub:"Active tasks appear here.", btn_simulate:"Simulate", btn_start:"Start", btn_stop:"Stop", last_sync:"Last sync", status_active:"Active", status_sim:"Simulating", status_done:"Done", status_inactive:"Inactive", file_pending: "Pending", file_done:"Done", file_error: "Error", file_skipped: "Skipped" }
-};
+let socket, tasks = [], STATE = {}, currentTid = null;
 
-let lang = localStorage.getItem('syncpulse_language_v2') || 'pt';
-let tasks = [], STATE = { running:{}, stats:{}, active_files:{}, finished_files:{}, all_files:{}, failed_files:{}, skipped_files:{}, file_sizes:{} }, socket;
-let currentDetailId = null;
-
-function t() { return i18n[lang] || i18n.pt; }
-
-/* ==================== Tabs & Navigation ==================== */
 function switchTab(tab) {
+  currentTid = null;
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  const target = document.getElementById('view-' + tab);
-  if(target) target.classList.add('active');
-  const nav = document.querySelector(`.nav-item[data-tab="${tab}"]`);
-  if(nav) nav.classList.add('active');
+  document.getElementById('view-' + tab).classList.add('active');
+  const navItem = document.querySelector(`[data-tab="${tab}"]`);
+  if(navItem) navItem.classList.add('active');
   if(tab === 'clouds') loadClouds();
-  currentDetailId = null;
 }
 
-function openTaskDetail(id) {
-    currentDetailId = String(id);
-    switchTab('task-detail');
-    renderTaskDetail();
+/* --- WebSocket --- */
+function connect() {
+  const proto = location.protocol === 'https:' ? 'wss://' : 'ws://';
+  socket = new WebSocket(proto + location.host + '/ws');
+  
+  socket.onopen = () => document.getElementById('conn-dot').classList.add('online');
+  socket.onclose = () => {
+    document.getElementById('conn-dot').classList.remove('online');
+    setTimeout(connect, 3000);
+  };
+  
+  socket.onmessage = (ev) => {
+    const data = JSON.parse(ev.data);
+    if(data.type === 'init') { tasks = data.tasks; STATE = data.state; }
+    if(data.type === 'update') { STATE = data.state; }
+    renderAll();
+  };
 }
 
-/* ==================== Rendering ==================== */
-function renderHome() {
-  const list = document.getElementById('home-list');
-  const running = tasks.filter(tk => (STATE.running[String(tk.id)] || 'idle') !== 'idle');
-  if (running.length === 0) {
-    list.innerHTML = `<div class="empty-state"><i class="fas fa-wave-square"></i><div>${t().home_empty_title}</div></div>`;
-    return;
-  }
-  list.innerHTML = running.map(tk => renderCard(tk, true)).join('');
+function renderAll() {
+  renderHome();
+  renderTasks();
+  if(currentTid) renderDetail();
 }
 
 function renderTasks() {
   const list = document.getElementById('tasks-list');
-  if (tasks.length === 0) {
-    list.innerHTML = `<div class="empty-state"><i class="fas fa-inbox"></i></div>`;
-    return;
-  }
-  list.innerHTML = tasks.map(tk => renderCard(tk, false)).join('');
-}
-
-function renderCard(tk, isHome) {
-    const tid = String(tk.id);
-    const status = STATE.running[tid] || 'idle';
-    const isRunning = status !== 'idle';
-    const stats = STATE.stats[tid] || { percent: 0 };
-    const activeFile = (STATE.active_files[tid] && STATE.active_files[tid][0]) || null;
-
+  list.innerHTML = tasks.map(tk => {
+    const isRunning = (STATE.running[tk.id] || 'idle') !== 'idle';
     return `
-    <div class="card ${isRunning ? 'running' : ''}" onclick="openTaskDetail('${tk.id}')">
-      <div class="card-header">
-        <div class="card-title"><span>${tk.name}</span></div>
-        <div class="badge">${isRunning ? (status === 'simulating' ? t().status_sim : t().status_active) : t().status_inactive}</div>
+    <div class="card ${isRunning ? 'running' : ''}" onclick="openDetail('${tk.id}')">
+      <div class="flex justify-between items-center">
+        <span class="font-bold text-sm">${tk.name}</span>
+        <span class="badge">${STATE.running[tk.id] || 'Inativo'}</span>
       </div>
-      ${isRunning ? `
-        <div class="progress-wrap">
-          <div class="progress-file">${activeFile ? activeFile.name : '...'}</div>
-          <div class="prog-bg"><div class="prog-fill" style="width:${activeFile ? activeFile.progress : stats.percent}%"></div></div>
-        </div>
-      ` : `
-        <div class="path-line"><b>L:</b>${tk.local}</div>
-        <div class="path-line"><b>C:</b>${tk.remote}</div>
-      `}
-      <div class="card-footer">
-        <div style="display:flex; gap:8px;">
-            ${isRunning ? 
-                `<button class="btn-action btn-stop" onclick="event.stopPropagation(); stopSync('${tk.id}')"><i class="fas fa-stop"></i></button>` :
-                `<button class="btn-action btn-play" onclick="event.stopPropagation(); startSync('${tk.id}', false)"><i class="fas fa-play"></i></button>
-                 <button class="btn-action btn-sim" onclick="event.stopPropagation(); startSync('${tk.id}', true)"><i class="fas fa-flask"></i></button>`
-            }
-        </div>
-        <i class="fas fa-history icon-history" onclick="event.stopPropagation(); showHistory('${tk.id}')"></i>
+      <div class="path-text">L: ${tk.local}<br>C: ${tk.remote}</div>
+      <div class="flex gap-4 mt-2">
+        <button class="text-blue-500" onclick="event.stopPropagation(); startSync('${tk.id}')"><i class="fas fa-play"></i></button>
+        <button class="text-red-500" onclick="event.stopPropagation(); stopSync('${tk.id}')"><i class="fas fa-stop"></i></button>
       </div>
     </div>`;
+  }).join('');
 }
 
-function renderTaskDetail() {
+function renderHome() {
+  const list = document.getElementById('home-list');
+  const running = tasks.filter(tk => (STATE.running[tk.id] || 'idle') !== 'idle');
+  
+  if(!running.length) {
+    list.innerHTML = '<div class="p-10 text-center text-slate-600 text-xs italic border-2 border-dashed border-slate-800 rounded-3xl">Nenhuma tarefa ativa no momento</div>';
+    return;
+  }
+
+  list.innerHTML = running.map(tk => {
+    const stats = STATE.stats[tk.id] || { percent: 0 };
+    const active = STATE.active_files[tk.id]?.[0] || { name: 'A aguardar...' };
+    return `
+    <div class="card running" onclick="openDetail('${tk.id}')">
+      <div class="font-bold text-sm mb-2">${tk.name}</div>
+      <div class="text-[10px] text-blue-400 truncate mb-1">${active.name}</div>
+      <div class="prog-bg"><div class="prog-fill" style="width: ${stats.percent}%"></div></div>
+      <div class="text-right text-[9px] font-bold mt-1 text-slate-500">${stats.percent}%</div>
+    </div>`;
+  }).join('');
+}
+
+function openDetail(id) {
+    currentTid = id;
+    switchTab('detail');
+    renderDetail();
+}
+
+function renderDetail() {
+    const tk = tasks.find(t => String(t.id) === String(currentTid));
     const container = document.getElementById('file-list');
     const header = document.getElementById('detail-header');
-    if (!currentDetailId) return;
+    if(!tk) return;
 
-    const tk = tasks.find(x => String(x.id) === currentDetailId);
-    if (!tk) return;
-
-    header.innerHTML = `<h2 class="text-lg font-bold">${tk.name}</h2><p class="text-[10px] text-slate-500 uppercase font-black">${tk.type}</p>`;
-
-    const all = STATE.all_files[currentDetailId] || [];
-    const finished = STATE.finished_files[currentDetailId] || [];
-    const active = STATE.active_files[currentDetailId] || [];
-    const failed = STATE.failed_files[currentDetailId] || [];
-    const skipped = STATE.skipped_files[currentDetailId] || [];
-
-    if (all.length === 0) {
-        container.innerHTML = '<div class="empty-state">Sem ficheiros detetados</div>';
-        return;
-    }
+    header.innerHTML = `<h2 class="text-xl font-black">${tk.name}</h2><p class="text-[10px] text-blue-500 uppercase font-bold">${tk.type}</p>`;
+    
+    const all = STATE.all_files[currentTid] || [];
+    if(!all.length) { container.innerHTML = '<p class="text-center py-10 opacity-30 text-xs">Sem ficheiros na fila</p>'; return; }
 
     container.innerHTML = all.map(f => {
-        let statusLabel = t().file_pending, color = "var(--text-faint)", icon = "fa-clock", progress = 0;
-
-        if (failed.includes(f)) { statusLabel = t().file_error; color = "var(--red)"; icon = "fa-circle-xmark"; progress = 100; }
-        else if (finished.includes(f)) { statusLabel = t().file_done; color = "var(--green)"; icon = "fa-circle-check"; progress = 100; }
-        else if (skipped.includes(f)) { statusLabel = t().file_skipped; color = "var(--orange)"; icon = "fa-equals"; progress = 100; }
-        else if (active.some(a => a.name === f)) {
-            const a = active.find(x => x.name === f);
-            statusLabel = a.progress + "%"; color = "var(--accent)"; icon = "fa-sync fa-spin"; progress = a.progress;
-        }
-
+        let color = "#475569", icon = "fa-clock", status = "Pendente";
+        if(STATE.finished_files[currentTid]?.includes(f)) { color = "var(--green)"; icon = "fa-check-circle"; status = "Concluído"; }
+        if(STATE.failed_files[currentTid]?.includes(f)) { color = "var(--red)"; icon = "fa-times-circle"; status = "Erro"; }
+        if(STATE.active_files[currentTid]?.some(a => a.name === f)) { color = "var(--accent)"; icon = "fa-sync fa-spin"; status = "A copiar..."; }
+        
         return `
-        <div class="file-item">
-            <div class="file-info">
-                <span class="file-name" style="color:${color}"><i class="fas ${icon} mr-2"></i>${f.split('/').pop()}</span>
-                <span class="file-status" style="color:${color}">${statusLabel}</span>
+        <div class="file-row">
+            <div class="flex items-center gap-3 truncate">
+                <i class="fas ${icon}" style="color: ${color}"></i>
+                <span class="text-xs truncate font-medium">${f.split('/').pop()}</span>
             </div>
-            <div class="prog-bg"><div class="prog-fill" style="width:${progress}%; background:${color}"></div></div>
+            <span class="text-[8px] font-black uppercase" style="color: ${color}">${status}</span>
         </div>`;
     }).join('');
 }
 
-/* ==================== History ==================== */
-async function showHistory(id) {
-    currentDetailId = String(id);
-    switchTab('history');
-    const tk = tasks.find(x => String(x.id) === id);
-    document.getElementById('history-title-area').innerHTML = `<h2 class="text-lg font-bold">${tk ? tk.name : ''}</h2><p class="section-title">Histórico Recente</p>`;
-    
-    const list = document.getElementById('history-list-content');
-    list.innerHTML = `<div class="text-center py-10 opacity-50"><i class="fas fa-circle-notch fa-spin mr-2"></i>A carregar...</div>`;
-
-    try {
-        const r = await fetch(`/api/history/${id}`);
-        const data = await r.json();
-        if (!data.length) {
-            list.innerHTML = `<div class="empty-state">Sem registos</div>`;
-            return;
-        }
-        list.innerHTML = data.map((h, i) => `
-            <div class="hist-item">
-                <div class="hist-top">
-                    <span style="color:${h.status === 'Sucesso' ? 'var(--green)' : 'var(--red)'}">${h.type.toUpperCase()}</span>
-                    <span>${h.date}</span>
-                </div>
-                <div class="text-[11px] opacity-70">${h.mode} · ${h.status}</div>
-                ${h.status === 'Erro' ? `<button onclick="this.nextElementSibling.style.display='block'" class="text-[9px] mt-2 text-red-400 font-bold uppercase">Ver Log</button>
-                <div class="hist-log">${h.log}</div>` : ''}
-            </div>
-        `).join('');
-    } catch(e) { list.innerHTML = `<div class="text-red-500">Erro ao carregar histórico</div>`; }
-}
-
-/* ==================== WebSocket & API ==================== */
-function connectWS() {
-  const proto = location.protocol === 'https:' ? 'wss://' : 'ws://';
-  socket = new WebSocket(proto + location.host + '/ws');
-  socket.onmessage = (ev) => {
-    const data = JSON.parse(event.data);
-    if (data.type === 'init') { tasks = data.tasks || []; STATE = data.state || STATE; }
-    else if (data.type === 'update') { STATE = data.state || STATE; }
-    renderHome(); renderTasks();
-    if(currentDetailId && document.getElementById('view-task-detail').classList.contains('active')) renderTaskDetail();
-  };
-  socket.onclose = () => setTimeout(connectWS, 3000);
-}
-
-async function startSync(id, simulate) { await fetch(`/api/sync/${id}?simulate=${simulate}`, { method: 'POST' }); }
-async function stopSync(id) { await fetch(`/api/sync/stop/${id}`, { method: 'POST' }); }
-
-function init() {
-  const grid = document.getElementById('lang-grid');
-  grid.innerHTML = ['pt','en'].map(l => `<button class="lang-opt ${l===lang?'active':''}" onclick="setLang('${l}')">${l.toUpperCase()}</button>`).join('');
-  applyStaticI18n(); connectWS();
-}
-function setLang(l) { lang=l; localStorage.setItem('syncpulse_language_v2', l); location.reload(); }
-function applyStaticI18n() { document.querySelectorAll('[data-i18n]').forEach(el => { const k=el.getAttribute('data-i18n'); if(t()[k]) el.textContent=t()[k]; }); }
-
 async function loadClouds() {
   const list = document.getElementById('clouds-list');
-  try {
-    const res = await fetch('/api/remotes/list_with_quota');
-    const remotes = await res.json();
-    list.innerHTML = remotes.map(r => `
-        <div class="cloud-card">
-            <div class="cloud-head">
-                <i class="fab fa-apple text-xl mr-3"></i>
-                <div class="cloud-name">${r.name}</div>
-            </div>
-            <div class="prog-bg"><div class="prog-fill" style="width:${r.quota.total ? (r.quota.used/r.quota.total)*100 : 0}%"></div></div>
-        </div>`).join('');
-  } catch (e) {}
+  const r = await fetch('/api/remotes/list_with_quota');
+  const data = await r.json();
+  list.innerHTML = data.map(c => `
+    <div class="card">
+        <div class="flex justify-between items-center mb-4">
+            <span class="font-bold">${c.name}</span>
+            <span class="text-[9px] badge">${c.type}</span>
+        </div>
+        <div class="prog-bg"><div class="prog-fill" style="width: ${c.quota.total ? (c.quota.used/c.quota.total)*100 : 0}%"></div></div>
+    </div>`).join('');
 }
 
-document.addEventListener('DOMContentLoaded', init);
+async function startSync(id) { await fetch(`/api/sync/${id}?simulate=false`, {method:'POST'}); }
+async function stopSync(id) { await fetch(`/api/sync/stop/${id}`, {method:'POST'}); }
+
+window.onload = connect;
 </script>
 </body>
 </html>
