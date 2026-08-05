@@ -4,7 +4,6 @@ from urllib.error import URLError, HTTPError
 from fastapi import FastAPI, BackgroundTasks, Request, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
-from fastapi.middleware.cors import CORSMiddleware
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from datetime import datetime
 from contextlib import asynccontextmanager # <--- Garante este import
@@ -267,13 +266,6 @@ async def lifespan(app: FastAPI):
 
 # --- 4. AGORA SIM, CRIAR A INSTÂNCIA DA APP ---
 app = FastAPI(lifespan=lifespan)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 class ConnectionManager:
     def __init__(self): self.active_connections = []
@@ -1588,11 +1580,6 @@ def browse_cloud_endpoint(remote: str, path: str = ""):
         print(f"Erro ao navegar na cloud {remote}: {e}")
         return []
 
-@app.get("/api/tasks")
-async def get_tasks_list():
-    return load_tasks()
-
-
 def get_remote_type(remote_name):
     try:
         res = subprocess.check_output(["rclone", "--config", RCLONE_CONFIG, "listremotes", "--long"]).decode()
@@ -1645,10 +1632,7 @@ async def update_health_cache():
     except Exception as e:
         print(f">>> [HEALTH] Erro ao atualizar: {e}")
 
-@app.get("/api/tasks")
-async def get_tasks_endpoint():
-    """Retorna a lista de tarefas para a interface (Desktop e Mobile)."""
-    return load_tasks() # Esta função já existe no teu código e lê o tasks.json
+
 
 @app.post("/api/tasks")
 async def post_tasks(request: Request):
@@ -1683,7 +1667,6 @@ async def post_tasks(request: Request):
     sync_scheduled_tasks(tasks)
     await manager.broadcast({"type": "init", "tasks": tasks, "state": STATE})
     return {"status": "ok", "tasks": tasks}
-
 
 @app.post("/api/settings/legacy")
 async def post_settings(request: Request):
