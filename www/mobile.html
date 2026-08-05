@@ -1,80 +1,74 @@
 <!DOCTYPE html>
-<html lang="pt">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>SyncPulse - Mobile</title>
+<title>SyncPulse Mobile</title>
 <link rel="icon" type="image/svg+xml" href="logo.svg">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<script src="https://cdn.tailwindcss.com"></script>
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
-
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
     :root {
-        --bg: #050a12; --bg-nav: #0b111d; --card: #111d29;
-        --border: #1e293b; --text: #ffffff; --text-dim: #94a3b8;
+        --bg: #050a12; --bg-elevated: #0b111d; --card: #111d29; --card-alt: #162635;
+        --border: #1e293b; --text: #ffffff; --text-dim: #94a3b8; --text-faint: #475569;
         --accent: #3b82f6; --orange: #f97316; --green: #22c55e; --red: #ef4444;
     }
-
+    html[data-theme="light"] {
+        --bg: #eef1f6; --bg-elevated: #ffffff; --card: #ffffff; --card-alt: #eaf1ff;
+        --border: #e1e7ef; --text: #0f172a; --text-dim: #5b6b82; --text-faint: #94a3b8;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; scrollbar-width: none; }
+    *::-webkit-scrollbar { display: none; }
     body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
 
-    /* Header e Status */
-    .topbar { padding: 20px 20px 15px; background: var(--bg); border-bottom: 1px solid var(--border); }
-    .conn-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--red); transition: 0.3s; }
-    .conn-dot.online { background: var(--green); box-shadow: 0 0 10px var(--green); }
+    /* UI Components */
+    .topbar { padding: max(15px, env(safe-area-inset-top)) 20px 12px; background: var(--bg-elevated); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+    .conn-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--red); }
+    .conn-dot.online { background: var(--green); box-shadow: 0 0 8px var(--green); }
 
-    /* Views */
-    .view { display: none; flex: 1; overflow-y: auto; padding: 20px 20px 100px; }
-    .view.active { display: block; animation: fadeIn 0.2s ease; }
-    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .view { display: none; flex: 1; overflow-y: auto; padding: 15px 15px 100px; }
+    .view.active { display: block; animation: fadeIn 0.2s ease-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
-    .section-title { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: var(--text-dim); margin-bottom: 20px; }
+    .section-title { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: var(--text-dim); margin: 5px 0 15px; }
 
-    /* Cartões de Tarefas (Exato aos prints) */
-    .card { background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 20px; margin-bottom: 15px; position: relative; }
-    .card.active-border { border-left: 4px solid var(--accent); }
-    .card-title { font-size: 15px; font-weight: 800; display: flex; align-items: center; gap: 10px; }
-    .status-badge { font-size: 10px; background: rgba(30, 41, 59, 0.8); padding: 3px 12px; border-radius: 10px; color: var(--text-dim); font-weight: 700; }
+    /* ZimaOS Style Cards */
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; margin-bottom: 12px; position: relative; border-left: 3px solid transparent; }
+    .card.running { border-left-color: var(--accent); background: var(--card-alt); }
+    .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .card-title { font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .badge { font-size: 10px; background: rgba(30, 41, 59, 0.8); padding: 3px 10px; border-radius: 15px; color: var(--text-dim); font-weight: 800; }
     
-    .path-line { font-size: 10px; color: #475569; margin: 4px 0; font-family: monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .meta-info { color: var(--accent); font-size: 11px; font-weight: 700; display: flex; gap: 15px; margin: 12px 0; }
-    .last-sync { font-style: italic; font-size: 9px; color: #475569; margin-bottom: 15px; }
+    .path-line { font-size: 10.5px; color: var(--text-faint); margin-bottom: 3px; font-family: monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .path-line b { color: var(--text-dim); min-width: 18px; display: inline-block; }
 
-    /* Botões de Ação */
-    .btn-row { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.05); pt-15px; padding-top: 15px; }
-    .action-group { display: flex; gap: 20px; }
-    .btn-action { font-size: 11px; font-weight: 900; text-transform: uppercase; display: flex; align-items: center; gap: 6px; background: none; border: none; cursor: pointer; }
+    .meta-row { color: var(--accent); font-size: 11px; font-weight: 700; display: flex; align-items: center; gap: 14px; margin: 12px 0 8px; }
+    .last-sync { font-style: italic; font-size: 9.5px; color: var(--text-faint); margin-bottom: 12px; }
+
+    .card-footer { padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center; }
+    .btn-action { font-size: 10.5px; font-weight: 900; text-transform: uppercase; display: flex; align-items: center; gap: 6px; background: none; border: none; }
     .btn-sim { color: var(--orange); }
     .btn-play { color: var(--accent); }
     .btn-stop { color: var(--red); }
-    .icon-history { color: #475569; font-size: 16px; }
+    .icon-history { color: var(--text-faint); font-size: 15px; padding: 5px; }
 
-    /* Cartões de Cloud (Exato aos prints) */
-    .cloud-card { background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 20px; margin-bottom: 15px; }
-    .cloud-header { display: flex; align-items: center; gap: 15px; margin-bottom: 20px; }
-    .cloud-icon { width: 45px; height: 40px; background: rgba(59,130,246,0.1); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: var(--accent); }
-    .quota-label { font-size: 10px; font-weight: 800; color: var(--text-dim); text-transform: uppercase; margin-bottom: 10px; display: block; }
-    .quota-bar-bg { height: 4px; background: #070e1e; border-radius: 10px; overflow: hidden; margin: 10px 0; }
-    .quota-bar-fill { height: 100%; background: var(--accent); border-radius: 10px; transition: width 1s ease; }
-    .quota-footer { display: flex; justify-content: space-between; font-size: 9px; font-weight: 800; color: #475569; text-transform: uppercase; }
+    /* Progress UI */
+    .prog-bg { background: #070e1e; height: 6px; border-radius: 10px; overflow: hidden; border: 1px solid var(--border); }
+    .prog-fill { height: 100%; background: var(--accent); width: 0%; transition: width 0.4s ease; box-shadow: 0 0 10px var(--accent); }
 
-    /* Navegação Inferior */
+    /* File List */
+    .file-row { padding: 12px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.1); }
+    .back-btn { color: var(--accent); font-weight: 800; font-size: 12px; margin-bottom: 15px; display: flex; align-items: center; gap: 6px; }
+
+    /* History Colors */
+    .hist-badge-sim { background: rgba(249, 115, 22, 0.15); color: var(--orange); }
+    .hist-badge-sync { background: rgba(59, 130, 246, 0.15); color: var(--accent); }
+
+    /* Bottom Nav */
     .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; height: 75px; background: var(--bg-nav); border-top: 1px solid var(--border); display: grid; grid-template-columns: repeat(4, 1fr); z-index: 1000; padding-bottom: env(safe-area-inset-bottom); }
-    .nav-item { display: flex; flex-direction: column; align-items: center; justify-content: center; color: #475569; font-size: 10px; font-weight: 700; gap: 4px; }
+    .nav-item { display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--text-faint); font-size: 9px; font-weight: 700; text-transform: uppercase; gap: 4px; }
     .nav-item.active { color: var(--accent); }
-    .nav-item i { font-size: 18px; }
-
-    /* Sub-páginas */
-    .back-header { display: flex; align-items: center; gap: 15px; margin-bottom: 25px; color: var(--accent); font-weight: 800; font-size: 12px; }
-    .file-row { padding: 12px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
-
-    /* Settings */
-    .settings-group { background: var(--card); border-radius: 20px; padding: 20px; border: 1px solid var(--border); margin-bottom: 20px; }
-    .theme-toggle { display: grid; grid-template-columns: 1fr 1fr; background: var(--bg); padding: 5px; border-radius: 12px; margin-top: 10px; }
-    .theme-btn { padding: 10px; border-radius: 10px; font-size: 11px; font-weight: 800; text-align: center; border:none; color: var(--text-dim); background:transparent; }
-    .theme-btn.active { background: var(--accent); color: white; }
-    .lang-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
-    .lang-btn { padding: 15px 5px; background: var(--card); border: 1px solid var(--border); border-radius: 10px; color: var(--text-dim); font-weight: 800; font-size: 11px; }
-    .lang-btn.active { border-color: var(--accent); color: var(--accent); }
 </style>
 </head>
 <body>
@@ -84,84 +78,233 @@
         <div id="conn-dot" class="conn-dot"></div>
         <div>
             <h1 class="text-white font-black uppercase text-sm tracking-tight">SyncPulse</h1>
-            <span class="text-[9px] text-slate-500 font-bold uppercase tracking-widest">ZimaOS Edition</span>
+            <span class="text-[8px] text-slate-500 font-bold uppercase tracking-widest">Mobile Edition</span>
         </div>
     </div>
   </div>
 
-  <!-- VIEW: HOME (ATIVAS) -->
+  <!-- HOME: EXECUTANDO -->
   <div class="view active" id="view-home">
-    <div class="section-title">Tarefas em execução</div>
+    <div class="section-title" data-i18n="home_title">Tarefas em execução</div>
     <div id="home-list"></div>
   </div>
 
-  <!-- VIEW: CLOUDS -->
+  <!-- CLOUDS -->
   <div class="view" id="view-clouds">
-    <div class="section-title">Clouds Ligadas</div>
+    <div class="section-title" data-i18n="clouds_title">Clouds Ligadas</div>
     <div id="clouds-list"></div>
   </div>
 
-  <!-- VIEW: TAREFAS -->
+  <!-- TAREFAS -->
   <div class="view" id="view-tasks">
-    <div class="section-title">Todas as tarefas</div>
+    <div class="section-title" data-i18n="tasks_title">Todas as tarefas</div>
     <div id="tasks-list"></div>
   </div>
 
   <!-- SUB-VIEW: LISTA DE FICHEIROS -->
   <div id="view-detail" class="view">
-    <div class="back-header" onclick="switchTab('tasks')"><i class="fas fa-arrow-left"></i> VOLTAR ÀS TAREFAS</div>
-    <div id="detail-title-area" class="mb-6"></div>
-    <div id="file-list"></div>
+    <div class="back-header back-btn" onclick="switchTab('tasks')"><i class="fas fa-arrow-left"></i> <span data-i18n="back_to_tasks">VOLTAR</span></div>
+    <div id="detail-header-info" class="mb-4"></div>
+    <div id="file-list-content"></div>
   </div>
 
   <!-- SUB-VIEW: HISTÓRICO -->
   <div id="view-history" class="view">
-    <div class="back-header" onclick="switchTab('tasks')"><i class="fas fa-arrow-left"></i> VOLTAR</div>
-    <div class="section-title">Histórico de Atividade</div>
-    <div id="history-content"></div>
+    <div class="back-header back-btn" onclick="switchTab('tasks')"><i class="fas fa-arrow-left"></i> <span data-i18n="back">VOLTAR</span></div>
+    <div id="history-header-info" class="mb-4"></div>
+    <div id="history-list-content"></div>
   </div>
 
-  <!-- VIEW: DEFINIÇÕES -->
+  <!-- DEFINIÇÕES -->
   <div class="view" id="view-settings">
-    <div class="section-title">Definições</div>
-    <div class="settings-group">
-        <span class="quota-label">Aparência</span>
-        <div class="theme-toggle">
-            <button class="theme-btn active"><i class="fas fa-moon mr-2"></i>Escuro</button>
-            <button class="theme-btn"><i class="fas fa-sun mr-2"></i>Claro</button>
+    <div class="section-title" data-i18n="settings_title">Definições</div>
+    <div class="settings-group mb-6">
+        <div class="section-title" style="margin-bottom:10px" data-i18n="settings_theme">Aparência</div>
+        <div class="theme-toggle flex bg-slate-900 p-1 rounded-xl">
+            <button id="theme-dark" class="flex-1 py-2 text-[10px] font-bold uppercase rounded-lg" onclick="setTheme('dark')">Dark</button>
+            <button id="theme-light" class="flex-1 py-2 text-[10px] font-bold uppercase rounded-lg" onclick="setTheme('light')">Light</button>
         </div>
     </div>
     <div class="settings-group">
-        <span class="quota-label">Idioma</span>
-        <div class="lang-grid">
-            <button class="lang-btn active">PT</button>
-            <button class="lang-btn">EN</button>
-            <button class="lang-btn">ES</button>
-            <button class="lang-btn">FR</button>
-            <button class="lang-btn">DE</button>
-        </div>
+        <div class="section-title" style="margin-bottom:10px" data-i18n="settings_language">Idioma</div>
+        <div class="lang-grid grid grid-cols-3 gap-2" id="lang-btns-container"></div>
     </div>
   </div>
 
-  <!-- NAVEGAÇÃO -->
   <nav class="bottom-nav">
-    <div class="nav-item active" data-tab="home" onclick="switchTab('home')"><i class="fas fa-house"></i><span>Home</span></div>
-    <div class="nav-item" data-tab="clouds" onclick="switchTab('clouds')"><i class="fas fa-cloud"></i><span>Clouds</span></div>
-    <div class="nav-item" data-tab="tasks" onclick="switchTab('tasks')"><i class="fas fa-list-check"></i><span>Tarefas</span></div>
-    <div class="nav-item" data-tab="settings" onclick="switchTab('settings')"><i class="fas fa-gear"></i><span>Definições</span></div>
+    <div class="nav-item active" data-tab="home" onclick="switchTab('home')"><i class="fas fa-house"></i><span data-i18n="nav_home">Home</span></div>
+    <div class="nav-item" data-tab="clouds" onclick="switchTab('clouds')"><i class="fas fa-cloud"></i><span data-i18n="nav_clouds">Clouds</span></div>
+    <div class="nav-item" data-tab="tasks" onclick="switchTab('tasks')"><i class="fas fa-list-check"></i><span data-i18n="nav_tasks">Tarefas</span></div>
+    <div class="nav-item" data-tab="settings" onclick="switchTab('settings')"><i class="fas fa-gear"></i><span data-i18n="nav_settings">Menu</span></div>
   </nav>
 
 <script>
-let socket, tasks = [], STATE = {}, currentTid = null;
+const i18n = {
+    en: { nav_home: "Home", nav_clouds: "Clouds", nav_tasks: "Tasks", nav_settings: "Settings", home_title: "Running tasks", clouds_title: "Connected Clouds", tasks_title: "All Tasks", back: "BACK", back_to_tasks: "BACK TO TASKS", status_active: "Active", status_sim: "Simulating", status_inactive: "Inactive", status_done: "Completed", btn_sim: "Simulate", btn_start: "Start", btn_stop: "Stop", last_sync: "Last sync", mode_bi: "Bisync", mode_up: "Upload", mode_down: "Download", opt_real: "Real-time", daily: "Daily", settings_title: "Settings", settings_theme: "Appearance", settings_language: "Language", hist_sim: "Simulation", hist_sync: "Sync", hist_success: "Success", hist_error: "Error", file_pending: "Pending", file_active: "Active" },
+    pt: { nav_home: "Home", nav_clouds: "Clouds", nav_tasks: "Tarefas", nav_settings: "Definições", home_title: "Tarefas em execução", clouds_title: "Clouds Ligadas", tasks_title: "Todas as tarefas", back: "VOLTAR", back_to_tasks: "VOLTAR ÀS TAREFAS", status_active: "Ativo", status_sim: "Simulando", status_inactive: "Inativo", status_done: "Concluído", btn_sim: "Simular", btn_start: "Iniciar", btn_stop: "Parar", last_sync: "Última sinc", mode_bi: "Bisync", mode_up: "Local->Cloud", mode_down: "Cloud->Local", opt_real: "Tempo Real", daily: "Diário", settings_title: "Definições", settings_theme: "Aparência", settings_language: "Idioma", hist_sim: "Simulação", hist_sync: "Sincronização", hist_success: "Sucesso", hist_error: "Erro", file_pending: "Pendente", file_active: "Ativo" },
+    es: { nav_home: "Inicio", nav_clouds: "Nubes", nav_tasks: "Tareas", nav_settings: "Ajustes", home_title: "Tareas en curso", clouds_title: "Nubes Conectadas", tasks_title: "Todas las tareas", back: "VOLVER", back_to_tasks: "VOLVER A TAREAS", status_active: "Activo", status_sim: "Simulando", status_inactive: "Inactivo", status_done: "Hecho", btn_sim: "Simular", btn_start: "Iniciar", btn_stop: "Parar", last_sync: "Ult. sinc", mode_bi: "Bisync", mode_up: "Subida", mode_down: "Bajada", opt_real: "Tiempo Real", daily: "Diario", settings_title: "Ajustes", settings_theme: "Apariencia", settings_language: "Idioma", hist_sim: "Simulación", hist_sync: "Sincronización", hist_success: "Éxito", hist_error: "Error", file_pending: "Pendiente", file_active: "Activo" },
+    fr: { nav_home: "Accueil", nav_clouds: "Clouds", nav_tasks: "Tâches", nav_settings: "Réglages", home_title: "Tâches en cours", clouds_title: "Clouds Connectés", tasks_title: "Toutes les tâches", back: "RETOUR", back_to_tasks: "RETOUR AUX TÂCHES", status_active: "Actif", status_sim: "Simulation", status_inactive: "Inactif", status_done: "Terminé", btn_sim: "Simuler", btn_start: "Démarrer", btn_stop: "Arrêter", last_sync: "Dern. sync", mode_bi: "Bisync", mode_up: "Envoi", mode_down: "Réception", opt_real: "Temps Réel", daily: "Quotidien", settings_title: "Réglages", settings_theme: "Apparence", settings_language: "Langue", hist_sim: "Simulation", hist_sync: "Sinc", hist_success: "Succès", hist_error: "Erreur", file_pending: "En attente", file_active: "Actif" },
+    de: { nav_home: "Start", nav_clouds: "Clouds", nav_tasks: "Aufgaben", nav_settings: "Einstellungen", home_title: "Laufende Aufgaben", clouds_title: "Verbundene Clouds", tasks_title: "Alle Aufgaben", back: "ZURÜCK", back_to_tasks: "ZURÜCK ZU AUFGABEN", status_active: "Aktiv", status_sim: "Simulieren", status_inactive: "Inaktiv", status_done: "Fertig", btn_sim: "Simulieren", btn_start: "Starten", btn_stop: "Stoppen", last_sync: "Letzte Sinc", mode_bi: "Bisync", mode_up: "Upload", mode_down: "Download", opt_real: "Echtzeit", daily: "Täglich", settings_title: "Einstellungen", settings_theme: "Aussehen", settings_language: "Sprache", hist_sim: "Simulation", hist_sync: "Sync", hist_success: "Erfolg", hist_error: "Fehler", file_pending: "Ausstehend", file_active: "Aktiv" }
+};
 
+let lang = localStorage.getItem('syncpulse_language_v2') || 'en';
+let theme = localStorage.getItem('syncpulse_theme') || 'dark';
+let tasks = [], STATE = { running:{}, stats:{}, active_files:{}, finished_files:{}, all_files:{}, failed_files:{}, skipped_files:{}, license_active:false }, socket;
+let currentTid = null;
+
+function t() { return i18n[lang] || i18n.en; }
+
+/* --- Navegação --- */
 function switchTab(tab) {
     currentTid = null;
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    document.getElementById('view-' + tab).classList.add('active');
+    const target = document.getElementById('view-' + tab);
+    if(target) target.classList.add('active');
     const navItem = document.querySelector(`[data-tab="${tab}"]`);
     if(navItem) navItem.classList.add('active');
     if(tab === 'clouds') loadClouds();
+}
+
+function openDetail(id) {
+    currentTid = id;
+    switchTab('detail');
+    renderFiles();
+}
+
+/* --- Renderização dos Cartões (Igual ao ZimaOS) --- */
+function renderCard(tk) {
+    const tid = String(tk.id);
+    const status = STATE.running[tid] || 'idle';
+    const isRunning = status !== 'idle';
+    const stats = STATE.stats[tid] || { percent: 0 };
+    const activeFile = (STATE.active_files[tid] && STATE.active_files[tid][0]) || null;
+
+    const syncLabel = tk.type === 'bisync' ? t().mode_bi : (tk.type === 'upload' ? t().mode_up : t().mode_down);
+    const triggerText = tk.trigger === 'real' ? t().opt_real : (tk.interval === 'daily' ? `${t().daily} ${tk.daily_time}` : tk.interval);
+
+    let statusText = t().status_inactive;
+    if (status === 'active') statusText = t().status_active;
+    if (status === 'simulating') statusText = t().status_sim;
+    if (status === 'idle' && stats.percent === 100) statusText = t().status_done;
+
+    return `
+    <div class="card ${isRunning ? 'running' : ''}" onclick="openDetail('${tk.id}')">
+        <div class="card-header">
+            <div class="card-title">
+                <div class="status-dot ${isRunning ? 'active' : ''}"></div>
+                <span>${tk.name}</span>
+            </div>
+            <div class="badge">${statusText}</div>
+        </div>
+        ${isRunning ? `
+            <div class="progress-wrap py-2">
+                <div class="path-line" style="color:var(--accent)">${activeFile ? activeFile.name : '...'}</div>
+                <div class="prog-bg"><div class="prog-fill" style="width:${activeFile ? activeFile.progress : stats.percent}%"></div></div>
+                <div class="flex justify-between mt-1 text-[9px] font-black uppercase text-slate-500">
+                    <span>Progress</span><span>${stats.percent}%</span>
+                </div>
+            </div>
+        ` : `
+            <div class="path-line"><b>L:</b>${tk.local}</div>
+            <div class="path-line"><b>C:</b>${tk.remote}</div>
+            <div class="meta-row">
+                <span><i class="fas fa-rotate"></i> ${syncLabel}</span>
+                <span><i class="fas fa-clock"></i> ${triggerText}</span>
+            </div>
+            <div class="last-sync">${t().last_sync}: ${tk.last_sync || '---'}</div>
+        `}
+        <div class="card-footer">
+            <div class="flex gap-4">
+                ${isRunning ? 
+                    `<button class="btn-action btn-stop" onclick="event.stopPropagation(); stopSync('${tk.id}')"><i class="fas fa-stop"></i> ${t().btn_stop}</button>` :
+                    `<button class="btn-action btn-sim" onclick="event.stopPropagation(); startSync('${tk.id}', true)"><i class="fas fa-flask"></i> ${t().btn_sim}</button>
+                     <button class="btn-action btn-play" onclick="event.stopPropagation(); startSync('${tk.id}', false)"><i class="fas fa-play"></i> ${t().btn_start}</button>`
+                }
+            </div>
+            <i class="fas fa-history icon-history" onclick="event.stopPropagation(); showHistory('${tk.id}')"></i>
+        </div>
+    </div>`;
+}
+
+function renderHome() {
+    const list = document.getElementById('home-list');
+    const running = tasks.filter(tk => (STATE.running[tk.id] || 'idle') !== 'idle');
+    list.innerHTML = running.length ? running.map(tk => renderCard(tk)).join('') : 
+        `<div class="p-10 text-center text-slate-600 text-xs italic border-2 border-dashed border-slate-800 rounded-3xl">No active tasks</div>`;
+}
+
+function renderTasks() {
+    document.getElementById('tasks-list').innerHTML = tasks.map(tk => renderCard(tk)).join('');
+}
+
+/* --- Sub-página: Ficheiros (Lógica Original) --- */
+function renderFiles() {
+    const container = document.getElementById('file-list-content');
+    const header = document.getElementById('detail-header-info');
+    if(!currentTid) return;
+    const tk = tasks.find(t => String(t.id) === String(currentTid));
+    if(!tk) return;
+
+    header.innerHTML = `<h3 class="font-black text-lg">${tk.name}</h3><p class="text-[9px] text-slate-500 uppercase font-black tracking-widest">${tk.type}</p>`;
+    
+    const all = STATE.all_files[currentTid] || [];
+    container.innerHTML = all.map(f => {
+        let color = "var(--text-faint)", icon = "fa-clock", label = t().file_pending, progress = 0;
+        if(STATE.finished_files[currentTid]?.includes(f)) { color="var(--green)"; icon="fa-circle-check"; label=t().status_done; progress=100; }
+        if(STATE.failed_files[currentTid]?.includes(f)) { color="var(--red)"; icon="fa-circle-xmark"; label=t().hist_error; progress=100; }
+        if(STATE.skipped_files[currentTid]?.includes(f)) { color="var(--orange)"; icon="fa-equals"; label="Skipped"; progress=100; }
+        const active = STATE.active_files[currentTid]?.find(a => a.name === f);
+        if(active) { color="var(--accent)"; icon="fa-sync fa-spin"; label=active.progress+"%"; progress=active.progress; }
+
+        return `
+        <div class="file-row">
+            <div class="flex items-center gap-3 truncate">
+                <i class="fas ${icon}" style="color:${color}"></i>
+                <span class="text-xs truncate font-medium" style="color:${color}">${f.split('/').pop()}</span>
+            </div>
+            <span class="text-[8px] font-black uppercase" style="color:${color}">${label}</span>
+        </div>`;
+    }).join('');
+}
+
+/* --- Sub-página: Histórico --- */
+async function showHistory(id) {
+    currentTid = id; switchTab('history');
+    const tk = tasks.find(t => String(t.id) === String(id));
+    document.getElementById('history-header-info').innerHTML = `<h3 class="font-black text-lg">${tk.name}</h3>`;
+    const r = await fetch(`/api/history/${id}`);
+    const data = await r.json();
+    document.getElementById('history-list-content').innerHTML = data.map(h => {
+        const isSim = h.type === 'Simulação';
+        const isSuccess = h.status === 'Sucesso';
+        return `
+        <div class="card">
+            <div class="flex justify-between items-center mb-2">
+                <span class="badge ${isSim ? 'hist-badge-sim' : 'hist-badge-sync'}">${isSim ? t().hist_sim : t().hist_sync}</span>
+                <span class="text-[10px] text-slate-500 font-mono">${h.date}</span>
+            </div>
+            <div class="flex justify-between items-center">
+                <span class="text-xs font-bold">${h.mode}</span>
+                <span class="text-[10px] font-black uppercase" style="color:${isSuccess ? 'var(--green)' : 'var(--red)'}">${isSuccess ? t().hist_success : t().hist_error}</span>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+/* --- Definições --- */
+function setTheme(t) {
+    theme = t; document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('syncpulse_theme', theme);
+    document.getElementById('theme-dark').className = "flex-1 py-2 text-[10px] font-bold uppercase rounded-lg " + (t==='dark'?'bg-blue-600 text-white':'text-slate-500');
+    document.getElementById('theme-light').className = "flex-1 py-2 text-[10px] font-bold uppercase rounded-lg " + (t==='light'?'bg-blue-600 text-white':'text-slate-500');
+}
+function setLang(l) { lang=l; localStorage.setItem('syncpulse_language_v2', l); applyStaticI18n(); renderLangBtns(); renderAll(); }
+function applyStaticI18n() { document.querySelectorAll('[data-i18n]').forEach(el => { const k=el.getAttribute('data-i18n'); if(t()[k]) el.textContent=t()[k]; }); }
+function renderLangBtns() {
+    const langs = ['en','pt','es','fr','de'];
+    document.getElementById('lang-btns-container').innerHTML = langs.map(l => `
+        <button class="lang-btn ${l===lang?'active':''}" onclick="setLang('${l}')">${l.toUpperCase()}</button>`).join('');
 }
 
 /* --- Conetividade --- */
@@ -171,140 +314,40 @@ function connect() {
     socket.onopen = () => document.getElementById('conn-dot').classList.add('online');
     socket.onclose = () => { document.getElementById('conn-dot').classList.remove('online'); setTimeout(connect, 3000); };
     socket.onmessage = (ev) => {
-        const data = JSON.parse(ev.data);
-        if(data.type === 'init') { tasks = data.tasks; STATE = data.state; }
+        const data = JSON.parse(event.data);
+        if(data.type === 'init') { tasks = data.tasks; STATE = data.state; applyStaticI18n(); }
         if(data.type === 'update') { STATE = data.state; }
         renderAll();
     };
 }
 
-function renderAll() {
-    renderHome();
-    renderTasks();
-    if(currentTid) renderFiles();
-}
-
-/* --- Renderização exata aos prints --- */
-function renderTasks() {
-    const list = document.getElementById('tasks-list');
-    list.innerHTML = tasks.map(tk => {
-        const isRunning = (STATE.running[tk.id] || 'idle') !== 'idle';
-        const syncIcon = tk.type === 'download' ? 'fa-arrow-down' : (tk.type === 'upload' ? 'fa-arrow-up' : 'fa-rotate');
-        return `
-        <div class="card ${isRunning ? 'active-border' : ''}" onclick="openDetail('${tk.id}')">
-            <div class="flex justify-between items-center mb-3">
-                <div class="card-title">
-                    <div class="status-dot ${isRunning ? 'active' : ''}"></div>
-                    <span>${tk.name}</span>
-                </div>
-                <div class="status-badge">${STATE.running[tk.id] || 'Inativo'}</div>
-            </div>
-            <div class="path-line">L: ${tk.local}</div>
-            <div class="path-line">C: ${tk.remote}</div>
-            <div class="meta-info">
-                <span><i class="fas ${syncIcon} mr-1"></i> ${tk.type}</span>
-                <span><i class="fas fa-clock mr-1"></i> ${tk.interval || 'Tempo Real'}</span>
-            </div>
-            <div class="last-sync">Última sinc.: ${tk.last_sync || '---'}</div>
-            <div class="btn-row">
-                <div class="action-group">
-                    <button class="btn-action btn-sim" onclick="event.stopPropagation(); startSync('${tk.id}', true)"><i class="fas fa-flask"></i> SIMULAR</button>
-                    <button class="btn-action btn-play" onclick="event.stopPropagation(); startSync('${tk.id}', false)"><i class="fas fa-play"></i> INICIAR</button>
-                </div>
-                <i class="fas fa-history icon-history" onclick="event.stopPropagation(); showHistory('${tk.id}')"></i>
-            </div>
-        </div>`;
-    }).join('');
-}
-
-function renderHome() {
-    const list = document.getElementById('home-list');
-    const running = tasks.filter(tk => (STATE.running[tk.id] || 'idle') !== 'idle');
-    if(!running.length) { list.innerHTML = '<div class="p-10 text-center opacity-30 text-xs">Nenhuma tarefa ativa</div>'; return; }
-    
-    list.innerHTML = running.map(tk => {
-        const stats = STATE.stats[tk.id] || { percent: 0 };
-        return `
-        <div class="card active-border" onclick="openDetail('${tk.id}')">
-            <div class="card-title mb-4">${tk.name}</div>
-            <div class="quota-bar-bg"><div class="quota-bar-fill" style="width: ${stats.percent}%"></div></div>
-            <div class="flex justify-between mt-2 text-[10px] font-black uppercase text-slate-500">
-                <span>Progresso</span>
-                <span>${stats.percent}%</span>
-            </div>
-        </div>`;
-    }).join('');
-}
+async function startSync(id, sim) { await fetch(`/api/sync/${id}?simulate=${sim}`, {method:'POST'}); }
+async function stopSync(id) { await fetch(`/api/sync/stop/${id}`, {method:'POST'}); }
 
 async function loadClouds() {
-    const list = document.getElementById('clouds-list');
-    const r = await fetch('/api/remotes/list_with_quota');
-    const data = await r.json();
-    
-    list.innerHTML = data.map(c => {
-        const percent = c.quota.total ? Math.round((c.quota.used / c.quota.total) * 100) : 0;
-        const formatSize = (b) => (b / 1e9).toFixed(1) + " GB";
-        return `
-        <div class="cloud-card">
-            <div class="cloud-header">
-                <div class="cloud-icon"><i class="fab fa-${getIcon(c.type)} text-xl"></i></div>
-                <div>
-                    <div class="cloud-name">${c.name}</div>
-                    <div class="cloud-type">${c.type}</div>
-                </div>
-            </div>
-            <div class="flex justify-between items-end mb-1">
-                <span class="quota-label !mb-0">Usado</span>
-                <span class="text-blue-400 font-black text-xs">${formatSize(c.quota.used)}</span>
-            </div>
-            <div class="quota-bar-bg"><div class="quota-bar-fill" style="width: ${percent}%"></div></div>
-            <div class="quota-footer">
-                <span>${percent}%</span>
-                <span>Total: ${formatSize(c.quota.total)}</span>
-            </div>
-        </div>`;
-    }).join('');
+  const list = document.getElementById('clouds-list');
+  const r = await fetch('/api/remotes/list_with_quota');
+  const data = await r.json();
+  list.innerHTML = data.map(c => {
+    const percent = c.quota.total ? Math.round((c.quota.used/c.quota.total)*100) : 0;
+    const format = (b) => (b/1e9).toFixed(1) + " GB";
+    return `
+    <div class="cloud-card">
+        <div class="cloud-header">
+            <div class="cloud-icon"><i class="fab fa-${getIcon(c.type)} text-xl"></i></div>
+            <div><div class="font-bold text-sm">${c.name}</div><div class="text-[9px] text-slate-500 uppercase">${c.type}</div></div>
+        </div>
+        <div class="flex justify-between text-[10px] font-black uppercase mb-1">
+            <span class="text-slate-500">Used</span><span class="text-blue-400">${format(c.quota.used)}</span>
+        </div>
+        <div class="prog-bg"><div class="prog-fill" style="width:${percent}%"></div></div>
+        <div class="flex justify-between mt-2 text-[9px] font-bold text-slate-600">
+            <span>${percent}%</span><span>Total: ${format(c.quota.total)}</span>
+        </div>
+    </div>`;
+  }).join('');
 }
 
-/* --- Sub-páginas --- */
-function openDetail(id) { currentTid = id; switchTab('detail'); renderFiles(); }
-
-function renderFiles() {
-    const tk = tasks.find(t => String(t.id) === String(currentTid));
-    const container = document.getElementById('file-list');
-    const header = document.getElementById('detail-header');
-    if(!tk) return;
-
-    header.innerHTML = `<h2 class="text-xl font-black">${tk.name}</h2><p class="text-[10px] text-blue-500 uppercase font-bold">${tk.type}</p>`;
-    const all = STATE.all_files[currentTid] || [];
-    container.innerHTML = all.map(f => {
-        let color = "#475569", icon = "fa-clock", status = "Pendente";
-        if(STATE.finished_files[currentTid]?.includes(f)) { color = "var(--green)"; icon = "fa-circle-check"; status = "Concluído"; }
-        if(STATE.failed_files[currentTid]?.includes(f)) { color = "var(--red)"; icon = "fa-circle-xmark"; status = "Erro"; }
-        if(STATE.active_files[currentTid]?.some(a => a.name === f)) { color = "var(--accent)"; icon = "fa-sync fa-spin"; status = "Ativo"; }
-        
-        return `<div class="file-row">
-            <span class="text-xs truncate mr-4" style="color: ${color}"><i class="fas ${icon} mr-3"></i>${f.split('/').pop()}</span>
-            <span class="text-[8px] font-black uppercase" style="color: ${color}">${status}</span>
-        </div>`;
-    }).join('');
-}
-
-async function showHistory(id) {
-    currentTid = id; switchTab('history');
-    const r = await fetch(`/api/history/${id}`);
-    const data = await r.json();
-    document.getElementById('history-content').innerHTML = data.map(h => `
-        <div class="card">
-            <div class="flex justify-between text-[10px] font-black mb-2">
-                <span style="color:${h.status==='Sucesso'?'var(--green)':'var(--red)'}">${h.type.toUpperCase()}</span>
-                <span class="text-slate-500">${h.date}</span>
-            </div>
-            <div class="text-xs font-bold text-slate-300">${h.mode} · ${h.status}</div>
-        </div>`).join('');
-}
-
-/* --- Helpers --- */
 function getIcon(t) { 
     t = t.toLowerCase();
     if(t.includes('drive')) return 'google-drive';
@@ -313,10 +356,8 @@ function getIcon(t) {
     if(t.includes('mega')) return 'cloud';
     return 'cloud';
 }
-async function startSync(id, sim) { await fetch(`/api/sync/${id}?simulate=${sim}`, {method:'POST'}); }
-async function stopSync(id) { await fetch(`/api/sync/stop/${id}`, {method:'POST'}); }
 
-window.onload = connect;
+window.onload = () => { connect(); setTheme(theme); renderLangBtns(); };
 </script>
 </body>
 </html>
