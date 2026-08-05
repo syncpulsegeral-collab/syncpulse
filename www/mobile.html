@@ -95,8 +95,8 @@
                 renderClouds(clouds);
 
                 // 2. Carregar Tarefas
-                const rTasks = await fetch(`${API}/api/tasks`);
-                globalTasks = await rTasks.json();
+                const r = await fetch(`${API}/api/tasks`); // API é window.location.origin
+				const tasks = await r.json();
                 renderTasks(globalTasks);
                 
                 // Atualizar contador na home

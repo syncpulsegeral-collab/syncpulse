@@ -1681,6 +1681,11 @@ async def post_tasks(request: Request):
     await manager.broadcast({"type": "init", "tasks": tasks, "state": STATE})
     return {"status": "ok", "tasks": tasks}
 
+@app.get("/api/tasks")
+def get_tasks_endpoint():
+    """Retorna a lista de tarefas para a interface (Desktop e Mobile)."""
+    return load_tasks()
+
 @app.post("/api/settings/legacy")
 async def post_settings(request: Request):
     try:
