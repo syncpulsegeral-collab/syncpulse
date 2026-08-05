@@ -4,6 +4,7 @@ from urllib.error import URLError, HTTPError
 from fastapi import FastAPI, BackgroundTasks, Request, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from datetime import datetime
 from contextlib import asynccontextmanager # <--- Garante este import
@@ -266,6 +267,13 @@ async def lifespan(app: FastAPI):
 
 # --- 4. AGORA SIM, CRIAR A INSTÂNCIA DA APP ---
 app = FastAPI(lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 class ConnectionManager:
     def __init__(self): self.active_connections = []
@@ -1581,9 +1589,9 @@ def browse_cloud_endpoint(remote: str, path: str = ""):
         return []
 
 @app.get("/api/tasks")
-def get_tasks_mobile():
-    """Retorna a lista de tarefas para a versão mobile."""
+async def get_tasks_list():
     return load_tasks()
+
 
 def get_remote_type(remote_name):
     try:
