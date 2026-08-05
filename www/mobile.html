@@ -122,9 +122,7 @@
   </nav>
 
 <script>
-let socket, tasks = [], STATE = { running:{}, stats:{}, active_files:{}, finished_files:{}, all_files:{}, failed_files:{}, skipped_files:{} }, currentTid = null;
-let lang = localStorage.getItem('syncpulse_language_v2') || 'pt';
-let theme = localStorage.getItem('syncpulse_theme') || 'dark';
+
 const i18n = {
     en: { nav_home:"Home", nav_clouds:"Clouds", nav_tasks:"Tasks", nav_settings:"Settings", home_title:"Running tasks", clouds_title:"Connected Clouds", clouds_loading:"Loading clouds...", tasks_title:"All Tasks", back:"BACK", status_active:"Active", status_sim:"Simulating", status_inactive:"Inactive", status_done:"Completed", btn_sim:"Simulate", btn_start:"Start", btn_stop:"Stop", last_sync:"Last sync", mode_bi:"Bisync", mode_up:"Upload", mode_down:"Download", opt_real:"Real-time", daily:"Daily", settings_theme:"Appearance", settings_language:"Language", hist_sim:"Simulation", hist_sync:"Sync", hist_success:"Success", hist_error:"Error", file_pending:"Pending" },
     pt: { nav_home:"Home", nav_clouds:"Clouds", nav_tasks:"Tarefas", nav_settings:"Definições", home_title:"Tarefas em execução", clouds_title:"Clouds Ligadas", clouds_loading:"A carregar clouds...", tasks_title:"Todas as tarefas", back:"VOLTAR", status_active:"Ativo", status_sim:"Simulando", status_inactive:"Inativo", status_done:"Concluído", btn_sim:"Simular", btn_start:"Iniciar", btn_stop:"Parar", last_sync:"Última sinc", mode_bi:"Bisync", mode_up:"Local->Cloud", mode_down:"Cloud->Local", opt_real:"Tempo Real", daily:"Diário", settings_theme:"Aparência", settings_language:"Idioma", hist_sim:"Simulação", hist_sync:"Sincronização", hist_success:"Sucesso", hist_error:"Erro", file_pending:"Pendente" },
@@ -132,6 +130,10 @@ const i18n = {
     fr: { nav_home:"Accueil", nav_clouds:"Clouds", nav_tasks:"Tâches", nav_settings:"Réglages", home_title:"Tâches en cours", clouds_title:"Clouds Connectés", clouds_loading:"Chargement...", tasks_title:"Toutes les tâches", back:"RETOUR", status_active:"Actif", status_sim:"Simulation", status_inactive:"Inactif", status_done: "Terminé", btn_sim:"Simuler", btn_start:"Démarrer", btn_stop:"Arrêter", last_sync:"Dern. sync", mode_bi:"Bisync", mode_up:"Envoi", mode_down:"Réception", opt_real:"Temps Réel", daily:"Quotidien", settings_theme:"Apparence", settings_language:"Langue", hist_sim:"Simulation", hist_sync:"Sinc", hist_success:"Succès", hist_error:"Erreur", file_pending:"En attente" },
     de: { nav_home:"Start", nav_clouds:"Clouds", nav_tasks:"Aufgaben", nav_settings:"Einstellungen", home_title:"Laufende Aufgaben", clouds_title:"Verbundene Clouds", clouds_loading:"Wird geladen...", tasks_title:"Alle Aufgaben", back:"ZURÜCK", status_active:"Aktiv", status_sim:"Simulieren", status_inactive:"Inaktiv", status_done: "Fertig", btn_sim:"Simulieren", btn_start:"Starten", btn_stop:"Stoppen", last_sync:"Letzte Sinc", mode_bi:"Bisync", mode_up:"Upload", mode_down:"Download", opt_real:"Echtzeit", daily:"Täglich", settings_theme:"Aussehen", settings_language:"Sprache", hist_sim:"Simulation", hist_sync:"Sync", hist_success:"Erfolg", hist_error:"Fehler", file_pending:"Ausstehend" }
 };
+
+let socket, tasks = [], STATE = { running:{}, stats:{}, active_files:{}, finished_files:{}, all_files:{}, failed_files:{}, skipped_files:{} }, currentTid = null;
+let lang = localStorage.getItem('syncpulse_language_v2') || 'pt';
+let theme = localStorage.getItem('syncpulse_theme') || 'dark';
 
 function t() { return i18n[lang] || i18n.pt; }
 
