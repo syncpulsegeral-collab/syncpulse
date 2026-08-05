@@ -105,6 +105,14 @@
 
   <div class="view" id="view-settings">
     <div class="section-title" data-i18n="nav_settings">Definições</div>
+	<div class="settings-group">
+		<div class="text-[9px] font-bold text-slate-500 uppercase mb-4" data-i18n="server_address">Endereço do Servidor</div>
+		<div class="flex flex-col gap-3">
+			<input type="text" id="server-url" class="input-box text-xs py-3" placeholder="192.168.1.xxx:8181" data-i18n-placeholder="server_placeholder">
+			<button onclick="saveServerAddress()" class="w-full py-3 bg-blue-600 rounded-xl text-[10px] font-black uppercase text-white" data-i18n="btn_connect">Ligar e Gravar</button>
+		</div>
+		<p id="conn-msg" class="text-[8px] font-bold mt-2 uppercase hidden"></p>
+	</div>
     <div class="settings-group">
         <div class="text-[9px] font-bold text-slate-500 uppercase mb-4" data-i18n="settings_theme">Aparência</div>
         <div class="theme-toggle">
@@ -127,9 +135,83 @@
 
 <script>
 const i18n = {
-    en: { nav_home: "Home", nav_clouds: "Clouds", nav_tasks: "Tasks", nav_settings: "Settings", home_title: "Running tasks", clouds_title: "Connected Clouds", clouds_loading: "Loading clouds...", tasks_title: "All Tasks", back: "BACK", status_active: "Active", status_sim: "Simulation", status_inactive: "Inactive", status_done: "Completed", btn_sim: "Simulate", btn_start: "Start", btn_stop: "Stop", last_sync: "Last sync", mode_bi: "Bisync", mode_up: "Local->Cloud", mode_down: "Cloud->Local", settings_theme: "Appearance", settings_language: "Language", theme_dark: "Dark", theme_light: "Light", hist_title: "History", hist_sim: "Simulation", hist_sync: "Sync", hist_success: "Success", hist_error: "Error", file_pending: "Pending" },
-    pt: { nav_home: "Home", nav_clouds: "Clouds", nav_tasks: "Tarefas", nav_settings: "Definições", home_title: "Tarefas em execução", clouds_title: "Clouds Ligadas", clouds_loading: "A carregar...", tasks_title: "Todas as tarefas", back: "VOLTAR", status_active: "Ativo", status_sim: "Simulação", status_inactive: "Inativo", status_done: "Concluído", btn_sim: "Simular", btn_start: "Iniciar", btn_stop: "Parar", last_sync: "Última sinc", mode_bi: "Bisync", mode_up: "Local->Cloud", mode_down: "Cloud->Local", settings_theme: "Aparência", settings_language: "Idioma", theme_dark: "Escuro", theme_light: "Claro", hist_title: "Histórico", hist_sim: "Simulação", hist_sync: "Sinc", hist_success: "Sucesso", hist_error: "Erro", file_pending: "Pendente" },
-    es: { nav_home: "Inicio", nav_clouds: "Nubes", nav_tasks: "Tareas", nav_settings: "Ajustes", home_title: "Tareas en curso", clouds_title: "Nubes Conectadas", clouds_loading: "Cargando...", tasks_title: "Todas las tareas", back: "VOLVER", status_active: "Activo", status_sim: "Simulando", status_inactive: "Inactivo", status_done: "Hecho", btn_sim: "Simular", btn_start: "Iniciar", btn_stop: "Parar", last_sync: "Ult. sinc", mode_bi: "Bisync", mode_up: "Subida", mode_down: "Bajada", settings_theme: "Apariencia", settings_language: "Idioma", theme_dark: "Oscuro", theme_light: "Claro", hist_title: "Historial", hist_sim: "Simulación", hist_sync: "Sinc", hist_success: "Éxito", hist_error: "Error", file_pending: "Pendiente" },
+    en: { 
+	nav_home: "Home",
+	nav_clouds: "Clouds",
+	nav_tasks: "Tasks",
+	nav_settings: "Settings",
+	home_title: "Running tasks",
+	clouds_title: "Connected Clouds",
+	clouds_loading: "Loading clouds...",
+	tasks_title: "All Tasks",
+	back: "BACK",
+	status_active: "Active",
+	status_sim: "Simulation",
+	status_inactive: "Inactive",
+	status_done: "Completed",
+	btn_sim: "Simulate",
+	btn_start: "Start",
+	btn_stop: "Stop",
+	last_sync: "Last sync",
+	mode_bi: "Bisync",
+	mode_up: "Local->Cloud",
+	mode_down: "Cloud->Local",
+	settings_theme: "Appearance",
+	settings_language: "Language",
+	theme_dark: "Dark",
+	theme_light: "Light",
+	hist_title: "History",
+	hist_sim: "Simulation",
+	hist_sync: "Sync",
+	hist_success: "Success",
+	hist_error: "Error",
+	file_pending: "Pending",
+	server_address: "Server Address",
+	server_placeholder: "e.g. 192.168.1.100:8181",
+	btn_connect: "Connect & Save",
+	connection_success: "Connected to server!",
+	connection_error: "Server unreachable."
+	},
+    pt: {
+	nav_home: "Home",
+	nav_clouds: "Clouds",
+	nav_tasks: "Tarefas",
+	nav_settings: "Definições",
+	home_title: "Tarefas em execução",
+	clouds_title: "Clouds Ligadas",
+	clouds_loading: "A carregar...",
+	tasks_title: "Todas as tarefas",
+	back: "VOLTAR",
+	status_active: "Ativo",
+	status_sim: "Simulação",
+	status_inactive: "Inativo",
+	status_done: "Concluído",
+	btn_sim: "Simular",
+	btn_start: "Iniciar",
+	btn_stop: "Parar",
+	last_sync: "Última sinc",
+	mode_bi: "Bisync",
+	mode_up: "Local->Cloud",
+	mode_down: "Cloud->Local",
+	settings_theme: "Aparência",
+	settings_language: "Idioma",
+	theme_dark: "Escuro",
+	theme_light: "Claro",
+	hist_title: "Histórico",
+	hist_sim: "Simulação",
+	hist_sync: "Sinc",
+	hist_success: "Sucesso",
+	hist_error: "Erro",
+	file_pending: "Pendente",
+	server_address: "Endereço do Servidor",
+	server_placeholder: "ex: 192.168.1.100:8181",
+	btn_connect: "Ligar e Gravar",
+	connection_success: "Ligado ao servidor!",
+	connection_error: "Servidor não encontrado.",
+	},
+    es: { nav_home: "Inicio",
+	nav_clouds: "Nubes",
+	nav_tasks: "Tareas", nav_settings: "Ajustes", home_title: "Tareas en curso", clouds_title: "Nubes Conectadas", clouds_loading: "Cargando...", tasks_title: "Todas las tareas", back: "VOLVER", status_active: "Activo", status_sim: "Simulando", status_inactive: "Inactivo", status_done: "Hecho", btn_sim: "Simular", btn_start: "Iniciar", btn_stop: "Parar", last_sync: "Ult. sinc", mode_bi: "Bisync", mode_up: "Subida", mode_down: "Bajada", settings_theme: "Apariencia", settings_language: "Idioma", theme_dark: "Oscuro", theme_light: "Claro", hist_title: "Historial", hist_sim: "Simulación", hist_sync: "Sinc", hist_success: "Éxito", hist_error: "Error", file_pending: "Pendiente" },
     fr: { nav_home: "Accueil", nav_clouds: "Clouds", nav_tasks: "Tâches", nav_settings: "Réglages", home_title: "Tâches en cours", clouds_title: "Clouds Connectés", clouds_loading: "Chargement...", tasks_title: "Toutes les tâches", back: "RETOUR", status_active: "Actif", status_sim: "Simulation", status_inactive: "Inactif", status_done: "Terminé", btn_sim: "Simuler", btn_start: "Démarrer", btn_stop: "Arrêter", last_sync: "Dern. sync", mode_bi: "Bisync", mode_up: "Envoi", mode_down: "Réception", settings_theme: "Apparence", settings_language: "Langue", theme_dark: "Sombre", theme_light: "Clair", hist_title: "Historique", hist_sim: "Simulation", hist_sync: "Sinc", hist_success: "Succès", hist_error: "Erreur", file_pending: "En attente" },
     de: { nav_home: "Start", nav_clouds: "Clouds", nav_tasks: "Aufgaben", nav_settings: "Einstellungen", home_title: "Laufende Aufgaben", clouds_title: "Verbundene Clouds", clouds_loading: "Wird geladen...", tasks_title: "Alle Aufgaben", back: "ZURÜCK", status_active: "Aktiv", status_sim: "Simulieren", status_inactive: "Inaktiv", status_done: "Fertig", btn_sim: "Simulieren", btn_start: "Starten", btn_stop: "Stoppen", last_sync: "Letzte Sinc", mode_bi: "Bisync", mode_up: "Upload", mode_down: "Download", settings_theme: "Aussehen", settings_language: "Sprache", theme_dark: "Dunkel", theme_light: "Hell", hist_title: "Verlauf", hist_sim: "Simulation", hist_sync: "Sync", hist_success: "Erfolg", hist_error: "Fehler", file_pending: "Ausstehend" }
 };
@@ -139,6 +221,41 @@ let theme = localStorage.getItem('syncpulse_theme') || 'dark';
 let tasks = [], STATE = { running:{}, stats:{}, active_files:{}, finished_files:{}, all_files:{}, failed_files:{}, skipped_files:{} }, socket, currentTid = null;
 
 function t() { return i18n[lang] || i18n.en; }
+
+let SERVER_ADDR = localStorage.getItem('syncpulse_server_addr') || window.location.host;
+
+// Ajusta a API e o WebSocket para usarem o endereço dinâmico
+let API_BASE = `${location.protocol}//${SERVER_ADDR}`;
+let WS_BASE = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${SERVER_ADDR}/ws`;
+
+async function saveServerAddress() {
+    const input = document.getElementById('server-url');
+    const msg = document.getElementById('conn-msg');
+    let newAddr = input.value.trim().replace('http://', '').replace('https://', '');
+    
+    if(!newAddr) return;
+
+    // Feedback visual
+    msg.classList.remove('hidden', 'text-green-500', 'text-red-500');
+    msg.innerText = "A testar ligação...";
+    msg.classList.add('text-blue-500');
+
+    try {
+        // Testa se o servidor responde ao health check
+        const resp = await fetch(`http://${newAddr}/api/health`, { mode: 'cors' });
+        if(resp.ok) {
+            localStorage.setItem('syncpulse_server_addr', newAddr);
+            msg.innerText = t().connection_success;
+            msg.classList.replace('text-blue-500', 'text-green-500');
+            
+            // Recarrega a página após 1.5s para aplicar o novo servidor
+            setTimeout(() => location.reload(), 1500);
+        } else { throw new Error(); }
+    } catch (e) {
+        msg.innerText = t().connection_error;
+        msg.classList.replace('text-blue-500', 'text-red-500');
+    }
+}
 
 function switchTab(tab) {
     if (tab !== 'files' && tab !== 'history') currentTid = null;
@@ -258,7 +375,8 @@ async function loadClouds() {
     const list = document.getElementById('clouds-list');
     list.innerHTML = `<div class="p-10 text-center animate-pulse text-xs text-slate-500 font-bold uppercase">${t().clouds_loading}</div>`;
     try {
-        const r = await fetch('/api/remotes/list_with_quota');
+        // Usamos a variável dinâmica API_BASE
+        const r = await fetch(`${API_BASE}/api/remotes/list_with_quota`);
         const data = await r.json();
         list.innerHTML = data.map(c => {
             const p = c.quota.total ? Math.round((c.quota.used/c.quota.total)*100) : 0;
@@ -284,18 +402,23 @@ function setTheme(t) {
 }
 
 function connect() {
-    const proto = location.protocol === 'https:' ? 'wss://' : 'ws://';
-    socket = new WebSocket(proto + location.host + '/ws');
+    // Usamos a variável dinâmica WS_BASE
+    socket = new WebSocket(WS_BASE);
+    
     socket.onopen = () => document.getElementById('conn-dot').classList.add('online');
-    socket.onclose = () => { document.getElementById('conn-dot').classList.remove('online'); setTimeout(connect, 3000); };
+    socket.onclose = () => {
+        document.getElementById('conn-dot').classList.remove('online');
+        setTimeout(connect, 5000); // Tenta reconetar mais calmamente
+    };
+    
     socket.onmessage = (ev) => {
         const d = JSON.parse(ev.data);
         if(d.type === 'init') { tasks = d.tasks; STATE = d.state; translateUI(); }
         if(d.type === 'update') { STATE = d.state; }
-        renderHome(); renderTasks();
-        if(currentTid && document.getElementById('view-files').classList.contains('active')) renderFiles();
+        renderAll();
     };
 }
+
 function translateUI() { document.querySelectorAll('[data-i18n]').forEach(el => { const k = el.dataset.i18n; if(t()[k]) el.textContent = t()[k]; }); }
 
 function renderHome() {
