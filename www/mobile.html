@@ -88,24 +88,35 @@
         }
 
         async function fetchData() {
-            try {
-                // 1. Carregar Clouds
-                const rClouds = await fetch(`${API}/api/remotes/list_with_quota`);
-                const clouds = await rClouds.json();
-                renderClouds(clouds);
+			try {
+				// 1. Carregar Clouds
+				const rClouds = await fetch(`${API}/api/remotes/list_with_quota`);
+				const clouds = await rClouds.json();
+				renderClouds(clouds);
 
-                // 2. Carregar Tarefas
-                const r = await fetch(`${API}/api/tasks`); // API é window.location.origin
-				const tasks = await r.json();
-                renderTasks(globalTasks);
-                
-                // Atualizar contador na home
-                document.getElementById('home-tasks-count').innerText = globalTasks.length;
-            } catch (e) {
-                console.error("Erro ao carregar dados:", e);
-                document.getElementById('mobile-task-list').innerHTML = `<p class="text-red-500 text-center py-10 text-xs">Erro ao ligar ao motor SyncPulse.</p>`;
-            }
-        }
+				// 2. Carregar Tarefas
+				const r = await fetch(`${API}/api/tasks`);
+				
+				// CORREÇÃO: Atualizamos a variável GLOBAL que declaraste no topo do script
+				globalTasks = await r.json(); 
+
+				// Agora passamos a variável correta para as funções
+				renderTasks(globalTasks);
+				
+				// Atualizar contador na home com verificação de segurança
+				const counter = document.getElementById('home-tasks-count');
+				if (counter) {
+					counter.innerText = globalTasks.length;
+				}
+
+			} catch (e) {
+				console.error("Erro ao carregar dados:", e);
+				const taskList = document.getElementById('mobile-task-list');
+				if (taskList) {
+					taskList.innerHTML = `<p class="text-red-500 text-center py-10 text-xs">Erro de ligação ao motor.</p>`;
+				}
+			}
+		}
 
         function renderClouds(clouds) {
             const list = clouds.map(rem => {
