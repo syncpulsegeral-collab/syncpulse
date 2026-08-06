@@ -177,8 +177,23 @@
   .modal-head i.fa-history, .modal-head i.fa-folder-open { color: var(--accent); font-size: 14px; flex-shrink: 0; }
   .modal-close { color: var(--text-faint); font-size: 20px; background: none; border: none; padding: 4px; flex-shrink: 0; line-height: 1; }
   .modal-body { overflow-y: auto; padding: 16px 18px 24px; flex: 1; }
+  .modal-body.hidden { display: none; }
   .modal-empty { text-align: center; padding: 50px 10px; color: var(--text-faint); font-size: 12px; font-weight: 700; }
   .modal-empty i { font-size: 24px; display: block; margin-bottom: 10px; }
+
+  /* Abas do modal de Ficheiros/Log */
+  .modal-tabs { display: flex; gap: 4px; padding: 10px 14px 0; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .modal-tab {
+    flex: 1; background: none; border: none; font-family: inherit; cursor: pointer;
+    color: var(--text-faint); font-size: 10.5px; font-weight: 800; text-transform: uppercase;
+    letter-spacing: 0.04em; padding: 10px 6px; display: flex; align-items: center; justify-content: center;
+    gap: 6px; border-bottom: 2px solid transparent;
+  }
+  .modal-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* Terminal de log */
+  .log-line { font-family: 'SF Mono', monospace; font-size: 9.5px; color: var(--green); margin-bottom: 5px; line-height: 1.5; word-break: break-all; }
+  .log-placeholder { font-family: 'SF Mono', monospace; font-size: 10px; color: var(--text-faint); opacity: 0.7; line-height: 1.7; }
 
   /* Histórico entries */
   .hist-entry { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 12px 13px; margin-bottom: 10px; }
@@ -298,7 +313,12 @@
         <h3><i class="fas fa-folder-open"></i><span id="files-title">Ficheiros</span></h3>
         <button class="modal-close" onclick="closeModal('mFiles')">&times;</button>
       </div>
+      <div class="modal-tabs">
+        <button class="modal-tab active" id="tab-btn-files" onclick="switchFilesTab('files')"><i class="fas fa-list"></i> <span data-i18n="tab_files">Ficheiros</span></button>
+        <button class="modal-tab" id="tab-btn-log" onclick="switchFilesTab('log')"><i class="fas fa-terminal"></i> <span data-i18n="tab_log">Log</span></button>
+      </div>
       <div class="modal-body" id="files-body"></div>
+      <div class="modal-body hidden" id="log-body"></div>
     </div>
   </div>
 
@@ -310,51 +330,56 @@ const i18n = {
     clouds_title:"Clouds ligadas", clouds_used:"Usado", clouds_total:"Total", clouds_empty:"Nenhuma cloud configurada", clouds_loading:"A carregar clouds...", clouds_error:"Não foi possível ligar ao servidor.",
     tasks_title:"Todas as tarefas", tasks_empty:"Ainda não há tarefas criadas",
     settings_title:"Definições", settings_theme:"Aparência", theme_dark:"Escuro", theme_light:"Claro", settings_language:"Idioma",
-    mode_up:"Upload", mode_down:"Download", mode_bi:"Bidirecional",
+    mode_up:"Local->Cloud", mode_down:"Cloud->Local", mode_bi:"Bidirecional",
     status_active:"Ativo", status_sim:"Simulação", status_inactive:"Inativo", status_done:"Concluído",
     last_sync:"Última sinc.", btn_simulate:"Simular", btn_start:"Iniciar", btn_stop:"Parar", opt_real:"Tempo real", daily:"Diário",
     hist_title:"Histórico de Atividade", hist_empty:"Sem registos.", hist_view_err:"Ver Erro", hist_success:"Sucesso", hist_error:"Erro", hist_sim:"Simulação", hist_sync:"Sincronização",
-    files_title:"Fila de Ficheiros", file_pending:"PENDENTE", file_skipped:"SEM ALTERAÇÃO", file_error:"ERRO", file_done:"CONCLUÍDO" },
+    files_title:"Fila de Ficheiros", file_pending:"PENDENTE", file_skipped:"SEM ALTERAÇÃO", file_error:"ERRO", file_done:"CONCLUÍDO",
+    tab_files:"Ficheiros", tab_log:"Log", log_empty:"À espera de atividade..." },
   en: { nav_home:"Home", nav_clouds:"Clouds", nav_tasks:"Tasks", nav_settings:"Settings",
     home_title:"Running tasks", home_empty_title:"Nothing running", home_empty_sub:"Active tasks appear here in real time.",
     clouds_title:"Connected Clouds", clouds_used:"Used", clouds_total:"Total", clouds_empty:"No clouds configured", clouds_loading:"Loading clouds...", clouds_error:"Could not reach the server.",
     tasks_title:"All tasks", tasks_empty:"No tasks created yet",
     settings_title:"Settings", settings_theme:"Appearance", theme_dark:"Dark", theme_light:"Light", settings_language:"Language",
-    mode_up:"Upload", mode_down:"Download", mode_bi:"Bidirectional",
+    mode_up:"Local->Cloud", mode_down:"Cloud->Local", mode_bi:"Bidirectional",
     status_active:"Active", status_sim:"Simulating", status_inactive:"Inactive", status_done:"Done",
     last_sync:"Last sync", btn_simulate:"Simulate", btn_start:"Start", btn_stop:"Stop", opt_real:"Real-time", daily:"Daily",
     hist_title:"Activity History", hist_empty:"No records found.", hist_view_err:"View Error", hist_success:"Success", hist_error:"Error", hist_sim:"Simulation", hist_sync:"Sync",
-    files_title:"Files Queue", file_pending:"PENDING", file_skipped:"NO CHANGE", file_error:"ERROR", file_done:"COMPLETED" },
+    files_title:"Files Queue", file_pending:"PENDING", file_skipped:"NO CHANGE", file_error:"ERROR", file_done:"COMPLETED",
+    tab_files:"Files", tab_log:"Log", log_empty:"Waiting for activity..." },
   es: { nav_home:"Inicio", nav_clouds:"Nubes", nav_tasks:"Tareas", nav_settings:"Ajustes",
     home_title:"Tareas en ejecución", home_empty_title:"Nada en ejecución", home_empty_sub:"Las tareas activas aparecen aquí en tiempo real.",
     clouds_title:"Nubes conectadas", clouds_used:"Usado", clouds_total:"Total", clouds_empty:"No hay nubes configuradas", clouds_loading:"Cargando nubes...", clouds_error:"No se pudo conectar al servidor.",
     tasks_title:"Todas las tareas", tasks_empty:"Aún no hay tareas creadas",
     settings_title:"Ajustes", settings_theme:"Apariencia", theme_dark:"Oscuro", theme_light:"Claro", settings_language:"Idioma",
-    mode_up:"Subida", mode_down:"Descarga", mode_bi:"Bidireccional",
+    mode_up:"Local→Nube", mode_down:"Nube→Local", mode_bi:"Bidireccional",
     status_active:"Activo", status_sim:"Simulando", status_inactive:"Inactivo", status_done:"Hecho",
     last_sync:"Última sinc.", btn_simulate:"Simular", btn_start:"Iniciar", btn_stop:"Detener", opt_real:"Tiempo real", daily:"Diario",
     hist_title:"Historial de actividad", hist_empty:"No hay registros.", hist_view_err:"Ver error", hist_success:"Correcto", hist_error:"Error", hist_sim:"Simulación", hist_sync:"Sincronización",
-    files_title:"Cola de Archivos", file_pending:"PENDIENTE", file_skipped:"SIN CAMBIOS", file_error:"ERROR", file_done:"COMPLETADO" },
+    files_title:"Cola de Archivos", file_pending:"PENDIENTE", file_skipped:"SIN CAMBIOS", file_error:"ERROR", file_done:"COMPLETADO",
+    tab_files:"Archivos", tab_log:"Registro", log_empty:"Esperando actividad..." },
   fr: { nav_home:"Accueil", nav_clouds:"Clouds", nav_tasks:"Tâches", nav_settings:"Réglages",
     home_title:"Tâches en cours", home_empty_title:"Rien en cours", home_empty_sub:"Les tâches actives apparaissent ici en temps réel.",
     clouds_title:"Clouds connectés", clouds_used:"Utilisé", clouds_total:"Total", clouds_empty:"Aucun cloud configuré", clouds_loading:"Chargement des clouds...", clouds_error:"Connexion au serveur impossible.",
     tasks_title:"Toutes les tâches", tasks_empty:"Aucune tâche créée",
     settings_title:"Réglages", settings_theme:"Apparence", theme_dark:"Sombre", theme_light:"Clair", settings_language:"Langue",
-    mode_up:"Envoi", mode_down:"Téléchargement", mode_bi:"Bidirectionnel",
+    mode_up:"Local→Cloud", mode_down:"Cloud→Local", mode_bi:"Bidirectionnel",
     status_active:"Actif", status_sim:"Simulation", status_inactive:"Inactif", status_done:"Terminé",
     last_sync:"Dern. sync.", btn_simulate:"Simuler", btn_start:"Démarrer", btn_stop:"Arrêter", opt_real:"Temps réel", daily:"Quotidien",
     hist_title:"Historique d'activité", hist_empty:"Aucun enregistrement.", hist_view_err:"Voir l'erreur", hist_success:"Succès", hist_error:"Erreur", hist_sim:"Simulation", hist_sync:"Synchronisation",
-    files_title:"File d'attente", file_pending:"EN ATTENTE", file_skipped:"AUCUN CHANGEMENT", file_error:"ERREUR", file_done:"TERMINÉ" },
+    files_title:"File d'attente", file_pending:"EN ATTENTE", file_skipped:"AUCUN CHANGEMENT", file_error:"ERREUR", file_done:"TERMINÉ",
+    tab_files:"Fichiers", tab_log:"Journal", log_empty:"En attente d'activité..." },
   de: { nav_home:"Start", nav_clouds:"Clouds", nav_tasks:"Aufgaben", nav_settings:"Einstellungen",
     home_title:"Laufende Aufgaben", home_empty_title:"Nichts läuft", home_empty_sub:"Aktive Aufgaben erscheinen hier in Echtzeit.",
     clouds_title:"Verbundene Clouds", clouds_used:"Belegt", clouds_total:"Gesamt", clouds_empty:"Keine Clouds konfiguriert", clouds_loading:"Clouds werden geladen...", clouds_error:"Server nicht erreichbar.",
     tasks_title:"Alle Aufgaben", tasks_empty:"Noch keine Aufgaben erstellt",
     settings_title:"Einstellungen", settings_theme:"Erscheinungsbild", theme_dark:"Dunkel", theme_light:"Hell", settings_language:"Sprache",
-    mode_up:"Upload", mode_down:"Download", mode_bi:"Bidirektional",
+    mode_up:"Lokal→Cloud", mode_down:"Cloud→Lokal", mode_bi:"Bidirektional",
     status_active:"Aktiv", status_sim:"Simulation", status_inactive:"Inaktiv", status_done:"Fertig",
     last_sync:"Letzte Sync.", btn_simulate:"Simulieren", btn_start:"Starten", btn_stop:"Stoppen", opt_real:"Echtzeit", daily:"Täglich",
     hist_title:"Aktivitätsverlauf", hist_empty:"Keine Einträge gefunden.", hist_view_err:"Fehler anzeigen", hist_success:"Erfolgreich", hist_error:"Fehler", hist_sim:"Simulation", hist_sync:"Synchronisierung",
-    files_title:"Warteschlange", file_pending:"AUSSTEHEND", file_skipped:"KEINE ÄNDERUNG", file_error:"FEHLER", file_done:"FERTIG" }
+    files_title:"Warteschlange", file_pending:"AUSSTEHEND", file_skipped:"KEINE ÄNDERUNG", file_error:"FEHLER", file_done:"FERTIG",
+    tab_files:"Dateien", tab_log:"Protokoll", log_empty:"Warte auf Aktivität..." }
 };
 const LANG_LABELS = { pt:"PT", en:"EN", es:"ES", fr:"FR", de:"DE" };
 
@@ -363,9 +388,10 @@ if (!i18n[lang]) lang = 'pt';
 let theme = localStorage.getItem('syncpulse_theme') || 'dark';
 
 let tasks = [];
-let STATE = { running:{}, stats:{}, active_files:{}, failed_files:{}, finished_files:{}, all_files:{}, skipped_files:{}, file_sizes:{}, license_active:false };
+let STATE = { running:{}, stats:{}, active_files:{}, failed_files:{}, finished_files:{}, all_files:{}, skipped_files:{}, file_sizes:{}, logs:{}, license_active:false };
 let socket;
 let currentFilesTaskId = null;
+let currentFilesTab = 'files';
 
 /* ==================== Helpers ==================== */
 function t() { return i18n[lang] || i18n.pt; }
@@ -453,7 +479,10 @@ function connectWS() {
     }
     renderHome();
     renderTasks();
-    if (currentFilesTaskId && document.getElementById('mFiles').classList.contains('open')) renderFiles();
+    if (currentFilesTaskId && document.getElementById('mFiles').classList.contains('open')) {
+      renderFiles();
+      if (currentFilesTab === 'log') renderLog();
+    }
   };
 }
 
@@ -619,10 +648,38 @@ function toggleHistLog(index) {
 /* ---------- Lista de ficheiros (fxs) ---------- */
 function showFiles(id) {
   currentFilesTaskId = String(id);
+  currentFilesTab = 'files';
   const tk = tasks.find(x => String(x.id) === currentFilesTaskId);
   document.getElementById('files-title').textContent = tk ? `${t().files_title} · ${tk.name}` : t().files_title;
+  document.getElementById('tab-btn-files').classList.add('active');
+  document.getElementById('tab-btn-log').classList.remove('active');
+  document.getElementById('files-body').classList.remove('hidden');
+  document.getElementById('log-body').classList.add('hidden');
   renderFiles();
+  renderLog();
   openModal('mFiles');
+}
+
+function switchFilesTab(tabName) {
+  currentFilesTab = tabName;
+  document.getElementById('tab-btn-files').classList.toggle('active', tabName === 'files');
+  document.getElementById('tab-btn-log').classList.toggle('active', tabName === 'log');
+  document.getElementById('files-body').classList.toggle('hidden', tabName !== 'files');
+  document.getElementById('log-body').classList.toggle('hidden', tabName !== 'log');
+  if (tabName === 'log') renderLog();
+}
+
+function renderLog() {
+  if (!currentFilesTaskId) return;
+  const body = document.getElementById('log-body');
+  const lines = STATE.logs?.[currentFilesTaskId] || [];
+
+  if (lines.length === 0) {
+    body.innerHTML = `<div class="log-placeholder">> ${t().log_empty}</div>`;
+    return;
+  }
+
+  body.innerHTML = lines.slice(0, 50).map(l => `<div class="log-line">> ${escapeHtml(l)}</div>`).join('');
 }
 
 function renderFiles() {
