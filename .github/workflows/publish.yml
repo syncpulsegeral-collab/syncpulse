@@ -17,10 +17,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # PASSO CRÍTICO: Converte o nome do owner para minúsculas
-      - name: Lowercase Repo Owner
+      # PASSO CORRIGIDO: Usa manipulação de string nativa do Bash
+      - name: Set lower case owner name
         run: |
-          echo "OWNER_LC=${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]' >> $GITHUB_ENV
+          echo "OWNER_LC=${GITHUB_REPOSITORY_OWNER,,}" >> ${GITHUB_ENV}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -37,11 +37,9 @@ jobs:
         with:
           context: .
           push: true
-          # Usamos a variável OWNER_LC que criámos no passo anterior
-          # Nota: tags docker também devem ser minúsculas (v1.2 em vez de V1.2)
+          # Agora garantimos que a variável OWNER_LC está preenchida e em minúsculas
           tags: |
             ghcr.io/${{ env.OWNER_LC }}/syncpulse:latest
             ghcr.io/${{ env.OWNER_LC }}/syncpulse:v1.2
-          # Ativa cache para builds mais rápidas no futuro
           cache-from: type=gha
           cache-to: type=inline
