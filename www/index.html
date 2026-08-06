@@ -1463,6 +1463,12 @@
             const lo = i18n[lang] || i18n.en;
             const licenseText = licenseI18n[lang] || licenseI18n.en;
             const licenseActive = STATE.license_active === true;
+            const licenseExpired = STATE.license_expired === true;
+            const licenseStatus = document.getElementById('license-status');
+            if (licenseStatus) {
+                licenseStatus.textContent = licenseActive ? licenseText.active : (licenseExpired ? licenseText.expired : licenseText.inactive);
+                licenseStatus.className = `text-[10px] font-black uppercase tracking-wide ${licenseActive ? 'text-emerald-400' : (licenseExpired ? 'text-red-400' : 'text-amber-400')}`;
+            }
             const tidStr = selectedTaskId ? selectedTaskId.toString() : null;
     
             grid.innerHTML = tasks.map(t => {

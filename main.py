@@ -271,12 +271,16 @@ async def silent_license_check():
             else:
                 # O servidor diz que a licença já não é válida (ex: refund ou remoção de slot)
                 print(">>> [BACKGROUND] Licença revogada pelo servidor!")
+                if res_data.get("reason") == "expired":
+                    STATE["license_info"]["expires_at"] = res_data.get("expires_at", "")
                 await revoke_license_local(expired=res_data.get("reason") == "expired")
         elif response.status_code in (400, 401, 403):
             # Estas respostas recusam explicitamente a licença/HWID; não são
             # uma falha de ligação e devem bloquear a ativação local.
             print(">>> [BACKGROUND] Licença recusada pelo servidor!")
             details = response.json()
+            if details.get("reason") == "expired":
+                STATE["license_info"]["expires_at"] = details.get("expires_at", "")
             await revoke_license_local(expired=details.get("reason") == "expired")
         else:
             # Servidor offline ou erro 500: mantemos o utilizador ativo (Modo Híbrido/Offline)
