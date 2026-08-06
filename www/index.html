@@ -291,6 +291,7 @@
 		/* ÁREA DE CARTÕES COM SCROLL */
 		#cloud-manager-list {
 			flex: 1; /* Ocupa o espaço central */
+			min-height: 0;
 			overflow-y: auto; /* ATIVA O SCROLL AQUI */
 			padding: 10px;
 			margin-bottom: 15px;
@@ -299,6 +300,15 @@
 			gap: 20px;
 			align-content: start;
 		}
+		.tutorial-section { display: none; }
+		.provider-combobox { position: relative; z-index: 3; }
+		.provider-menu { position: absolute; z-index: 70; bottom: calc(100% + 4px); left: 0; right: 0; max-height: 260px; overflow-y: auto; background: #0b111d; border: 1px solid #334155; border-radius: 10px; box-shadow: 0 -18px 35px rgba(0,0,0,.45); }
+		.provider-search { position: sticky; top: 0; z-index: 1; padding: 9px; background: #0b111d; border-bottom: 1px solid #1e293b; }
+		#mCloudCreate form { width: min(520px, calc(100vw - 32px)); }
+		.rclone-setup-output { height: 280px; overflow: auto; white-space: pre-wrap; word-break: break-word; background: #050a12; border: 1px solid #1e293b; border-radius: 10px; padding: 14px; color: #cbd5e1; font: 12px/1.55 'Fira Code', monospace; }
+		.provider-option { width: 100%; padding: 9px 11px; text-align: left; color: #cbd5e1; font-size: 12px; border-bottom: 1px solid rgba(51,65,85,.5); }
+		.provider-option:hover, .provider-option.is-selected { background: rgba(59,130,246,.16); color: #fff; }
+		.provider-option small { display: block; margin-top: 2px; color: #64748b; font-size: 10px; }
 
 		/* FIX DA PERCENTAGEM E GRÁFICO */
 		.quota-circle {
@@ -434,7 +444,7 @@
 							<path d="M100 256H160L190 140L256 380L322 140L352 256H412" stroke="#3b82f6" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>
 						</svg>
 					</div>
-					<h2 class="text-xl font-black text-white uppercase tracking-widest">SyncPulse <span class="text-blue-500">V1.1</span></h2>
+					<h2 class="text-xl font-black text-white uppercase tracking-widest" data-key="welcome_title">SyncPulse Version 1.2</h2>
 					<p class="text-[10px] text-slate-500 font-bold uppercase mt-1">ZimaOS Edition</p>
 				</div>
 
@@ -657,19 +667,19 @@
                     <label class="block"><span data-key="sync_type">Modo</span><select id="in-typ" class="input-box mt-1"><option value="upload">Local->Cloud</option><option value="download">Cloud->Local</option><option value="bisync">Bisync</option></select></label>
                     <label class="block"><span data-key="trigger">Trigger</span>
 						<select id="in-trig" class="input-box mt-2" onchange="toggleTriggerFields(this.value)">
-							<option value="sched">Agendado</option>
-							<option value="real">Tempo Real</option>
+							<option value="sched" data-key="opt_sched">Scheduled</option>
+							<option value="real" data-key="opt_real">Real-time</option>
 						</select>
 					</label>
                     <div id="interval-wrap" class="mt-4">
 						<label class="block"><span data-key="interval">Intervalo</span>
 							<select id="in-int" class="input-box mt-2" onchange="toggleTimeField(this.value)">
-								<option value="1m">1 min</option>
-								<option value="5m">5 min</option>
-								<option value="15m">15 min</option>
-								<option value="30m">30 min</option>
-								<option value="1h">1 hora</option>
-								<option value="daily">Diário</option>
+								<option value="1m" data-key="interval_1m">Every minute</option>
+								<option value="5m" data-key="interval_5m">Every 5 minutes</option>
+								<option value="15m" data-key="interval_15m">Every 15 minutes</option>
+								<option value="30m" data-key="interval_30m">Every 30 minutes</option>
+								<option value="1h" data-key="interval_1h">Every hour</option>
+								<option value="daily" data-key="daily">Daily</option>
 							</select>
 						</label>
 					</div>
@@ -720,6 +730,9 @@
 			<div id="cloud-manager-list" class="grid grid-cols-1 md:grid-cols-2 gap-5">
 				<!-- JS injeta os cartões aqui -->
 			</div>
+			<div class="pt-4 shrink-0">
+				<button id="cloud-terminal-button" type="button" onclick="openRcloneConfigTerminal()" class="bg-blue-600 hover:bg-blue-500 px-5 py-3 rounded-lg text-xs font-black uppercase text-white"><i class="fas fa-terminal mr-2"></i><span data-key="cloud_manage">Add / manage clouds</span></button>
+			</div>
 
 			<!-- SECÇÃO TUTORIAL (FIXA) -->
 			<div class="tutorial-section mt-4">
@@ -764,6 +777,40 @@
 			<!-- PUXADOR DE RESIZE -->
 			<div id="mCloud-resizer" class="resizer-handle" title="Resize modal" aria-label="Resize modal" role="button"><i class="fas fa-up-right-and-down-left-from-center"></i></div>
 		</div>
+	</div>
+
+	<!-- CRIAR CLOUD -->
+	<div id="mCloudCreate" class="modal-overlay hidden">
+		<form id="cloud-create-form" onsubmit="createCloud(event)" class="bg-slate-900 border border-slate-700 rounded-[26px] p-7 shadow-2xl">
+			<div class="flex justify-between items-start mb-6">
+				<div><h3 class="text-xl font-black text-white uppercase" data-key="cloud_add">Add cloud</h3><p class="text-slate-500 text-[10px] font-bold uppercase tracking-[2px] mt-1" data-key="cloud_configure">Configure a new remote</p></div>
+				<button type="button" onclick="closeCloudCreateModal()" class="text-slate-500 hover:text-white text-3xl leading-none">&times;</button>
+			</div>
+			<div id="cloud-create-fields">
+			<label class="block text-[10px] uppercase font-bold text-slate-400"><span data-key="cloud_name">Name</span> <input id="cloud-new-name" required maxlength="80" class="input-box mt-1" placeholder="e.g. GoogleDrive"></label>
+			<div id="cloud-provider-group" class="mt-4">
+				<label class="block text-[10px] uppercase font-bold text-slate-400" data-key="cloud_service">Service</label>
+				<div class="provider-combobox mt-1">
+					<button id="cloud-provider-trigger" type="button" onclick="toggleCloudProviderMenu()" class="input-box text-left flex justify-between items-center"><span data-key="cloud_select_service">Select a service</span><i class="fas fa-chevron-down text-slate-500"></i></button>
+					<input id="cloud-provider" required type="hidden">
+					<div id="cloud-provider-menu" class="provider-menu hidden"></div>
+				</div>
+			</div>
+			<div id="cloud-selected-service" class="hidden mt-4 text-xs text-slate-400"><span class="text-slate-500 uppercase font-bold text-[10px]" data-key="cloud_service">Service</span><div class="mt-1 flex items-center justify-between rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"><span id="cloud-selected-service-name"></span><button type="button" onclick="changeCloudProvider()" class="text-blue-400 hover:text-blue-300 font-bold" data-key="cloud_change">Change</button></div></div>
+			<div id="cloud-credentials" class="hidden mt-4 space-y-3">
+				<label id="cloud-host-group" class="block text-[10px] uppercase font-bold text-slate-400"><span data-key="cloud_address">Server address</span> <input id="cloud-host" class="input-box mt-1" placeholder="server.example.com"></label>
+				<label class="block text-[10px] uppercase font-bold text-slate-400"><span data-key="cloud_username">Username</span> <input id="cloud-username" class="input-box mt-1" autocomplete="username"></label>
+				<label class="block text-[10px] uppercase font-bold text-slate-400"><span data-key="cloud_password">Password</span> <input id="cloud-password" type="password" class="input-box mt-1" autocomplete="current-password"></label>
+			</div>
+			</div>
+			<div id="cloud-setup-wizard" class="hidden">
+				<p class="text-slate-400 text-xs mb-3">Follow the rclone questions below. If an authorisation link is shown, open it, approve access and paste the returned code here.</p>
+				<pre id="cloud-setup-output" class="rclone-setup-output"></pre>
+				<button id="cloud-setup-open-link" type="button" class="hidden mt-3 text-blue-400 hover:text-blue-300 text-xs font-bold" onclick="openCloudSetupLink()"><i class="fas fa-external-link-alt mr-2"></i>Open authorisation link</button>
+				<div class="flex gap-2 mt-3"><input id="cloud-setup-answer" class="input-box" autocomplete="off" placeholder="Type your answer…" onkeydown="if(event.key === 'Enter') { event.preventDefault(); sendCloudSetupAnswer(); }"><button type="button" onclick="sendCloudSetupAnswer()" class="bg-blue-600 hover:bg-blue-500 px-4 rounded-lg text-xs font-black uppercase text-white">Send</button></div>
+			</div>
+			<div class="mt-6 flex justify-end gap-3"><button type="button" onclick="closeCloudCreateModal()" class="px-4 py-3 text-xs font-black uppercase text-slate-400" data-key="cancel">Cancel</button><button id="cloud-create-submit" class="bg-blue-600 hover:bg-blue-500 px-5 py-3 rounded-lg text-xs font-black uppercase text-white" type="submit" data-key="cloud_create">Create cloud</button></div>
+		</form>
 	</div>
     
     <!-- MODAL HISTÓRICO -->
@@ -849,7 +896,7 @@
                 </div>
                 
                 <div class="text-center opacity-70 text-[11px] font-mono text-slate-500 pt-2">
-                    SyncPulse ZIMAOS EDITION<br>VERSION 1.1
+                    SyncPulse ZIMAOS EDITION<br>VERSION 1.2
                 </div>
             </div>
 
@@ -866,7 +913,7 @@
 			en: {
 				// Splash & Welcome
 				starting_app: "Starting SyncPulse...",
-				welcome_title: "SyncPulse V1.1",
+				welcome_title: "SyncPulse Version 1.2",
 				zima_edition: "ZimaOS Edition",
 				about_sync_title: "About the Project",
 				about_sync_text: "SyncPulse is a professional interface and automation engine designed to simplify hybrid storage management on ZimaOS. It acts as an intelligent bridge between your hardware and the leading Cloud services.",
@@ -896,7 +943,7 @@
 				last_sync: "Last Sync",
 				btn_stop: "Stop",
 				btn_start: "Start",
-				btn_sim: "Simulate",
+				btn_simulate: "Simulate",
 				global_progress: "Global Progress",
 				files_queue: "Files Queue",
 				view_more: "view more",
@@ -981,7 +1028,7 @@
 			},
 			pt: {
 				starting_app: "A iniciar SyncPulse...",
-				welcome_title: "SyncPulse V1.1",
+				welcome_title: "SyncPulse Versão 1.1",
 				zima_edition: "ZimaOS Edition",
 				about_sync_title: "Sobre o Projeto",
 				about_sync_text: "O SyncPulse é uma interface profissional e motor de automação desenvolvido para simplificar a gestão de storage híbrida no ZimaOS. Atua como uma ponte inteligente entre o seu hardware e os principais serviços de Cloud.",
@@ -1007,7 +1054,7 @@
 				last_sync: "Última Sync",
 				btn_stop: "Parar",
 				btn_start: "Iniciar",
-				btn_sim: "Simular",
+				btn_simulate: "Simular",
 				global_progress: "Progresso Geral",
 				files_queue: "Fila de Ficheiros",
 				view_more: "ver mais",
@@ -1073,7 +1120,7 @@
 			},
 			es: {
 				starting_app: "Iniciando SyncPulse...",
-				welcome_title: "SyncPulse V1.1",
+				welcome_title: "SyncPulse Versión 1.1",
 				zima_edition: "ZimaOS Edition",
 				about_sync_title: "Sobre el Proyecto",
 				about_sync_text: "SyncPulse es una interfaz profesional y un motor de automatización diseñado para simplificar la gestión del almacenamiento híbrido en ZimaOS.",
@@ -1117,7 +1164,7 @@
 			},
 			fr: {
 				starting_app: "Démarrage de SyncPulse...",
-				welcome_title: "SyncPulse V1.1",
+				welcome_title: "SyncPulse Version 1.2",
 				zima_edition: "ZimaOS Edition",
 				about_sync_title: "À propos du projet",
 				about_sync_text: "SyncPulse est une interface professionnelle et un moteur d'automatisation conçu pour simplifier la gestion du stockage hybride sur ZimaOS.",
@@ -1154,7 +1201,7 @@
 			},
 			de: {
 				starting_app: "SyncPulse wird gestartet...",
-				welcome_title: "SyncPulse V1.1",
+				welcome_title: "SyncPulse Version 1.2",
 				zima_edition: "ZimaOS Edition",
 				about_sync_title: "Über das Projekt",
 				about_sync_text: "SyncPulse ist eine professionelle Schnittstelle und Automatisierungs-Engine zur Vereinfachung der hybriden Speicherverwaltung auf ZimaOS.",
@@ -1195,7 +1242,7 @@
         Object.assign(i18n.es, {
             open_source_title: 'Código abierto y créditos', open_source_text: 'SyncPulse utiliza el motor Rclone (rclone.org). Rclone es software de código abierto bajo la licencia MIT.',
             eula_title: 'Términos de uso (EULA)', eula_step_1: '1. El software se proporciona tal cual, sin garantías.', eula_step_2: '2. El desarrollador no se responsabiliza de pérdidas de datos.', eula_step_3: '3. La licencia está vinculada a un dispositivo físico por plaza.', eula_step_4: '4. Está prohibida la ingeniería inversa del sistema de activación.',
-            nav_about: 'Acerca de SyncPulse', btn_sim: 'Simular', view_more: 'ver más', no_tasks: 'No hay tareas configuradas', edit_task: 'Editar tarea', interval: 'Intervalo', start_time: 'Hora de inicio (24 h)',
+            nav_about: 'Acerca de SyncPulse', btn_simulate: 'Simular', view_more: 'ver más', no_tasks: 'No hay tareas configuradas', edit_task: 'Editar tarea', interval: 'Intervalo', start_time: 'Hora de inicio (24 h)',
             mode_bi: 'Bisync', mode_up: 'Local→Nube', mode_down: 'Nube→Local', opt_sched: 'Programado', opt_real: 'Tiempo real', clouds_subtitle: 'Gestión de almacenamiento remoto', total_capacity: 'Capacidad total', no_clouds: 'No hay nubes configuradas', delete_cloud_confirm: '¿Seguro que deseas eliminar esta conexión?',
             tut_step_1_title: 'Ejecuta el configurador en el terminal de ZimaOS:', tut_step_2: 'En el menú, elige “n” (New Remote), asígnale un nombre y selecciona el proveedor.', tut_step_3_title: 'Responde a las preguntas críticas así:', tut_step_3_adv: '¿Editar configuración avanzada?', tut_step_3_web: '¿Usar autenticación en el navegador?', tut_step_3_footer: 'Rclone generará un enlace. Ábrelo, autoriza y pega el código en el terminal.',
             license_desc: 'Una licencia desbloquea la sincronización y las automatizaciones.', license_active: 'Activa', license_inactive: 'Inactiva', license_email_placeholder: 'Correo de licencia', license_device_placeholder: 'Nombre del dispositivo', license_key_placeholder: 'Clave de licencia', license_activate_btn: 'Activar licencia', license_note: 'Sin licencia solo puedes simular tareas.',
@@ -1203,28 +1250,35 @@
         });
         Object.assign(i18n.fr, {
             eula_title: 'Conditions d’utilisation (CLUF)', eula_step_1: '1. Le logiciel est fourni tel quel, sans garantie.', eula_step_2: '2. Le développeur ne répond pas des pertes de données.', eula_step_3: '3. La licence est liée à un appareil physique par emplacement.', eula_step_4: '4. Toute ingénierie inverse du système d’activation est interdite.',
-            support_project: 'Soutenir le projet', official_site: 'Site officiel', nav_about: 'À propos de SyncPulse', btn_sim: 'Simuler', view_more: 'voir plus', no_tasks: 'Aucune tâche configurée', edit_task: 'Modifier la tâche', sync_type: 'Mode', trigger: 'Déclencheur', interval: 'Intervalle', start_time: 'Heure de début (24 h)', mode_bi: 'Bisync', mode_up: 'Local→Cloud', mode_down: 'Cloud→Local', opt_sched: 'Planifié', opt_real: 'Temps réel',
+            support_project: 'Soutenir le projet', official_site: 'Site officiel', nav_about: 'À propos de SyncPulse', btn_simulate: 'Simuler', view_more: 'voir plus', no_tasks: 'Aucune tâche configurée', edit_task: 'Modifier la tâche', sync_type: 'Mode', trigger: 'Déclencheur', interval: 'Intervalle', start_time: 'Heure de début (24 h)', mode_bi: 'Bisync', mode_up: 'Local→Cloud', mode_down: 'Cloud→Local', opt_sched: 'Planifié', opt_real: 'Temps réel',
             clouds_subtitle: 'Gestion du stockage distant', total_capacity: 'Capacité totale', no_clouds: 'Aucun cloud configuré', delete_cloud_confirm: 'Voulez-vous vraiment supprimer cette connexion ?', tut_step_1_title: 'Exécutez le configurateur dans le terminal ZimaOS :', tut_step_2: 'Dans le menu, choisissez « n » (New Remote), nommez-le puis sélectionnez le fournisseur.', tut_step_3_title: 'Répondez aux questions critiques ainsi :', tut_step_3_adv: 'Modifier la configuration avancée ?', tut_step_3_web: 'Utiliser l’authentification par navigateur ?', tut_step_3_footer: 'Rclone génère un lien. Ouvrez-le, autorisez, puis collez le code dans le terminal.',
             license_desc: 'Une licence déverrouille la synchronisation et les automatisations.', license_active: 'Active', license_inactive: 'Inactive', license_email_placeholder: 'E-mail de la licence', license_device_placeholder: 'Nom de l’appareil', license_key_placeholder: 'Clé de licence', license_activate_btn: 'Activer la licence', license_note: 'Sans licence, vous pouvez uniquement simuler les tâches.', pref_sim_title: 'Simulation automatique', pref_sim_desc: 'Exécuter une simulation avant le transfert réel.', pref_sim_note: 'Désactiver la pré-simulation lance la synchronisation immédiatement, sans aperçu.', useful_links: 'Liens utiles', status_inactive: 'Inactive', status_active: 'Active', status_sim: 'Simulation', hist_title: 'Historique d’activité', hist_empty: 'Aucun enregistrement.', hist_view_err: 'Voir l’erreur', hist_success: 'Succès', hist_error: 'Erreur', hist_sim: 'Simulation', hist_sync: 'Synchronisation', file_skipped: 'AUCUN CHANGEMENT', file_error: 'ERREUR'
         });
         Object.assign(i18n.de, {
             eula_title: 'Nutzungsbedingungen (EULA)', eula_step_1: '1. Die Software wird ohne Gewährleistung bereitgestellt.', eula_step_2: '2. Der Entwickler haftet nicht für Datenverluste.', eula_step_3: '3. Die Lizenz ist pro Platz an ein physisches Gerät gebunden.', eula_step_4: '4. Reverse Engineering des Aktivierungssystems ist verboten.',
-            support_project: 'Projekt unterstützen', official_site: 'Offizielle Website', nav_about: 'Über SyncPulse', btn_sim: 'Simulieren', view_more: 'mehr anzeigen', no_tasks: 'Keine Aufgaben konfiguriert', edit_task: 'Aufgabe bearbeiten', sync_type: 'Modus', trigger: 'Auslöser', interval: 'Intervall', start_time: 'Startzeit (24 Std.)', mode_bi: 'Bisync', mode_up: 'Lokal→Cloud', mode_down: 'Cloud→Lokal', opt_sched: 'Geplant', opt_real: 'Echtzeit',
+            support_project: 'Projekt unterstützen', official_site: 'Offizielle Website', nav_about: 'Über SyncPulse', btn_simulate: 'Simulieren', view_more: 'mehr anzeigen', no_tasks: 'Keine Aufgaben konfiguriert', edit_task: 'Aufgabe bearbeiten', sync_type: 'Modus', trigger: 'Auslöser', interval: 'Intervall', start_time: 'Startzeit (24 Std.)', mode_bi: 'Bisync', mode_up: 'Lokal→Cloud', mode_down: 'Cloud→Lokal', opt_sched: 'Geplant', opt_real: 'Echtzeit',
             clouds_subtitle: 'Verwaltung des Remote-Speichers', total_capacity: 'Gesamtkapazität', no_clouds: 'Keine Clouds konfiguriert', delete_cloud_confirm: 'Möchten Sie diese Verbindung wirklich löschen?', tut_step_1_title: 'Starten Sie den Konfigurator im ZimaOS-Terminal:', tut_step_2: 'Wählen Sie im Menü „n“ (New Remote), vergeben Sie einen Namen und wählen Sie den Anbieter.', tut_step_3_title: 'Beantworten Sie die wichtigen Fragen wie folgt:', tut_step_3_adv: 'Erweiterte Konfiguration bearbeiten?', tut_step_3_web: 'Browser-Authentifizierung verwenden?', tut_step_3_footer: 'Rclone erzeugt einen Link. Öffnen Sie ihn, autorisieren Sie ihn und fügen Sie den Code im Terminal ein.',
             license_desc: 'Eine Lizenz schaltet Synchronisierung und Automatisierung frei.', license_active: 'Aktiv', license_inactive: 'Inaktiv', license_email_placeholder: 'Lizenz-E-Mail', license_device_placeholder: 'Gerätename', license_key_placeholder: 'Lizenzschlüssel', license_activate_btn: 'Lizenz aktivieren', license_note: 'Ohne Lizenz können Sie Aufgaben nur simulieren.', pref_sim_title: 'Automatische Simulation', pref_sim_desc: 'Vor der echten Übertragung eine Simulation ausführen.', pref_sim_note: 'Ohne Vorschau startet die Synchronisierung sofort.', useful_links: 'Nützliche Links', status_inactive: 'Inaktiv', status_active: 'Aktiv', status_sim: 'Simulation läuft', hist_title: 'Aktivitätsverlauf', hist_empty: 'Keine Einträge gefunden.', hist_view_err: 'Fehler anzeigen', hist_success: 'Erfolgreich', hist_error: 'Fehler', hist_sim: 'Simulation', hist_sync: 'Synchronisierung', file_skipped: 'KEINE ÄNDERUNG', file_error: 'FEHLER'
         });
 
-        Object.assign(i18n.pt, { clouds_loading: 'A sincronizar quotas...', clouds_empty: 'Sem clouds configuradas', clouds_used: 'Usado', clouds_total: 'Total', clouds_connection_error: 'Não foi possível contactar o motor de sincronização.', clouds_remove_confirm: 'Tens a certeza que queres apagar a ligação "{name}"?', clouds_command_copied: 'Comando copiado para a área de transferência.' });
-        Object.assign(i18n.es, { clouds_loading: 'Sincronizando cuotas...', clouds_empty: 'No hay nubes configuradas', clouds_used: 'Usado', clouds_total: 'Total', clouds_connection_error: 'No se pudo contactar con el motor de sincronización.', clouds_remove_confirm: '¿Seguro que deseas eliminar la conexión "{name}"?', clouds_command_copied: 'Comando copiado al portapapeles.' });
-        Object.assign(i18n.fr, { clouds_loading: 'Synchronisation des quotas...', clouds_empty: 'Aucun cloud configuré', clouds_used: 'Utilisé', clouds_total: 'Total', clouds_connection_error: 'Impossible de contacter le moteur de synchronisation.', clouds_remove_confirm: 'Voulez-vous vraiment supprimer la connexion « {name} » ?', clouds_command_copied: 'Commande copiée dans le presse-papiers.' });
-        Object.assign(i18n.de, { clouds_loading: 'Kontingente werden synchronisiert...', clouds_empty: 'Keine Clouds konfiguriert', clouds_used: 'Belegt', clouds_total: 'Gesamt', clouds_connection_error: 'Die Synchronisierungs-Engine konnte nicht erreicht werden.', clouds_remove_confirm: 'Möchten Sie die Verbindung „{name}“ wirklich löschen?', clouds_command_copied: 'Befehl wurde in die Zwischenablage kopiert.' });
+        Object.assign(i18n.en, { cloud_add: 'Add cloud', cloud_manage: 'Add / manage clouds', cloud_configure: 'Configure a new remote', cloud_name: 'Name', cloud_service: 'Service', cloud_select_service: 'Select a service', cloud_change: 'Change', cloud_address: 'Server address', cloud_username: 'Username', cloud_password: 'Password', cloud_create: 'Create cloud' });
+        Object.assign(i18n.pt, { clouds_loading: 'A sincronizar quotas...', clouds_empty: 'Sem clouds configuradas', clouds_used: 'Usado', clouds_total: 'Total', clouds_connection_error: 'Não foi possível contactar o motor de sincronização.', clouds_remove_confirm: 'Tens a certeza que queres apagar a ligação "{name}"?', clouds_command_copied: 'Comando copiado para a área de transferência.', cloud_add: 'Adicionar cloud', cloud_manage: 'Adicionar / gerir clouds', cloud_configure: 'Configurar uma nova ligação', cloud_name: 'Nome', cloud_service: 'Serviço', cloud_select_service: 'Selecionar um serviço', cloud_change: 'Alterar', cloud_address: 'Endereço do servidor', cloud_username: 'Utilizador', cloud_password: 'Palavra-passe', cloud_create: 'Criar cloud' });
+        Object.assign(i18n.es, { clouds_loading: 'Sincronizando cuotas...', clouds_empty: 'No hay nubes configuradas', clouds_used: 'Usado', clouds_total: 'Total', clouds_connection_error: 'No se pudo contactar con el motor de sincronización.', clouds_remove_confirm: '¿Seguro que deseas eliminar la conexión "{name}"?', clouds_command_copied: 'Comando copiado al portapapeles.', cloud_add: 'Añadir nube', cloud_manage: 'Añadir / gestionar nubes', cloud_configure: 'Configurar una nueva conexión', cloud_name: 'Nombre', cloud_service: 'Servicio', cloud_select_service: 'Seleccionar un servicio', cloud_change: 'Cambiar', cloud_address: 'Dirección del servidor', cloud_username: 'Usuario', cloud_password: 'Contraseña', cloud_create: 'Crear nube' });
+        Object.assign(i18n.fr, { clouds_loading: 'Synchronisation des quotas...', clouds_empty: 'Aucun cloud configuré', clouds_used: 'Utilisé', clouds_total: 'Total', clouds_connection_error: 'Impossible de contacter le moteur de synchronisation.', clouds_remove_confirm: 'Voulez-vous vraiment supprimer la connexion « {name} » ?', clouds_command_copied: 'Commande copiée dans le presse-papiers.', cloud_add: 'Ajouter un cloud', cloud_manage: 'Ajouter / gérer les clouds', cloud_configure: 'Configurer une nouvelle connexion', cloud_name: 'Nom', cloud_service: 'Service', cloud_select_service: 'Sélectionner un service', cloud_change: 'Modifier', cloud_address: 'Adresse du serveur', cloud_username: 'Utilisateur', cloud_password: 'Mot de passe', cloud_create: 'Créer le cloud' });
+        Object.assign(i18n.de, { clouds_loading: 'Kontingente werden synchronisiert...', clouds_empty: 'Keine Clouds konfiguriert', clouds_used: 'Belegt', clouds_total: 'Gesamt', clouds_connection_error: 'Die Synchronisierungs-Engine konnte nicht erreicht werden.', clouds_remove_confirm: 'Möchten Sie die Verbindung „{name}“ wirklich löschen?', clouds_command_copied: 'Befehl wurde in die Zwischenablage kopiert.', cloud_add: 'Cloud hinzufügen', cloud_manage: 'Clouds hinzufügen / verwalten', cloud_configure: 'Neue Verbindung einrichten', cloud_name: 'Name', cloud_service: 'Dienst', cloud_select_service: 'Dienst auswählen', cloud_change: 'Ändern', cloud_address: 'Serveradresse', cloud_username: 'Benutzername', cloud_password: 'Passwort', cloud_create: 'Cloud erstellen' });
+
+        Object.assign(i18n.en, { interval_1m: 'Every minute', interval_5m: 'Every 5 minutes', interval_15m: 'Every 15 minutes', interval_30m: 'Every 30 minutes', interval_1h: 'Every hour' });
+        Object.assign(i18n.pt, { interval_1m: 'A cada minuto', interval_5m: 'A cada 5 minutos', interval_15m: 'A cada 15 minutos', interval_30m: 'A cada 30 minutos', interval_1h: 'A cada hora' });
+        Object.assign(i18n.es, { interval_1m: 'Cada minuto', interval_5m: 'Cada 5 minutos', interval_15m: 'Cada 15 minutos', interval_30m: 'Cada 30 minutos', interval_1h: 'Cada hora' });
+        Object.assign(i18n.fr, { interval_1m: 'Chaque minute', interval_5m: 'Toutes les 5 minutes', interval_15m: 'Toutes les 15 minutes', interval_30m: 'Toutes les 30 minutes', interval_1h: 'Toutes les heures' });
+        Object.assign(i18n.de, { interval_1m: 'Jede Minute', interval_5m: 'Alle 5 Minuten', interval_15m: 'Alle 15 Minuten', interval_30m: 'Alle 30 Minuten', interval_1h: 'Jede Stunde' });
 
         const licenseI18n = {
-            pt: { title: 'Ativação da licença', desc: 'A licença desbloqueia sincronização e automatismos.', active: 'Ativa', inactive: 'Inativa', email: 'Email da licença', device: 'Nome do dispositivo (ex.: NAS da Sala)', key: 'Chave de licença', activate: 'Ativar licença', note: 'Sem licença, pode simular, mas não iniciar/parar sincronizações nem usar processos automáticos.', success: 'Licença ativada. Todos os recursos estão disponíveis.', invalid: 'Licença inválida ou inativa. A simulação continua disponível.', unavailable: 'Não foi possível validar a licença.', maxDevices: 'Número máximo de dispositivos atingido. Efetue a gestão dos dispositivos no portal.', blocked: 'Ative a licença para sincronizar.' },
-            en: { title: 'License activation', desc: 'The license unlocks synchronization and automation.', active: 'Active', inactive: 'Inactive', email: 'License email', device: 'Device name (e.g. Living Room NAS)', key: 'License key', activate: 'Activate license', note: 'Without a license, you can simulate, but cannot start/stop synchronizations or use automated processes.', success: 'License activated. All features are available.', invalid: 'License is invalid or inactive. Simulation remains available.', unavailable: 'The license could not be validated.', maxDevices: 'Maximum number of devices reached. Manage your devices in the portal.', blocked: 'Activate the license to synchronize.' },
-            fr: { title: 'Activation de la licence', desc: 'La licence déverrouille la synchronisation et les automatisations.', active: 'Active', inactive: 'Inactive', email: 'E-mail de la licence', device: 'Nom de l’appareil (ex. NAS du salon)', key: 'Clé de licence', activate: 'Activer la licence', note: 'Sans licence, vous pouvez simuler, mais pas démarrer/arrêter les synchronisations ni utiliser les processus automatiques.', success: 'Licence activée. Toutes les fonctionnalités sont disponibles.', invalid: 'La licence est invalide ou inactive. La simulation reste disponible.', unavailable: 'Impossible de valider la licence.', maxDevices: 'Nombre maximal d’appareils atteint. Gérez vos appareils dans le portail.', blocked: 'Activez la licence pour synchroniser.' },
-            es: { title: 'Activación de licencia', desc: 'La licencia desbloquea la sincronización y las automatizaciones.', active: 'Activa', inactive: 'Inactiva', email: 'Correo de la licencia', device: 'Nombre del dispositivo (p. ej. NAS del salón)', key: 'Clave de licencia', activate: 'Activar licencia', note: 'Sin licencia puede simular, pero no iniciar/detener sincronizaciones ni usar procesos automáticos.', success: 'Licencia activada. Todas las funciones están disponibles.', invalid: 'La licencia no es válida o está inactiva. La simulación sigue disponible.', unavailable: 'No se pudo validar la licencia.', maxDevices: 'Se alcanzó el número máximo de dispositivos. Gestione sus dispositivos en el portal.', blocked: 'Active la licencia para sincronizar.' },
-            de: { title: 'Lizenzaktivierung', desc: 'Die Lizenz schaltet Synchronisierung und Automatisierungen frei.', active: 'Aktiv', inactive: 'Inaktiv', email: 'Lizenz-E-Mail', device: 'Gerätename (z. B. NAS im Wohnzimmer)', key: 'Lizenzschlüssel', activate: 'Lizenz aktivieren', note: 'Ohne Lizenz können Sie simulieren, aber keine Synchronisierungen starten/stoppen oder automatische Prozesse verwenden.', success: 'Lizenz aktiviert. Alle Funktionen sind verfügbar.', invalid: 'Die Lizenz ist ungültig oder inaktiv. Die Simulation bleibt verfügbar.', unavailable: 'Die Lizenz konnte nicht überprüft werden.', maxDevices: 'Die maximale Anzahl von Geräten wurde erreicht. Verwalten Sie Ihre Geräte im Portal.', blocked: 'Aktivieren Sie die Lizenz zum Synchronisieren.' }
+            pt: { title: 'Ativação da licença', desc: 'A licença desbloqueia sincronização e automatismos.', active: 'Ativa', inactive: 'Inativa', expired: 'Expirada', email: 'Email da licença', device: 'Nome do dispositivo (ex.: NAS da Sala)', key: 'Chave de licença', activate: 'Ativar licença', note: 'Sem licença, pode simular, mas não iniciar/parar sincronizações nem usar processos automáticos.', success: 'Licença ativada. Todos os recursos estão disponíveis.', invalid: 'Licença inválida ou inativa. A simulação continua disponível.', unavailable: 'Não foi possível validar a licença.', maxDevices: 'Número máximo de dispositivos atingido. Efetue a gestão dos dispositivos no portal.', blocked: 'Ative a licença para sincronizar.' },
+            en: { title: 'License activation', desc: 'The license unlocks synchronization and automation.', active: 'Active', inactive: 'Inactive', expired: 'Expired', email: 'License email', device: 'Device name (e.g. Living Room NAS)', key: 'License key', activate: 'Activate license', note: 'Without a license, you can simulate, but cannot start/stop synchronizations or use automated processes.', success: 'License activated. All features are available.', invalid: 'License is invalid or inactive. Simulation remains available.', unavailable: 'The license could not be validated.', maxDevices: 'Maximum number of devices reached. Manage your devices in the portal.', blocked: 'Activate the license to synchronize.' },
+            fr: { title: 'Activation de la licence', desc: 'La licence déverrouille la synchronisation et les automatisations.', active: 'Active', inactive: 'Inactive', expired: 'Expirée', email: 'E-mail de la licence', device: 'Nom de l’appareil (ex. NAS du salon)', key: 'Clé de licence', activate: 'Activer la licence', note: 'Sans licence, vous pouvez simuler, mais pas démarrer/arrêter les synchronisations ni utiliser les processus automatiques.', success: 'Licence activée. Toutes les fonctionnalités sont disponibles.', invalid: 'La licence est invalide ou inactive. La simulation reste disponible.', unavailable: 'Impossible de valider la licence.', maxDevices: 'Nombre maximal d’appareils atteint. Gérez vos appareils dans le portail.', blocked: 'Activez la licence pour synchroniser.' },
+            es: { title: 'Activación de licencia', desc: 'La licencia desbloquea la sincronización y las automatizaciones.', active: 'Activa', inactive: 'Inactiva', expired: 'Caducada', email: 'Correo de la licencia', device: 'Nombre del dispositivo (p. ej. NAS del salón)', key: 'Clave de licencia', activate: 'Activar licencia', note: 'Sin licencia puede simular, pero no iniciar/detener sincronizaciones ni usar procesos automáticos.', success: 'Licencia activada. Todas las funciones están disponibles.', invalid: 'La licencia no es válida o está inactiva. La simulación sigue disponible.', unavailable: 'No se pudo validar la licencia.', maxDevices: 'Se alcanzó el número máximo de dispositivos. Gestione sus dispositivos en el portal.', blocked: 'Active la licencia para sincronizar.' },
+            de: { title: 'Lizenzaktivierung', desc: 'Die Lizenz schaltet Synchronisierung und Automatisierungen frei.', active: 'Aktiv', inactive: 'Inaktiv', expired: 'Abgelaufen', email: 'Lizenz-E-Mail', device: 'Gerätename (z. B. NAS im Wohnzimmer)', key: 'Lizenzschlüssel', activate: 'Lizenz aktivieren', note: 'Ohne Lizenz können Sie simulieren, aber keine Synchronisierungen starten/stoppen oder automatische Prozesse verwenden.', success: 'Lizenz aktiviert. Alle Funktionen sind verfügbar.', invalid: 'Die Lizenz ist ungültig oder inaktiv. Die Simulation bleibt verfügbar.', unavailable: 'Die Lizenz konnte nicht überprüft werden.', maxDevices: 'Die maximale Anzahl von Geräten wurde erreicht. Verwalten Sie Ihre Geräte im Portal.', blocked: 'Aktivieren Sie die Lizenz zum Synchronisieren.' }
         };
 
         function applyLicenseTranslations() {
@@ -1243,7 +1297,7 @@
                 if (text[key] !== undefined) element.placeholder = text[key];
             });
             const status = document.getElementById('license-status');
-            if (status) status.textContent = STATE?.license_active ? text.active : text.inactive;
+            if (status) status.textContent = STATE?.license_active ? text.active : (STATE?.license_expired ? text.expired : text.inactive);
         }
 
         let lang = 'en', tasks = [], selectedTaskId = null, socket, editingTaskId = null;
@@ -1444,7 +1498,7 @@
                     <div class="last-sync italic text-[10px] text-slate-500 mb-3">${lo.last_sync}: ${t.last_sync || '---'}</div>
                     <div class="card-footer">
                         <div class="flex gap-5">
-                            <div class="btn-action btn-sim" onclick="event.stopPropagation(); selectTask('${t.id}'); startSync('${t.id}', true)"><i class="fas fa-flask"></i> ${lo.btn_sim.toUpperCase()}</div>
+                            <div class="btn-action btn-sim" onclick="event.stopPropagation(); selectTask('${t.id}'); startSync('${t.id}', true)"><i class="fas fa-flask"></i> ${lo.btn_simulate}</div>
                             <div class="btn-action ${isRunning ? 'text-red-500' : 'btn-play'} ${!licenseActive ? 'opacity-40 cursor-not-allowed' : ''}" title="${!licenseActive ? licenseText.blocked : ''}" onclick="event.stopPropagation(); selectTask('${t.id}'); ${licenseActive ? (isRunning ? `stopSync('${t.id}')` : `startSync('${t.id}', false)`) : ''}"><i class="fas ${isRunning ? 'fa-stop' : 'fa-play'}"></i> ${isRunning ? lo.btn_stop : lo.btn_start}</div>
                         </div>
                         <div class="card-icons-right">
@@ -1648,10 +1702,12 @@
                 if (deviceName) deviceName.value = settings.license_info?.device_name || '';
                 if (status) {
                     const licenseText = licenseI18n[lang] || licenseI18n.en;
-                    status.textContent = settings.license_active ? licenseText.active : licenseText.inactive;
-                    status.className = `text-[10px] font-black uppercase tracking-wide ${settings.license_active ? 'text-emerald-400' : 'text-amber-400'}`;
+                    const expired = settings.license_expired === true;
+                    status.textContent = settings.license_active ? licenseText.active : (expired ? licenseText.expired : licenseText.inactive);
+                    status.className = `text-[10px] font-black uppercase tracking-wide ${settings.license_active ? 'text-emerald-400' : (expired ? 'text-red-400' : 'text-amber-400')}`;
                 }
                 STATE.license_active = settings.license_active === true;
+                STATE.license_expired = settings.license_expired === true;
                 refreshUI();
             } catch (e) {
                 console.error("Erro ao carregar settings:", e);
@@ -1798,8 +1854,9 @@
 					// Mapeia os itens garantindo que clicamos no nome correto
 					list.innerHTML = data.map(i => {
 						const name = typeof i === 'string' ? i : i.name;
+						const targetPath = typeof i === 'object' && i.path ? i.path : name;
 						return `
-							<div class="exp-item" onclick="goExp('${name.replace(/'/g, "\\'")}')">
+							<div class="exp-item" onclick="goExp('${targetPath.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')">
 								<i class="fas fa-folder text-yellow-500 mr-2"></i>
 								<span>${name}</span>
 							</div>`;
@@ -1812,9 +1869,9 @@
 			document.getElementById('expPath').innerText = expPath;
 		}
     
-        function goExp(f) { expPath = expPath.endsWith('/') ? expPath + f : expPath + (expPath===''?'':'/') + f; renderExp(); }
+        function goExp(f) { expPath = /^[A-Za-z]:\\/.test(f) ? f : (expPath.endsWith('/') ? expPath + f : expPath + (expPath===''?'':'/') + f); renderExp(); }
         function selRem(r) { expRemote = r; expPath = ''; renderExp(); }
-        function navUp() { if(expPath==='/' || expPath==='/mnt' || expPath==='') return; let p = expPath.split('/').filter(x=>x); p.pop(); expPath = (expMode==='local'?'/':'') + p.join('/'); renderExp(); }
+        function navUp() { if(expPath==='/' || expPath==='/mnt' || expPath==='' || /^[A-Za-z]:\\$/.test(expPath)) return; expPath = expPath.includes('\\') ? expPath.replace(/\\[^\\]*\\?$/, '') : ((expPath.split('/').filter(x=>x).slice(0,-1).join('/')) || '/'); renderExp(); }
         function confExp() { let val = expMode === 'local' ? expPath : expRemote + ":" + expPath.replace(/^\//, ''); document.getElementById(expMode === 'local' ? 'in-loc' : 'in-rem').value = val; closeExp(); }
         function closeExp() { document.getElementById('expPop').style.display = 'none'; }
         
@@ -1831,7 +1888,171 @@
 			return 'cloud';
 		}
 		
-        async function renderCloudManager() {
+		let cloudProviders = [];
+		const credentialProviders = new Set(['mega', 'ftp', 'sftp', 'webdav', 'smb']);
+		const serverProviders = new Set(['ftp', 'sftp', 'webdav', 'smb']);
+		let cloudSetupSessionId = null;
+		let cloudSetupPoller = null;
+		let cloudSetupUrl = null;
+		async function openRcloneConfigTerminal() {
+			const button = document.getElementById('cloud-terminal-button');
+			try {
+				// Quando a consola fecha, o foco volta normalmente à aplicação.
+				// Nesse momento recarregamos os remotes alterados pelo rclone.
+				window.addEventListener('focus', async () => {
+					await renderCloudManager();
+					await updateHealth();
+				}, { once: true });
+				const response = await fetch('/api/remotes/terminal/start', { method: 'POST' });
+				const status = await response.json();
+				if (!response.ok) throw new Error(status.message || 'Unable to open rclone.');
+			} catch (error) {
+				alert(error.message || 'Unable to open rclone.');
+			}
+		}
+
+		function renderCloudProviderOptions(query = '') {
+			const menu = document.getElementById('cloud-provider-menu');
+			const selected = document.getElementById('cloud-provider');
+			if (!menu || !selected) return;
+			const normalizedQuery = query.trim().toLocaleLowerCase();
+			const visibleProviders = cloudProviders.filter(provider => `${provider.name} ${provider.description || ''}`.toLocaleLowerCase().includes(normalizedQuery));
+			const search = `<div class="provider-search"><input id="cloud-provider-search" class="input-box" placeholder="Search services…" autocomplete="off" autofocus oninput="renderCloudProviderOptions(this.value)"></div>`;
+			menu.innerHTML = search + (visibleProviders.length ? visibleProviders.map(provider => `<button type="button" class="provider-option ${selected.value === provider.id ? 'is-selected' : ''}" onclick='selectCloudProvider(${JSON.stringify(provider.id)})'><strong>${provider.name}</strong>${provider.description ? `<small>${provider.description}</small>` : ''}</button>`).join('') : '<div class="p-3 text-xs text-slate-500">No matching services</div>');
+			menu.classList.remove('hidden');
+			requestAnimationFrame(() => document.getElementById('cloud-provider-search')?.focus());
+		}
+
+		function toggleCloudProviderMenu() {
+			const menu = document.getElementById('cloud-provider-menu');
+			if (menu.classList.contains('hidden')) renderCloudProviderOptions();
+			else menu.classList.add('hidden');
+		}
+		function selectCloudProvider(providerId) {
+			const provider = cloudProviders.find(item => item.id === providerId) || { id: providerId, name: providerId };
+			document.getElementById('cloud-provider').value = provider.id;
+			document.getElementById('cloud-provider-menu').classList.add('hidden');
+			document.getElementById('cloud-selected-service-name').textContent = provider.name;
+			document.getElementById('cloud-provider-group').classList.add('hidden');
+			document.getElementById('cloud-selected-service').classList.remove('hidden');
+			const needsCredentials = credentialProviders.has(provider.id.toLocaleLowerCase());
+			document.getElementById('cloud-credentials').classList.toggle('hidden', !needsCredentials);
+			document.getElementById('cloud-host-group').classList.toggle('hidden', !serverProviders.has(provider.id.toLocaleLowerCase()));
+		}
+		function changeCloudProvider() {
+			document.getElementById('cloud-provider').value = '';
+			document.getElementById('cloud-selected-service').classList.add('hidden');
+			document.getElementById('cloud-credentials').classList.add('hidden');
+			document.getElementById('cloud-provider-group').classList.remove('hidden');
+		}
+		async function openCloudCreateModal() {
+			document.getElementById('mCloudCreate').classList.remove('hidden');
+			await loadCloudProviders();
+		}
+		function closeCloudCreateModal() {
+			if (cloudSetupSessionId) fetch(`/api/remotes/setup/${cloudSetupSessionId}/cancel`, { method: 'POST' });
+			clearInterval(cloudSetupPoller);
+			cloudSetupSessionId = null;
+			cloudSetupUrl = null;
+			document.getElementById('cloud-setup-wizard').classList.add('hidden');
+			document.getElementById('cloud-create-fields').classList.remove('hidden');
+			document.getElementById('cloud-create-submit').classList.remove('hidden');
+			document.getElementById('mCloudCreate').classList.add('hidden');
+			document.getElementById('cloud-create-form').reset();
+			changeCloudProvider();
+		}
+
+		async function loadCloudProviders() {
+			const select = document.getElementById('cloud-provider');
+			if (!select || select.dataset.loaded) return;
+			try {
+				const response = await fetch('/api/remotes/providers');
+				const providers = await response.json();
+				if (!response.ok) throw new Error(providers.message);
+				cloudProviders = providers.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+				select.dataset.loaded = 'true';
+			} catch (error) {
+				alert('Unable to load services.');
+			}
+		}
+
+		async function createCloud(event) {
+			event.preventDefault();
+			const name = document.getElementById('cloud-new-name').value.trim();
+			const provider = document.getElementById('cloud-provider').value;
+			const credentials = {
+				username: document.getElementById('cloud-username').value.trim(),
+				password: document.getElementById('cloud-password').value,
+				host: document.getElementById('cloud-host').value.trim()
+			};
+			if (!credentialProviders.has(provider.toLocaleLowerCase())) return startCloudSetup(name, provider);
+			const response = await fetch('/api/remotes/create', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({name, provider, credentials}) });
+			const result = await response.json();
+			if (!response.ok) return alert(result.message || 'Unable to create cloud.');
+			closeCloudCreateModal();
+			await renderCloudManager();
+			await updateHealth();
+		}
+
+		function renderCloudSetup(status) {
+			const output = document.getElementById('cloud-setup-output');
+			output.textContent = status.output || '';
+			output.scrollTop = output.scrollHeight;
+			const match = (status.output || '').match(/https?:\/\/[^\s"']+/g);
+			cloudSetupUrl = match ? match[match.length - 1] : null;
+			document.getElementById('cloud-setup-open-link').classList.toggle('hidden', !cloudSetupUrl);
+			if (status.finished) finishCloudSetup(status);
+		}
+
+		function openCloudSetupLink() {
+			if (cloudSetupUrl) window.open(cloudSetupUrl, '_blank', 'noopener');
+		}
+
+		async function startCloudSetup(name, provider) {
+			const response = await fetch('/api/remotes/setup/start', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ name, provider }) });
+			const status = await response.json();
+			if (!response.ok) return alert(status.message || 'Unable to start the rclone setup.');
+			cloudSetupSessionId = status.session_id;
+			document.getElementById('cloud-create-fields').classList.add('hidden');
+			document.getElementById('cloud-setup-wizard').classList.remove('hidden');
+			document.getElementById('cloud-create-submit').classList.add('hidden');
+			renderCloudSetup(status);
+			if (!status.finished) {
+				clearInterval(cloudSetupPoller);
+				cloudSetupPoller = setInterval(pollCloudSetup, 700);
+			}
+		}
+
+		async function pollCloudSetup() {
+			if (!cloudSetupSessionId) return;
+			const response = await fetch(`/api/remotes/setup/${cloudSetupSessionId}`);
+			if (response.ok) renderCloudSetup(await response.json());
+		}
+
+		async function sendCloudSetupAnswer() {
+			const input = document.getElementById('cloud-setup-answer');
+			if (!cloudSetupSessionId) return;
+			const response = await fetch(`/api/remotes/setup/${cloudSetupSessionId}/answer`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ answer: input.value }) });
+			const status = await response.json();
+			if (!response.ok) return alert(status.message || 'Unable to send the answer.');
+			input.value = '';
+			renderCloudSetup(status);
+		}
+
+		async function finishCloudSetup(status) {
+			clearInterval(cloudSetupPoller);
+			cloudSetupPoller = null;
+			const completedSession = cloudSetupSessionId;
+			cloudSetupSessionId = null;
+			if (!status.success) return alert('Rclone configuration was not completed. Check the messages shown.');
+			await fetch(`/api/remotes/setup/${completedSession}/cancel`, { method: 'POST' });
+			closeCloudCreateModal();
+			await renderCloudManager();
+			await updateHealth();
+		}
+
+		async function renderCloudManager() {
+			loadCloudProviders();
 			const list = document.getElementById('cloud-manager-list');
 			const text = i18n[lang] || i18n.en;
 			list.innerHTML = `<div class="col-span-full py-10 text-center animate-pulse text-slate-500 text-xs font-bold uppercase tracking-widest">${text.clouds_loading}</div>`;

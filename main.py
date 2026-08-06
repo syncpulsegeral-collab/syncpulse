@@ -1,31 +1,50 @@
-import os, json, asyncio, subprocess, re, typing, time, signal, shutil, hashlib, uuid, platform, httpx
+import os, json, asyncio, subprocess, re, typing, time, signal, shutil, hashlib, uuid, platform, httpx, sys, threading
 from urllib.request import Request as UrlRequest, urlopen
 from urllib.error import URLError, HTTPError
 from fastapi import FastAPI, BackgroundTasks, Request, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from datetime import datetime
-from contextlib import asynccontextmanager # <--- Garante este import
 from fastapi.middleware.cors import CORSMiddleware
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from datetime import datetime, timezone
+from contextlib import asynccontextmanager # <--- Garante este import
 
 # --- CONFIGURAÇÕES DE CAMINHOS ---
 # Agora apontamos SEMPRE para as pastas dos volumes (/app e /www)
 # Assim, se editares no ZimaOS, a alteração é aplicada.
-WWW_PATH = "/www"
-CONFIG_DIR = "/config"
+IS_WINDOWS = os.name == "nt"
+APP_ROOT = os.path.dirname(sys.executable if getattr(sys, "frozen", False) else os.path.abspath(__file__))
+BUNDLE_ROOT = getattr(sys, "_MEIPASS", APP_ROOT)
+DATA_ROOT = os.getenv(
+    "SYNCPULSE_DATA_DIR",
+    os.path.join(os.getenv("APPDATA", APP_ROOT), "SyncPulse") if IS_WINDOWS else "/config",
+)
+WWW_PATH = os.path.join(BUNDLE_ROOT, "www") if IS_WINDOWS else "/www"
+CONFIG_DIR = DATA_ROOT
 CONFIG_FILE = os.path.join(CONFIG_DIR, "tasks.json")
-RCLONE_CONFIG = os.path.join(CONFIG_DIR, "rclone.conf")
+# No Windows seguimos a localização padrão do rclone, permitindo reutilizar
+# os remotes já configurados pelo utilizador fora do SyncPulse.
+RCLONE_CONFIG_DIR = os.getenv(
+    "SYNCPULSE_RCLONE_CONFIG_DIR",
+    os.path.join(os.getenv("APPDATA", os.path.expanduser("~")), "rclone") if IS_WINDOWS else CONFIG_DIR,
+)
+RCLONE_CONFIG = os.path.join(RCLONE_CONFIG_DIR, "rclone.conf")
 LOGS_DIR = os.path.join(CONFIG_DIR, "logs")
 HISTORY_FILE = os.path.join(CONFIG_DIR, "history.json")
 SETTINGS_FILE = os.path.join(CONFIG_DIR, "settings.json")
 LICENSE_FILE = os.path.join(CONFIG_DIR, "license.json")
 DEVICE_ID_FILE = os.path.join(CONFIG_DIR, "device-id")
 BISYNC_WORKDIR = os.path.join(CONFIG_DIR, "bisync")
+RCLONE_EXE = os.getenv(
+    "SYNCPULSE_RCLONE_PATH",
+    os.path.join(BUNDLE_ROOT, "rclone", "rclone.exe") if IS_WINDOWS else "rclone",
+)
 HWID_SALT = os.getenv("SYNCPULSE_HWID_SALT", "syncpulse-hwid-v1")
 LAST_BOX_CHECK_TIME = 0
+RCLONE_SETUP_SESSIONS = {}
+RCLONE_SETUP_LOCK = threading.Lock()
 
-for p in [LOGS_DIR, BISYNC_WORKDIR, "/config"]:
+for p in [LOGS_DIR, BISYNC_WORKDIR, CONFIG_DIR, RCLONE_CONFIG_DIR]:
     if not os.path.exists(p): os.makedirs(p, exist_ok=True)
     
 # --- 2. CONFIGURAÇÕES E AGENDADOR ---
@@ -85,6 +104,31 @@ def load_license():
     except (OSError, json.JSONDecodeError):
         return {}
 
+def license_is_current(license_data):
+    """Valida a data devolvida pelo servidor, usando UTC em todas as plataformas."""
+    raw_expiry = str(license_data.get("expires_at") or "").strip()
+    if not raw_expiry:
+        return False
+    try:
+        expires_at = datetime.fromisoformat(raw_expiry.replace("Z", "+00:00"))
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        return expires_at > datetime.now(timezone.utc)
+    except ValueError:
+        return False
+
+def license_is_expired(license_data):
+    raw_expiry = str(license_data.get("expires_at") or "").strip()
+    if not raw_expiry:
+        return False
+    try:
+        expires_at = datetime.fromisoformat(raw_expiry.replace("Z", "+00:00"))
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        return expires_at <= datetime.now(timezone.utc)
+    except ValueError:
+        return False
+
 def load_tasks():
     if os.path.exists(CONFIG_FILE):
         try:
@@ -102,7 +146,8 @@ def get_initial_state():
     # Validação Híbrida:
     # 1. O ficheiro tem de ter "active": true (como no teu print)
     # 2. O HWID gravado tem de ser IGUAL ao HWID atual do hardware
-    is_valid = lic.get("active") is True and lic.get("hwid") == hwid_atual
+    is_valid = lic.get("active") is True and lic.get("hwid") == hwid_atual and license_is_current(lic)
+    is_expired = lic.get("active") is True and license_is_expired(lic)
 
     return {
         "running": {}, "logs": {}, "active_files": {}, "finished_files": {},
@@ -113,11 +158,13 @@ def get_initial_state():
         # Enviamos as duas variantes para garantir que o Frontend e o Backend se entendem
         "licensed": has_saved_license,
         "license_active": is_valid, 
+        "license_expired": is_expired,
         "license_info": {
             "email": lic.get("email", ""),
             "key": lic.get("key", ""),
             "device_name": lic.get("device_name", ""),
             "activated_at": lic.get("activated_at", ""),
+            "expires_at": lic.get("expires_at", ""),
             "plan": lic.get("plan", 1),
             "active": is_valid,
             "hwid": lic.get("hwid", "")
@@ -142,6 +189,8 @@ HEALTH_CACHE = []
 # --- 1. LÓGICA DE AUTO-INSTALAÇÃO (BOOTSTRAP) ---
 # Deve correr logo no início
 def bootstrap():
+    if IS_WINDOWS:
+        return
     src_app, src_www = "/app_dist", "/www_dist"
     dst_app, dst_www, dst_config = "/app", "/www", "/config"
 
@@ -209,10 +258,12 @@ async def silent_license_check():
                 # Licença confirmada! Atualizamos o ficheiro local com a data do check
                 STATE["licensed"] = True
                 STATE["license_active"] = True
+                STATE["license_expired"] = False
                 STATE["license_info"]["active"] = True
                 STATE["license_info"]["hwid"] = hwid
                 STATE["license_info"]["last_check"] = datetime.now().isoformat()
                 STATE["license_info"]["plan"] = res_data.get("plan", STATE["license_info"].get("plan", 1))
+                STATE["license_info"]["expires_at"] = res_data.get("expires_at", "")
                 save_license(STATE["license_info"])
                 await refresh_automation_services()
                 await manager.broadcast({"type": "update", "state": STATE})
@@ -220,12 +271,13 @@ async def silent_license_check():
             else:
                 # O servidor diz que a licença já não é válida (ex: refund ou remoção de slot)
                 print(">>> [BACKGROUND] Licença revogada pelo servidor!")
-                await revoke_license_local()
+                await revoke_license_local(expired=res_data.get("reason") == "expired")
         elif response.status_code in (400, 401, 403):
             # Estas respostas recusam explicitamente a licença/HWID; não são
             # uma falha de ligação e devem bloquear a ativação local.
             print(">>> [BACKGROUND] Licença recusada pelo servidor!")
-            await revoke_license_local()
+            details = response.json()
+            await revoke_license_local(expired=details.get("reason") == "expired")
         else:
             # Servidor offline ou erro 500: mantemos o utilizador ativo (Modo Híbrido/Offline)
             print(f">>> [BACKGROUND] Servidor central indisponível ({response.status_code}).")
@@ -267,7 +319,6 @@ async def lifespan(app: FastAPI):
 
 # --- 4. AGORA SIM, CRIAR A INSTÂNCIA DA APP ---
 app = FastAPI(lifespan=lifespan)
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -347,6 +398,7 @@ async def activate_license_local(request: Request):
             "hwid": hwid,
             "device_name": device_name,
             "plan": res_data.get("plan", 1),
+            "expires_at": res_data.get("expires_at", ""),
             "activated_at": datetime.now().isoformat(),
             "last_check": datetime.now().isoformat() 
         }
@@ -360,6 +412,7 @@ async def activate_license_local(request: Request):
         # 5. ATUALIZAÇÃO DO ESTADO EM MEMÓRIA (Desbloqueio instantâneo)
         STATE["licensed"] = True
         STATE["license_active"] = True
+        STATE["license_expired"] = False
         STATE["license_info"] = license_data
 
         # 6. LIGAR MOTORES DE SINCRONIZAÇÃO (Agora que temos licença)
@@ -388,12 +441,17 @@ async def activate_license_local(request: Request):
             content={"message": "Erro ao contactar servidor de ativação."}
         )
 
-async def revoke_license_local():
+async def revoke_license_local(expired=False):
     """Bloqueia a app imediatamente se a validação falhar."""
     STATE["licensed"] = False
     STATE["license_active"] = False
-    STATE["license_info"] = {}
-    if os.path.exists(LICENSE_FILE):
+    STATE["license_expired"] = expired
+    if expired:
+        STATE["license_info"]["active"] = False
+        save_license(STATE["license_info"])
+    else:
+        STATE["license_info"] = {}
+    if not expired and os.path.exists(LICENSE_FILE):
         os.remove(LICENSE_FILE)
     
     # Parar os motores de sincronização para respeitar o bloqueio
@@ -483,7 +541,7 @@ def validate_license_with_api(email, license_key, device_name=None):
 
 def is_license_active():
     license_data = load_license()
-    return license_data.get("active") is True and license_data.get("hwid") == get_secure_hwid()
+    return license_data.get("active") is True and license_data.get("hwid") == get_secure_hwid() and license_is_current(license_data)
 
 def stop_all_realtime_watchers():
     for tid in list(WATCHERS):
@@ -1540,6 +1598,13 @@ async def rclone_worker(task, manual_simulate=False):
 @app.get("/api/browse/local")
 def browse_local_endpoint(path: str = "/mnt"):
     """Lista apenas pastas do sistema local."""
+    if IS_WINDOWS and (not path or path in {"/", "/mnt", "undefined"}):
+        import string
+        return [
+            {"name": f"{letter}:\\", "path": f"{letter}:\\", "is_dir": True, "is_drive": True}
+            for letter in string.ascii_uppercase
+            if os.path.exists(f"{letter}:\\")
+        ]
     if not path or path == "undefined":
         path = "/mnt"
     
@@ -1560,6 +1625,171 @@ def browse_local_endpoint(path: str = "/mnt"):
     except Exception as e:
         print(f"Erro ao navegar localmente em {path}: {e}")
         return []
+
+@app.get("/api/remotes/providers")
+def list_rclone_providers():
+    """Devolve os serviços suportados pelo binário rclone instalado."""
+    try:
+        result = subprocess.run(
+            [RCLONE_EXE, "--config", RCLONE_CONFIG, "config", "providers"],
+            capture_output=True, text=True, encoding="utf-8", errors="ignore", timeout=20
+        )
+        start, end = result.stdout.find("["), result.stdout.rfind("]") + 1
+        if result.returncode != 0 or start < 0 or end <= start:
+            return JSONResponse(status_code=500, content={"message": result.stderr or "Não foi possível listar os serviços."})
+        return [
+            {
+                "id": item.get("Prefix") or item.get("Name"),
+                "name": item.get("Name") or item.get("Prefix"),
+                "description": item.get("Description", ""),
+                "options": item.get("Options", []),
+            }
+            for item in json.loads(result.stdout[start:end])
+            if item.get("Prefix") or item.get("Name")
+        ]
+    except Exception as error:
+        return JSONResponse(status_code=500, content={"message": str(error)})
+
+@app.post("/api/remotes/create")
+async def create_rclone_remote(request: Request):
+    """Cria um remote e deixa o rclone tratar da autenticação OAuth quando aplicável."""
+    data = await request.json()
+    name = re.sub(r"[^A-Za-z0-9_-]", "", str(data.get("name") or ""))
+    provider = str(data.get("provider") or "").strip()
+    credentials = data.get("credentials") or {}
+    if not name or not provider:
+        return JSONResponse(status_code=400, content={"message": "Nome e serviço são obrigatórios."})
+    # Alguns backends não usam OAuth: as credenciais são guardadas no rclone,
+    # nunca devolvidas ao browser nem registadas pela aplicação.
+    credential_providers = {"mega", "ftp", "sftp", "webdav", "smb", "http"}
+    username = str(credentials.get("username") or "").strip()
+    password = str(credentials.get("password") or "")
+    host = str(credentials.get("host") or "").strip()
+    if provider.lower() in credential_providers and (not username or not password):
+        return JSONResponse(status_code=400, content={"message": "Utilizador e palavra-passe são obrigatórios para este serviço."})
+    if provider.lower() in {"ftp", "sftp", "webdav", "smb"} and not host:
+        return JSONResponse(status_code=400, content={"message": "O endereço do servidor é obrigatório para este serviço."})
+    try:
+        command = [RCLONE_EXE, "--config", RCLONE_CONFIG, "config", "create", name, provider]
+        if provider.lower() in credential_providers:
+            obscure = await asyncio.create_subprocess_exec(
+                RCLONE_EXE, "obscure", password,
+                stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+            )
+            obscured_password, obscure_error = await asyncio.wait_for(obscure.communicate(), timeout=20)
+            if obscure.returncode != 0:
+                return JSONResponse(status_code=500, content={"message": obscure_error.decode("utf-8", "ignore") or "Não foi possível proteger a palavra-passe."})
+            command.extend([f"user={username}", f"pass={obscured_password.decode('utf-8', 'ignore').strip()}"])
+            if host:
+                command.append(f"{'url' if provider.lower() == 'webdav' else 'host'}={host}")
+        else:
+            command.append("config_is_local=true")
+        proc = await asyncio.create_subprocess_exec(
+            *command, "--non-interactive",
+            stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=90)
+        if proc.returncode != 0:
+            return JSONResponse(status_code=500, content={"message": stderr.decode("utf-8", "ignore") or "O rclone não conseguiu criar a cloud."})
+        return {"status": "ok", "name": name, "output": stdout.decode("utf-8", "ignore")}
+    except Exception as error:
+        return JSONResponse(status_code=500, content={"message": str(error)})
+
+def _collect_rclone_setup_output(session_id: str):
+    """Lê a saída interactiva do rclone sem bloquear os pedidos da interface."""
+    session = RCLONE_SETUP_SESSIONS.get(session_id)
+    if not session:
+        return
+    try:
+        while True:
+            chunk = session["process"].stdout.read(1)
+            if not chunk:
+                break
+            with RCLONE_SETUP_LOCK:
+                session["output"] += chunk.decode("utf-8", "ignore")
+    finally:
+        with RCLONE_SETUP_LOCK:
+            session["finished"] = True
+
+def _rclone_setup_status(session):
+    process = session["process"]
+    return {
+        "output": session["output"],
+        "finished": session["finished"] or process.poll() is not None,
+        "success": process.poll() == 0 if process.poll() is not None else False,
+    }
+
+@app.post("/api/remotes/setup/start")
+async def start_rclone_setup(request: Request):
+    """Inicia o configurador interactivo para remotes que requerem OAuth."""
+    data = await request.json()
+    name = re.sub(r"[^A-Za-z0-9_-]", "", str(data.get("name") or ""))
+    provider = str(data.get("provider") or "").strip()
+    if not name or not provider:
+        return JSONResponse(status_code=400, content={"message": "Nome e serviço são obrigatórios."})
+    try:
+        process = subprocess.Popen(
+            [RCLONE_EXE, "--config", RCLONE_CONFIG, "config", "create", name, provider],
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+            bufsize=0,
+        )
+        session_id = uuid.uuid4().hex
+        session = {"process": process, "output": "", "finished": False}
+        RCLONE_SETUP_SESSIONS[session_id] = session
+        threading.Thread(target=_collect_rclone_setup_output, args=(session_id,), daemon=True).start()
+        await asyncio.sleep(0.25)
+        with RCLONE_SETUP_LOCK:
+            return {"session_id": session_id, **_rclone_setup_status(session)}
+    except Exception as error:
+        return JSONResponse(status_code=500, content={"message": str(error)})
+
+@app.get("/api/remotes/setup/{session_id}")
+async def get_rclone_setup(session_id: str):
+    session = RCLONE_SETUP_SESSIONS.get(session_id)
+    if not session:
+        return JSONResponse(status_code=404, content={"message": "Sessão de configuração não encontrada."})
+    with RCLONE_SETUP_LOCK:
+        return _rclone_setup_status(session)
+
+@app.post("/api/remotes/setup/{session_id}/answer")
+async def answer_rclone_setup(session_id: str, request: Request):
+    session = RCLONE_SETUP_SESSIONS.get(session_id)
+    if not session:
+        return JSONResponse(status_code=404, content={"message": "Sessão de configuração não encontrada."})
+    data = await request.json()
+    answer = str(data.get("answer") or "")
+    with RCLONE_SETUP_LOCK:
+        if session["finished"] or session["process"].poll() is not None:
+            return _rclone_setup_status(session)
+        session["process"].stdin.write((answer + "\n").encode("utf-8"))
+        session["process"].stdin.flush()
+    await asyncio.sleep(0.2)
+    with RCLONE_SETUP_LOCK:
+        return _rclone_setup_status(session)
+
+@app.post("/api/remotes/setup/{session_id}/cancel")
+def cancel_rclone_setup(session_id: str):
+    session = RCLONE_SETUP_SESSIONS.pop(session_id, None)
+    if session and session["process"].poll() is None:
+        session["process"].terminate()
+    return {"status": "cancelled"}
+
+@app.post("/api/remotes/terminal/start")
+def start_rclone_terminal():
+    """Abre o configurador nativo do rclone numa consola Windows independente."""
+    if not IS_WINDOWS:
+        return JSONResponse(status_code=400, content={"message": "Esta ação só está disponível na versão Windows."})
+    rclone_dir = os.path.dirname(RCLONE_EXE)
+    if not os.path.isfile(RCLONE_EXE):
+        return JSONResponse(status_code=500, content={"message": "Não foi encontrado o rclone instalado com a aplicação."})
+    try:
+        # Sintaxe testada no configurador Windows: o `start cmd /c` cria uma
+        # consola separada e preserva corretamente caminhos com espaços.
+        command = f'start cmd /c ""{RCLONE_EXE}" --config "{RCLONE_CONFIG}" config"'
+        subprocess.Popen(command, shell=True, cwd=rclone_dir)
+        return {"status": "ok"}
+    except Exception as error:
+        return JSONResponse(status_code=500, content={"message": str(error)})
 
 @app.get("/api/browse/remotes")
 def list_remotes_endpoint():
@@ -1703,7 +1933,8 @@ def get_settings():
         "terms_accepted": settings["terms_accepted"],
         "license_email": license_data.get("email", ""),
         "license_active": is_license_active(),
-        "license_info": {"plan": license_data.get("plan"), "device_name": license_data.get("device_name"), "activated_at": license_data.get("activated_at")}
+        "license_expired": license_is_expired(license_data),
+        "license_info": {"plan": license_data.get("plan"), "device_name": license_data.get("device_name"), "activated_at": license_data.get("activated_at"), "expires_at": license_data.get("expires_at")}
     }
 
 
