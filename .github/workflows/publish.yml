@@ -13,6 +13,10 @@ jobs:
       packages: write  # Permissão crítica aqui
       id-token: write
 
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
