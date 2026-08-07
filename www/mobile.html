@@ -287,7 +287,7 @@
     <div class="conn-title" data-i18n="conn_title">Ligar ao SyncPulse</div>
     <div class="conn-sub" data-i18n="conn_sub">Introduz o endereço do teu servidor ZimaOS ou deteta-o automaticamente na rede local.</div>
     <div class="conn-form">
-      <input type="text" id="conn-input" class="conn-input" placeholder="192.168.1.50:8000" autocapitalize="off" autocorrect="off" spellcheck="false">
+      <input type="text" id="conn-input" class="conn-input" placeholder="192.168.1.50:8000" autocapitalize="off" autocorrect="off" spellcheck="false" onkeydown="if(event.key==='Enter') handleConnectScreenSubmit()">
       <button class="conn-btn conn-btn-primary" onclick="handleConnectScreenSubmit()"><i class="fas fa-plug"></i> <span data-i18n="conn_btn_connect">Ligar</span></button>
       <button class="conn-btn conn-btn-secondary" onclick="autoDetectMDNS('conn-status', onConnectScreenSuccess)"><i class="fas fa-wifi"></i> <span data-i18n="conn_btn_auto">Detetar automaticamente</span></button>
       <div class="conn-status" id="conn-status"></div>
@@ -329,7 +329,7 @@
     <div class="settings-block">
       <div class="settings-label" data-i18n="settings_server">Servidor</div>
       <div class="server-current" id="server-current-display"><span class="dot"></span> —</div>
-      <input type="text" id="settings-server-input" class="conn-input" placeholder="192.168.1.50:8000" autocapitalize="off" autocorrect="off" spellcheck="false">
+      <input type="text" id="settings-server-input" class="conn-input" placeholder="192.168.1.50:8000" autocapitalize="off" autocorrect="off" spellcheck="false" onkeydown="if(event.key==='Enter') handleSettingsConnect()">
       <button class="conn-btn conn-btn-primary" onclick="handleSettingsConnect()"><i class="fas fa-plug"></i> <span data-i18n="conn_btn_connect">Ligar</span></button>
       <button class="conn-btn conn-btn-secondary" onclick="autoDetectMDNS('settings-conn-status', onSettingsAutoSuccess)"><i class="fas fa-wifi"></i> <span data-i18n="conn_btn_auto">Detetar automaticamente</span></button>
       <button class="conn-btn conn-btn-secondary" onclick="forgetServer()"><i class="fas fa-rotate-left"></i> <span data-i18n="conn_btn_forget">Esquecer servidor</span></button>
@@ -524,11 +524,18 @@ async function storageRemove(key) {
   localStorage.removeItem(key);
 }
 
+let lastPingError = '';
+
 function normalizeServerUrl(input) {
   let v = (input || '').trim();
   if (!v) return '';
   if (!/^https?:\/\//i.test(v)) v = 'http://' + v;
-  return v.replace(/\/+$/, '');
+  try {
+    const u = new URL(v);
+    return `${u.protocol}//${u.host}`; // mantém só protocolo+host+porta, ignora /caminho, ?query, #hash
+  } catch (e) {
+    return '';
+  }
 }
 
 function apiFetch(path, opts) {
@@ -542,11 +549,13 @@ async function pingServer(url, timeoutMs) {
   try {
     const r = await fetch(`${url}/api/discover`, { signal: controller.signal });
     clearTimeout(timer);
-    if (!r.ok) return null;
+    if (!r.ok) { lastPingError = `HTTP ${r.status}`; return null; }
     const data = await r.json();
-    return (data && data.app === 'syncpulse') ? data : null;
+    if (!(data && data.app === 'syncpulse')) { lastPingError = 'resposta inesperada do servidor'; return null; }
+    return data;
   } catch (e) {
     clearTimeout(timer);
+    lastPingError = (e && e.name === 'AbortError') ? 'tempo de espera esgotado' : ((e && e.message) || 'erro de rede');
     return null;
   }
 }
@@ -692,7 +701,7 @@ async function handleConnectScreenSubmit() {
   setStatus('conn-status', 'info', t().conn_testing);
   const ok = await connectToServer(input);
   if (ok) { setStatus('conn-status', 'success', t().conn_success); onConnectScreenSuccess(); }
-  else setStatus('conn-status', 'error', t().conn_err_fail);
+  else setStatus('conn-status', 'error', `${t().conn_err_fail} (${lastPingError})`);
 }
 
 function onConnectScreenSuccess() {
@@ -710,7 +719,7 @@ async function handleSettingsConnect() {
   setStatus('settings-conn-status', 'info', t().conn_testing);
   const ok = await connectToServer(input);
   if (ok) { setStatus('settings-conn-status', 'success', t().conn_success); onSettingsAutoSuccess(); }
-  else setStatus('settings-conn-status', 'error', t().conn_err_fail);
+  else setStatus('settings-conn-status', 'error', `${t().conn_err_fail} (${lastPingError})`);
 }
 
 function onSettingsAutoSuccess() {
@@ -1146,7 +1155,7 @@ async function boot() {
       return;
     }
     document.getElementById('conn-input').value = saved.replace(/^https?:\/\//i, '');
-    setStatus('conn-status', 'error', t().conn_err_saved_unreachable);
+    setStatus('conn-status', 'error', `${t().conn_err_saved_unreachable} (${lastPingError})`);
     return;
   }
 
