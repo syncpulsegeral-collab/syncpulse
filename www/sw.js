@@ -3,13 +3,14 @@
 // Nunca intercepta chamadas à API nem ao WebSocket — essas vão sempre à rede,
 // para o servidor configurado em SERVER_URL (que pode ser de origem diferente).
 
-const CACHE_NAME = 'syncpulse-shell-v1';
+const CACHE_NAME = 'syncpulse-shell-v2';
 const SHELL_FILES = [
   '/mobile.html',
   '/manifest.json',
   '/icon-192.png',
   '/icon-512.png',
   '/icon-512-maskable.png',
+  '/apple-touch-icon.png',
 ];
 
 self.addEventListener('install', (event) => {
