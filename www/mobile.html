@@ -2,9 +2,16 @@
 <html lang="pt">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
 <title>SyncPulse - Mobile</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#050a12">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SyncPulse">
 <link rel="icon" type="image/svg+xml" href="logo.svg">
+<link rel="apple-touch-icon" href="icon-192.png">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
@@ -230,16 +237,69 @@
   .file-mini-bar { height: 3px; border-radius: 2px; background: rgba(148,163,184,0.14); margin-top: 6px; overflow: hidden; }
   .file-mini-fill { height: 100%; border-radius: 2px; transition: width 0.3s; }
   .file-status { font-size: 8.5px; font-weight: 800; text-transform: uppercase; flex-shrink: 0; text-align: right; white-space: nowrap; letter-spacing: 0.03em; }
+
+  /* ---------- Ecrã de ligação ao servidor ---------- */
+  #connect-screen {
+    position: fixed; inset: 0; z-index: 500; background: var(--bg);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 32px 24px; text-align: center;
+  }
+  #connect-screen.hidden { display: none; }
+  .conn-logo {
+    width: 60px; height: 60px; border-radius: 16px; background: var(--accent-dim);
+    display: flex; align-items: center; justify-content: center; color: var(--accent);
+    font-size: 26px; margin-bottom: 18px;
+  }
+  .conn-title { font-size: 16px; font-weight: 800; margin-bottom: 8px; }
+  .conn-sub { font-size: 11.5px; color: var(--text-dim); margin-bottom: 26px; max-width: 280px; line-height: 1.55; }
+  .conn-form { width: 100%; max-width: 320px; }
+  .conn-input {
+    width: 100%; background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 13px 14px; color: var(--text); font-size: 13px; font-family: 'SF Mono', monospace;
+    outline: none; margin-bottom: 12px; box-sizing: border-box;
+  }
+  .conn-input:focus { border-color: var(--accent); }
+  .conn-btn {
+    width: 100%; border: none; border-radius: 12px; padding: 13px; font-size: 12px; font-weight: 800;
+    text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 10px; display: flex;
+    align-items: center; justify-content: center; gap: 8px; font-family: inherit; cursor: pointer;
+  }
+  .conn-btn-primary { background: var(--accent); color: #fff; }
+  .conn-btn-secondary { background: var(--card); color: var(--text); border: 1px solid var(--border); }
+  .conn-status { font-size: 10.5px; font-weight: 700; margin-top: 4px; min-height: 15px; }
+  .conn-status.error { color: var(--red); }
+  .conn-status.info { color: var(--accent); }
+  .conn-status.success { color: var(--green); }
+
+  .server-current {
+    display: flex; align-items: center; gap: 9px; font-size: 11px; font-family: 'SF Mono', monospace;
+    color: var(--text-dim); background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+    padding: 11px 13px; margin-bottom: 12px; word-break: break-all;
+  }
+  .server-current .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 6px var(--green); flex-shrink: 0; }
 </style>
 </head>
 <body>
+
+  <!-- ECRÃ DE LIGAÇÃO AO SERVIDOR (bloqueia a app até haver ligação) -->
+  <div id="connect-screen" class="hidden">
+    <div class="conn-logo"><i class="fas fa-satellite-dish"></i></div>
+    <div class="conn-title" data-i18n="conn_title">Ligar ao SyncPulse</div>
+    <div class="conn-sub" data-i18n="conn_sub">Introduz o endereço do teu servidor ZimaOS ou deteta-o automaticamente na rede local.</div>
+    <div class="conn-form">
+      <input type="text" id="conn-input" class="conn-input" placeholder="192.168.1.50:8000" autocapitalize="off" autocorrect="off" spellcheck="false">
+      <button class="conn-btn conn-btn-primary" onclick="handleConnectScreenSubmit()"><i class="fas fa-plug"></i> <span data-i18n="conn_btn_connect">Ligar</span></button>
+      <button class="conn-btn conn-btn-secondary" onclick="autoDetectMDNS('conn-status', onConnectScreenSuccess)"><i class="fas fa-wifi"></i> <span data-i18n="conn_btn_auto">Detetar automaticamente</span></button>
+      <div class="conn-status" id="conn-status"></div>
+    </div>
+  </div>
 
   <div class="topbar">
     <div class="topbar-title">
       <div class="conn-dot" id="conn-dot"></div>
       <div>
         <h1>SyncPulse</h1>
-        <span>Mobile Edition</span>
+        <span>ZimaOS Edition</span>
       </div>
     </div>
   </div>
@@ -265,6 +325,16 @@
   <!-- DEFINIÇÕES -->
   <div class="view" id="view-settings">
     <div class="section-title" data-i18n="settings_title">Definições</div>
+
+    <div class="settings-block">
+      <div class="settings-label" data-i18n="settings_server">Servidor</div>
+      <div class="server-current" id="server-current-display"><span class="dot"></span> —</div>
+      <input type="text" id="settings-server-input" class="conn-input" placeholder="192.168.1.50:8000" autocapitalize="off" autocorrect="off" spellcheck="false">
+      <button class="conn-btn conn-btn-primary" onclick="handleSettingsConnect()"><i class="fas fa-plug"></i> <span data-i18n="conn_btn_connect">Ligar</span></button>
+      <button class="conn-btn conn-btn-secondary" onclick="autoDetectMDNS('settings-conn-status', onSettingsAutoSuccess)"><i class="fas fa-wifi"></i> <span data-i18n="conn_btn_auto">Detetar automaticamente</span></button>
+      <button class="conn-btn conn-btn-secondary" onclick="forgetServer()"><i class="fas fa-rotate-left"></i> <span data-i18n="conn_btn_forget">Esquecer servidor</span></button>
+      <div class="conn-status" id="settings-conn-status"></div>
+    </div>
 
     <div class="settings-block">
       <div class="settings-label" data-i18n="settings_theme">Aparência</div>
@@ -335,7 +405,13 @@ const i18n = {
     last_sync:"Última sinc.", btn_simulate:"Simular", btn_start:"Iniciar", btn_stop:"Parar", opt_real:"Tempo real", daily:"Diário",
     hist_title:"Histórico de Atividade", hist_empty:"Sem registos.", hist_view_err:"Ver Erro", hist_success:"Sucesso", hist_error:"Erro", hist_sim:"Simulação", hist_sync:"Sincronização",
     files_title:"Fila de Ficheiros", file_pending:"PENDENTE", file_skipped:"SEM ALTERAÇÃO", file_error:"ERRO", file_done:"CONCLUÍDO",
-    tab_files:"Ficheiros", tab_log:"Log", log_empty:"À espera de atividade..." },
+    tab_files:"Ficheiros", tab_log:"Log", log_empty:"À espera de atividade...",
+    settings_server:"Servidor", conn_title:"Ligar ao SyncPulse", conn_sub:"Introduz o endereço do teu servidor ZimaOS ou deteta-o automaticamente na rede local.",
+    conn_btn_connect:"Ligar", conn_btn_auto:"Detetar automaticamente", conn_btn_forget:"Esquecer servidor",
+    conn_testing:"A testar ligação...", conn_success:"Ligado com sucesso.", conn_err_empty:"Introduz um endereço.",
+    conn_err_fail:"Não foi possível ligar a este endereço.", conn_err_no_mdns:"Deteção automática indisponível neste dispositivo.",
+    conn_searching:"A procurar na rede local...", conn_err_not_found:"Nenhum servidor encontrado na rede.",
+    conn_err_saved_unreachable:"O servidor guardado não respondeu. Verifica o endereço." },
   en: { nav_home:"Home", nav_clouds:"Clouds", nav_tasks:"Tasks", nav_settings:"Settings",
     home_title:"Running tasks", home_empty_title:"Nothing running", home_empty_sub:"Active tasks appear here in real time.",
     clouds_title:"Connected Clouds", clouds_used:"Used", clouds_total:"Total", clouds_empty:"No clouds configured", clouds_loading:"Loading clouds...", clouds_error:"Could not reach the server.",
@@ -346,7 +422,13 @@ const i18n = {
     last_sync:"Last sync", btn_simulate:"Simulate", btn_start:"Start", btn_stop:"Stop", opt_real:"Real-time", daily:"Daily",
     hist_title:"Activity History", hist_empty:"No records found.", hist_view_err:"View Error", hist_success:"Success", hist_error:"Error", hist_sim:"Simulation", hist_sync:"Sync",
     files_title:"Files Queue", file_pending:"PENDING", file_skipped:"NO CHANGE", file_error:"ERROR", file_done:"COMPLETED",
-    tab_files:"Files", tab_log:"Log", log_empty:"Waiting for activity..." },
+    tab_files:"Files", tab_log:"Log", log_empty:"Waiting for activity...",
+    settings_server:"Server", conn_title:"Connect to SyncPulse", conn_sub:"Enter your ZimaOS server address, or detect it automatically on the local network.",
+    conn_btn_connect:"Connect", conn_btn_auto:"Auto-detect", conn_btn_forget:"Forget server",
+    conn_testing:"Testing connection...", conn_success:"Connected successfully.", conn_err_empty:"Enter an address.",
+    conn_err_fail:"Could not connect to this address.", conn_err_no_mdns:"Auto-detect isn't available on this device.",
+    conn_searching:"Searching local network...", conn_err_not_found:"No server found on the network.",
+    conn_err_saved_unreachable:"The saved server didn't respond. Check the address." },
   es: { nav_home:"Inicio", nav_clouds:"Nubes", nav_tasks:"Tareas", nav_settings:"Ajustes",
     home_title:"Tareas en ejecución", home_empty_title:"Nada en ejecución", home_empty_sub:"Las tareas activas aparecen aquí en tiempo real.",
     clouds_title:"Nubes conectadas", clouds_used:"Usado", clouds_total:"Total", clouds_empty:"No hay nubes configuradas", clouds_loading:"Cargando nubes...", clouds_error:"No se pudo conectar al servidor.",
@@ -357,7 +439,13 @@ const i18n = {
     last_sync:"Última sinc.", btn_simulate:"Simular", btn_start:"Iniciar", btn_stop:"Detener", opt_real:"Tiempo real", daily:"Diario",
     hist_title:"Historial de actividad", hist_empty:"No hay registros.", hist_view_err:"Ver error", hist_success:"Correcto", hist_error:"Error", hist_sim:"Simulación", hist_sync:"Sincronización",
     files_title:"Cola de Archivos", file_pending:"PENDIENTE", file_skipped:"SIN CAMBIOS", file_error:"ERROR", file_done:"COMPLETADO",
-    tab_files:"Archivos", tab_log:"Registro", log_empty:"Esperando actividad..." },
+    tab_files:"Archivos", tab_log:"Registro", log_empty:"Esperando actividad...",
+    settings_server:"Servidor", conn_title:"Conectar a SyncPulse", conn_sub:"Introduce la dirección de tu servidor ZimaOS o detéctala automáticamente en la red local.",
+    conn_btn_connect:"Conectar", conn_btn_auto:"Detectar automáticamente", conn_btn_forget:"Olvidar servidor",
+    conn_testing:"Probando conexión...", conn_success:"Conectado con éxito.", conn_err_empty:"Introduce una dirección.",
+    conn_err_fail:"No se pudo conectar a esta dirección.", conn_err_no_mdns:"Detección automática no disponible en este dispositivo.",
+    conn_searching:"Buscando en la red local...", conn_err_not_found:"No se encontró ningún servidor en la red.",
+    conn_err_saved_unreachable:"El servidor guardado no respondió. Verifica la dirección." },
   fr: { nav_home:"Accueil", nav_clouds:"Clouds", nav_tasks:"Tâches", nav_settings:"Réglages",
     home_title:"Tâches en cours", home_empty_title:"Rien en cours", home_empty_sub:"Les tâches actives apparaissent ici en temps réel.",
     clouds_title:"Clouds connectés", clouds_used:"Utilisé", clouds_total:"Total", clouds_empty:"Aucun cloud configuré", clouds_loading:"Chargement des clouds...", clouds_error:"Connexion au serveur impossible.",
@@ -368,7 +456,13 @@ const i18n = {
     last_sync:"Dern. sync.", btn_simulate:"Simuler", btn_start:"Démarrer", btn_stop:"Arrêter", opt_real:"Temps réel", daily:"Quotidien",
     hist_title:"Historique d'activité", hist_empty:"Aucun enregistrement.", hist_view_err:"Voir l'erreur", hist_success:"Succès", hist_error:"Erreur", hist_sim:"Simulation", hist_sync:"Synchronisation",
     files_title:"File d'attente", file_pending:"EN ATTENTE", file_skipped:"AUCUN CHANGEMENT", file_error:"ERREUR", file_done:"TERMINÉ",
-    tab_files:"Fichiers", tab_log:"Journal", log_empty:"En attente d'activité..." },
+    tab_files:"Fichiers", tab_log:"Journal", log_empty:"En attente d'activité...",
+    settings_server:"Serveur", conn_title:"Se connecter à SyncPulse", conn_sub:"Entrez l'adresse de votre serveur ZimaOS ou détectez-le automatiquement sur le réseau local.",
+    conn_btn_connect:"Connecter", conn_btn_auto:"Détection automatique", conn_btn_forget:"Oublier le serveur",
+    conn_testing:"Test de connexion...", conn_success:"Connecté avec succès.", conn_err_empty:"Entrez une adresse.",
+    conn_err_fail:"Impossible de se connecter à cette adresse.", conn_err_no_mdns:"Détection automatique indisponible sur cet appareil.",
+    conn_searching:"Recherche sur le réseau local...", conn_err_not_found:"Aucun serveur trouvé sur le réseau.",
+    conn_err_saved_unreachable:"Le serveur enregistré n'a pas répondu. Vérifiez l'adresse." },
   de: { nav_home:"Start", nav_clouds:"Clouds", nav_tasks:"Aufgaben", nav_settings:"Einstellungen",
     home_title:"Laufende Aufgaben", home_empty_title:"Nichts läuft", home_empty_sub:"Aktive Aufgaben erscheinen hier in Echtzeit.",
     clouds_title:"Verbundene Clouds", clouds_used:"Belegt", clouds_total:"Gesamt", clouds_empty:"Keine Clouds konfiguriert", clouds_loading:"Clouds werden geladen...", clouds_error:"Server nicht erreichbar.",
@@ -379,7 +473,13 @@ const i18n = {
     last_sync:"Letzte Sync.", btn_simulate:"Simulieren", btn_start:"Starten", btn_stop:"Stoppen", opt_real:"Echtzeit", daily:"Täglich",
     hist_title:"Aktivitätsverlauf", hist_empty:"Keine Einträge gefunden.", hist_view_err:"Fehler anzeigen", hist_success:"Erfolgreich", hist_error:"Fehler", hist_sim:"Simulation", hist_sync:"Synchronisierung",
     files_title:"Warteschlange", file_pending:"AUSSTEHEND", file_skipped:"KEINE ÄNDERUNG", file_error:"FEHLER", file_done:"FERTIG",
-    tab_files:"Dateien", tab_log:"Protokoll", log_empty:"Warte auf Aktivität..." }
+    tab_files:"Dateien", tab_log:"Protokoll", log_empty:"Warte auf Aktivität...",
+    settings_server:"Server", conn_title:"Mit SyncPulse verbinden", conn_sub:"Gib die Adresse deines ZimaOS-Servers ein oder finde ihn automatisch im lokalen Netzwerk.",
+    conn_btn_connect:"Verbinden", conn_btn_auto:"Automatisch erkennen", conn_btn_forget:"Server vergessen",
+    conn_testing:"Verbindung wird getestet...", conn_success:"Erfolgreich verbunden.", conn_err_empty:"Gib eine Adresse ein.",
+    conn_err_fail:"Verbindung zu dieser Adresse nicht möglich.", conn_err_no_mdns:"Automatische Erkennung auf diesem Gerät nicht verfügbar.",
+    conn_searching:"Suche im lokalen Netzwerk...", conn_err_not_found:"Kein Server im Netzwerk gefunden.",
+    conn_err_saved_unreachable:"Der gespeicherte Server hat nicht geantwortet. Adresse prüfen." }
 };
 const LANG_LABELS = { pt:"PT", en:"EN", es:"ES", fr:"FR", de:"DE" };
 
@@ -392,6 +492,245 @@ let STATE = { running:{}, stats:{}, active_files:{}, failed_files:{}, finished_f
 let socket;
 let currentFilesTaskId = null;
 let currentFilesTab = 'files';
+let SERVER_URL = null;
+const STORAGE_KEY_SERVER = 'syncpulse_server_url';
+
+/* ==================== Servidor: storage, ligação, mDNS ==================== */
+async function storageGet(key) {
+  try {
+    if (window.Capacitor?.Plugins?.Preferences) {
+      const { value } = await window.Capacitor.Plugins.Preferences.get({ key });
+      return value;
+    }
+  } catch (e) {}
+  return localStorage.getItem(key);
+}
+async function storageSet(key, value) {
+  try {
+    if (window.Capacitor?.Plugins?.Preferences) {
+      await window.Capacitor.Plugins.Preferences.set({ key, value });
+      return;
+    }
+  } catch (e) {}
+  localStorage.setItem(key, value);
+}
+async function storageRemove(key) {
+  try {
+    if (window.Capacitor?.Plugins?.Preferences) {
+      await window.Capacitor.Plugins.Preferences.remove({ key });
+      return;
+    }
+  } catch (e) {}
+  localStorage.removeItem(key);
+}
+
+function normalizeServerUrl(input) {
+  let v = (input || '').trim();
+  if (!v) return '';
+  if (!/^https?:\/\//i.test(v)) v = 'http://' + v;
+  return v.replace(/\/+$/, '');
+}
+
+function apiFetch(path, opts) {
+  if (!SERVER_URL) return Promise.reject(new Error('Servidor não configurado'));
+  return fetch(SERVER_URL + path, opts);
+}
+
+async function pingServer(url, timeoutMs) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs || 4000);
+  try {
+    const r = await fetch(`${url}/api/discover`, { signal: controller.signal });
+    clearTimeout(timer);
+    if (!r.ok) return null;
+    const data = await r.json();
+    return (data && data.app === 'syncpulse') ? data : null;
+  } catch (e) {
+    clearTimeout(timer);
+    return null;
+  }
+}
+
+/* ---------- Varrimento de IPs na rede local ---------- */
+const COMMON_SUBNETS = ['192.168.1', '192.168.0', '192.168.68', '192.168.2', '192.168.8', '10.0.0'];
+const SCAN_PORTS = [8000];
+
+function getLocalIPHint() {
+  return new Promise((resolve) => {
+    try {
+      const pc = new RTCPeerConnection({ iceServers: [] });
+      pc.createDataChannel('');
+      let done = false;
+      pc.onicecandidate = (e) => {
+        if (done) return;
+        if (!e.candidate) { done = true; pc.close(); resolve(null); return; }
+        const m = /([0-9]{1,3}(?:\.[0-9]{1,3}){3})/.exec(e.candidate.candidate);
+        if (m && /^(10\.|172\.(1[6-9]|2\d|3[0-1])\.|192\.168\.)/.test(m[1])) {
+          done = true; pc.close(); resolve(m[1]);
+        }
+      };
+      pc.createOffer().then(offer => pc.setLocalDescription(offer)).catch(() => { if (!done) { done = true; resolve(null); } });
+      setTimeout(() => { if (!done) { done = true; try { pc.close(); } catch (e) {} resolve(null); } }, 1200);
+    } catch (e) { resolve(null); }
+  });
+}
+
+async function autoDetectScan(statusElId, onSuccess) {
+  setStatus(statusElId, 'info', t().conn_searching);
+
+  const hint = await getLocalIPHint();
+  const subnets = [];
+  if (hint) subnets.push(hint.split('.').slice(0, 3).join('.'));
+  COMMON_SUBNETS.forEach(s => { if (!subnets.includes(s)) subnets.push(s); });
+
+  const total = subnets.length * 254;
+  let scanned = 0;
+  let found = null;
+  const CONCURRENCY = 40;
+
+  scanLoop:
+  for (const subnet of subnets) {
+    const hosts = [];
+    for (let i = 1; i <= 254; i++) hosts.push(`${subnet}.${i}`);
+    for (let i = 0; i < hosts.length; i += CONCURRENCY) {
+      const batch = hosts.slice(i, i + CONCURRENCY);
+      const results = await Promise.all(batch.map(async (host) => {
+        for (const port of SCAN_PORTS) {
+          const candidate = `http://${host}:${port}`;
+          const info = await pingServer(candidate, 700);
+          if (info) return candidate;
+        }
+        return null;
+      }));
+      scanned += batch.length;
+      setStatus(statusElId, 'info', `${t().conn_searching} (${Math.min(scanned, total)}/${total})`);
+      const hit = results.find(r => r);
+      if (hit) { found = hit; break scanLoop; }
+    }
+  }
+
+  if (found) {
+    SERVER_URL = found;
+    await storageSet(STORAGE_KEY_SERVER, found);
+    setStatus(statusElId, 'success', t().conn_success);
+    if (onSuccess) onSuccess();
+  } else {
+    setStatus(statusElId, 'error', t().conn_err_not_found);
+  }
+}
+
+async function autoDetect(statusElId, onSuccess) {
+  const ZeroConf = window.Capacitor?.Plugins?.Zeroconf;
+  if (ZeroConf) return autoDetectMDNS(statusElId, onSuccess);
+  return autoDetectScan(statusElId, onSuccess);
+}
+
+function setStatus(elId, cls, text) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  el.className = 'conn-status ' + (cls || '');
+  el.textContent = text || '';
+}
+
+async function connectToServer(rawInput) {
+  const url = normalizeServerUrl(rawInput);
+  if (!url) return false;
+  const info = await pingServer(url);
+  if (!info) return false;
+  SERVER_URL = url;
+  await storageSet(STORAGE_KEY_SERVER, url);
+  return true;
+}
+
+async function autoDetectMDNS(statusElId, onSuccess) {
+  const ZeroConf = window.Capacitor?.Plugins?.Zeroconf;
+  if (!ZeroConf) {
+    setStatus(statusElId, 'error', t().conn_err_no_mdns);
+    return;
+  }
+  setStatus(statusElId, 'info', t().conn_searching);
+  let found = false;
+  try {
+    await ZeroConf.watch({ type: '_syncpulse._tcp.', domain: 'local.' }, async (result) => {
+      if (found || !result || result.action !== 'resolved') return;
+      const svc = result.service;
+      const ip = svc?.ipv4Addresses?.[0];
+      if (!ip) return;
+      const candidate = `http://${ip}:${svc.port || 8000}`;
+      const info = await pingServer(candidate);
+      if (info && !found) {
+        found = true;
+        try { await ZeroConf.close(); } catch (e) {}
+        SERVER_URL = candidate;
+        await storageSet(STORAGE_KEY_SERVER, candidate);
+        setStatus(statusElId, 'success', t().conn_success);
+        if (onSuccess) onSuccess();
+      }
+    });
+    setTimeout(async () => {
+      if (!found) {
+        try { await ZeroConf.close(); } catch (e) {}
+        setStatus(statusElId, 'error', t().conn_err_not_found);
+      }
+    }, 8000);
+  } catch (e) {
+    setStatus(statusElId, 'error', t().conn_err_no_mdns);
+  }
+}
+
+function openConnectScreen() { document.getElementById('connect-screen').classList.remove('hidden'); }
+function closeConnectScreen() { document.getElementById('connect-screen').classList.add('hidden'); }
+
+function updateServerSettingsDisplay() {
+  const el = document.getElementById('server-current-display');
+  if (el) el.innerHTML = `<span class="dot"></span> ${SERVER_URL || '—'}`;
+}
+
+async function handleConnectScreenSubmit() {
+  const input = document.getElementById('conn-input').value;
+  if (!normalizeServerUrl(input)) { setStatus('conn-status', 'error', t().conn_err_empty); return; }
+  setStatus('conn-status', 'info', t().conn_testing);
+  const ok = await connectToServer(input);
+  if (ok) { setStatus('conn-status', 'success', t().conn_success); onConnectScreenSuccess(); }
+  else setStatus('conn-status', 'error', t().conn_err_fail);
+}
+
+function onConnectScreenSuccess() {
+  closeConnectScreen();
+  document.getElementById('settings-server-input').value = SERVER_URL.replace(/^https?:\/\//i, '');
+  updateServerSettingsDisplay();
+  renderHome();
+  renderTasks();
+  connectWS();
+}
+
+async function handleSettingsConnect() {
+  const input = document.getElementById('settings-server-input').value;
+  if (!normalizeServerUrl(input)) { setStatus('settings-conn-status', 'error', t().conn_err_empty); return; }
+  setStatus('settings-conn-status', 'info', t().conn_testing);
+  const ok = await connectToServer(input);
+  if (ok) { setStatus('settings-conn-status', 'success', t().conn_success); onSettingsAutoSuccess(); }
+  else setStatus('settings-conn-status', 'error', t().conn_err_fail);
+}
+
+function onSettingsAutoSuccess() {
+  updateServerSettingsDisplay();
+  if (socket) { try { socket.close(); } catch (e) {} }
+  connectWS();
+  renderHome();
+  renderTasks();
+}
+
+async function forgetServer() {
+  await storageRemove(STORAGE_KEY_SERVER);
+  SERVER_URL = null;
+  if (socket) { try { socket.close(); } catch (e) {} socket = null; }
+  document.getElementById('conn-input').value = '';
+  document.getElementById('settings-server-input').value = '';
+  updateServerSettingsDisplay();
+  setStatus('settings-conn-status', '', '');
+  openConnectScreen();
+}
 
 /* ==================== Helpers ==================== */
 function t() { return i18n[lang] || i18n.pt; }
@@ -459,8 +798,9 @@ function switchTab(tab) {
 
 /* ==================== WebSocket ==================== */
 function connectWS() {
-  const proto = location.protocol === 'https:' ? 'wss://' : 'ws://';
-  socket = new WebSocket(proto + location.host + '/ws');
+  if (!SERVER_URL) return;
+  const wsUrl = SERVER_URL.replace(/^http/i, 'ws') + '/ws';
+  socket = new WebSocket(wsUrl);
 
   socket.onopen = () => document.getElementById('conn-dot').classList.add('online');
   socket.onclose = () => {
@@ -579,12 +919,12 @@ function renderTasks() {
 
 async function startSync(id, simulate) {
   try {
-    await fetch(`/api/sync/${id}?simulate=${simulate ? 'true' : 'false'}`, { method: 'POST' });
+    await apiFetch(`/api/sync/${id}?simulate=${simulate ? 'true' : 'false'}`, { method: 'POST' });
   } catch (e) { console.error(e); }
 }
 async function stopSync(id) {
   try {
-    await fetch(`/api/sync/stop/${id}`, { method: 'POST' });
+    await apiFetch(`/api/sync/stop/${id}`, { method: 'POST' });
   } catch (e) { console.error(e); }
 }
 /* ==================== Modais ==================== */
@@ -604,7 +944,7 @@ async function showHistory(id) {
   openModal('mHistory');
 
   try {
-    const r = await fetch(`/api/history/${id.toString()}`);
+    const r = await apiFetch(`/api/history/${id.toString()}`);
     const data = await r.json();
 
     if (!data || !Array.isArray(data) || data.length === 0) {
@@ -739,7 +1079,7 @@ async function loadClouds() {
   const list = document.getElementById('clouds-list');
   list.innerHTML = `<div class="empty-state"><i class="fas fa-circle-notch fa-spin"></i>${t().clouds_loading}</div>`;
   try {
-    const res = await fetch('/api/remotes/list_with_quota');
+    const res = await apiFetch('/api/remotes/list_with_quota');
     const remotes = await res.json();
     lastCloudsData = remotes;
     renderClouds(remotes);
@@ -785,15 +1125,41 @@ function renderClouds(remotes) {
 }
 
 /* ==================== Init ==================== */
-function init() {
+async function boot() {
   setTheme(theme);
   applyStaticI18n();
   renderLangGrid();
-  renderHome();
-  renderTasks();
-  connectWS();
+
+  const saved = await storageGet(STORAGE_KEY_SERVER);
+  if (saved) {
+    setStatus('conn-status', 'info', t().conn_testing);
+    openConnectScreen();
+    const info = await pingServer(saved, 5000);
+    if (info) {
+      SERVER_URL = saved;
+      document.getElementById('settings-server-input').value = saved.replace(/^https?:\/\//i, '');
+      updateServerSettingsDisplay();
+      closeConnectScreen();
+      renderHome();
+      renderTasks();
+      connectWS();
+      return;
+    }
+    document.getElementById('conn-input').value = saved.replace(/^https?:\/\//i, '');
+    setStatus('conn-status', 'error', t().conn_err_saved_unreachable);
+    return;
+  }
+
+  openConnectScreen();
 }
-document.addEventListener('DOMContentLoaded', init);
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  });
+}
+
+document.addEventListener('DOMContentLoaded', boot);
 </script>
 </body>
 </html>
