@@ -285,7 +285,7 @@
   <div id="connect-screen" class="hidden">
     <div class="conn-logo"><i class="fas fa-satellite-dish"></i></div>
     <div class="conn-title" data-i18n="conn_title">Ligar ao SyncPulse</div>
-    <div class="conn-sub" data-i18n="conn_sub">Introduz o endereço do teu servidor ou deteta-o automaticamente na rede local.</div>
+    <div class="conn-sub" data-i18n="conn_sub">Introduz o endereço do teu servidor ZimaOS ou deteta-o automaticamente na rede local.</div>
     <div class="conn-form">
       <input type="text" id="conn-input" class="conn-input" placeholder="192.168.1.50:8000" autocapitalize="off" autocorrect="off" spellcheck="false" onkeydown="if(event.key==='Enter') handleConnectScreenSubmit()">
       <button class="conn-btn conn-btn-primary" onclick="handleConnectScreenSubmit()"><i class="fas fa-plug"></i> <span data-i18n="conn_btn_connect">Ligar</span></button>
@@ -299,7 +299,7 @@
       <div class="conn-dot" id="conn-dot"></div>
       <div>
         <h1>SyncPulse</h1>
-        <span>Mobile Edition</span>
+        <span>ZimaOS Edition</span>
       </div>
     </div>
   </div>
@@ -406,7 +406,7 @@ const i18n = {
     hist_title:"Histórico de Atividade", hist_empty:"Sem registos.", hist_view_err:"Ver Erro", hist_success:"Sucesso", hist_error:"Erro", hist_sim:"Simulação", hist_sync:"Sincronização",
     files_title:"Fila de Ficheiros", file_pending:"PENDENTE", file_skipped:"SEM ALTERAÇÃO", file_error:"ERRO", file_done:"CONCLUÍDO",
     tab_files:"Ficheiros", tab_log:"Log", log_empty:"À espera de atividade...",
-    settings_server:"Servidor", conn_title:"Ligar ao SyncPulse", conn_sub:"Introduz o endereço do teu servidor ou deteta-o automaticamente na rede local.",
+    settings_server:"Servidor", conn_title:"Ligar ao SyncPulse", conn_sub:"Introduz o endereço do teu servidor ZimaOS ou deteta-o automaticamente na rede local.",
     conn_btn_connect:"Ligar", conn_btn_auto:"Detetar automaticamente", conn_btn_forget:"Esquecer servidor",
     conn_testing:"A testar ligação...", conn_success:"Ligado com sucesso.", conn_err_empty:"Introduz um endereço.",
     conn_err_fail:"Não foi possível ligar a este endereço.", conn_err_no_mdns:"Deteção automática indisponível neste dispositivo.",
@@ -423,7 +423,7 @@ const i18n = {
     hist_title:"Activity History", hist_empty:"No records found.", hist_view_err:"View Error", hist_success:"Success", hist_error:"Error", hist_sim:"Simulation", hist_sync:"Sync",
     files_title:"Files Queue", file_pending:"PENDING", file_skipped:"NO CHANGE", file_error:"ERROR", file_done:"COMPLETED",
     tab_files:"Files", tab_log:"Log", log_empty:"Waiting for activity...",
-    settings_server:"Server", conn_title:"Connect to SyncPulse", conn_sub:"Enter your server address, or detect it automatically on the local network.",
+    settings_server:"Server", conn_title:"Connect to SyncPulse", conn_sub:"Enter your ZimaOS server address, or detect it automatically on the local network.",
     conn_btn_connect:"Connect", conn_btn_auto:"Auto-detect", conn_btn_forget:"Forget server",
     conn_testing:"Testing connection...", conn_success:"Connected successfully.", conn_err_empty:"Enter an address.",
     conn_err_fail:"Could not connect to this address.", conn_err_no_mdns:"Auto-detect isn't available on this device.",
@@ -440,7 +440,7 @@ const i18n = {
     hist_title:"Historial de actividad", hist_empty:"No hay registros.", hist_view_err:"Ver error", hist_success:"Correcto", hist_error:"Error", hist_sim:"Simulación", hist_sync:"Sincronización",
     files_title:"Cola de Archivos", file_pending:"PENDIENTE", file_skipped:"SIN CAMBIOS", file_error:"ERROR", file_done:"COMPLETADO",
     tab_files:"Archivos", tab_log:"Registro", log_empty:"Esperando actividad...",
-    settings_server:"Servidor", conn_title:"Conectar a SyncPulse", conn_sub:"Introduce la dirección de tu servidor o detéctala automáticamente en la red local.",
+    settings_server:"Servidor", conn_title:"Conectar a SyncPulse", conn_sub:"Introduce la dirección de tu servidor ZimaOS o detéctala automáticamente en la red local.",
     conn_btn_connect:"Conectar", conn_btn_auto:"Detectar automáticamente", conn_btn_forget:"Olvidar servidor",
     conn_testing:"Probando conexión...", conn_success:"Conectado con éxito.", conn_err_empty:"Introduce una dirección.",
     conn_err_fail:"No se pudo conectar a esta dirección.", conn_err_no_mdns:"Detección automática no disponible en este dispositivo.",
@@ -457,7 +457,7 @@ const i18n = {
     hist_title:"Historique d'activité", hist_empty:"Aucun enregistrement.", hist_view_err:"Voir l'erreur", hist_success:"Succès", hist_error:"Erreur", hist_sim:"Simulation", hist_sync:"Synchronisation",
     files_title:"File d'attente", file_pending:"EN ATTENTE", file_skipped:"AUCUN CHANGEMENT", file_error:"ERREUR", file_done:"TERMINÉ",
     tab_files:"Fichiers", tab_log:"Journal", log_empty:"En attente d'activité...",
-    settings_server:"Serveur", conn_title:"Se connecter à SyncPulse", conn_sub:"Entrez l'adresse de votre serveur ou détectez-le automatiquement sur le réseau local.",
+    settings_server:"Serveur", conn_title:"Se connecter à SyncPulse", conn_sub:"Entrez l'adresse de votre serveur ZimaOS ou détectez-le automatiquement sur le réseau local.",
     conn_btn_connect:"Connecter", conn_btn_auto:"Détection automatique", conn_btn_forget:"Oublier le serveur",
     conn_testing:"Test de connexion...", conn_success:"Connecté avec succès.", conn_err_empty:"Entrez une adresse.",
     conn_err_fail:"Impossible de se connecter à cette adresse.", conn_err_no_mdns:"Détection automatique indisponible sur cet appareil.",
@@ -474,7 +474,7 @@ const i18n = {
     hist_title:"Aktivitätsverlauf", hist_empty:"Keine Einträge gefunden.", hist_view_err:"Fehler anzeigen", hist_success:"Erfolgreich", hist_error:"Fehler", hist_sim:"Simulation", hist_sync:"Synchronisierung",
     files_title:"Warteschlange", file_pending:"AUSSTEHEND", file_skipped:"KEINE ÄNDERUNG", file_error:"FEHLER", file_done:"FERTIG",
     tab_files:"Dateien", tab_log:"Protokoll", log_empty:"Warte auf Aktivität...",
-    settings_server:"Server", conn_title:"Mit SyncPulse verbinden", conn_sub:"Gib die Adresse deines Servers ein oder finde ihn automatisch im lokalen Netzwerk.",
+    settings_server:"Server", conn_title:"Mit SyncPulse verbinden", conn_sub:"Gib die Adresse deines ZimaOS-Servers ein oder finde ihn automatisch im lokalen Netzwerk.",
     conn_btn_connect:"Verbinden", conn_btn_auto:"Automatisch erkennen", conn_btn_forget:"Server vergessen",
     conn_testing:"Verbindung wird getestet...", conn_success:"Erfolgreich verbunden.", conn_err_empty:"Gib eine Adresse ein.",
     conn_err_fail:"Verbindung zu dieser Adresse nicht möglich.", conn_err_no_mdns:"Automatische Erkennung auf diesem Gerät nicht verfügbar.",
@@ -750,15 +750,46 @@ function formatSize(bytes) {
   return (bytes / Math.pow(1024, i)).toFixed(1) + " " + ['B','KB','MB','GB','TB'][i];
 }
 
-function getIcon(type) {
-  if (!type) return 'cloud';
-  type = type.toLowerCase();
-  if (type.includes('drive')) return 'google-drive';
-  if (type.includes('dropbox')) return 'dropbox';
-  if (type.includes('onedrive')) return 'microsoft';
-  if (type.includes('box')) return 'archive';
-  if (type.includes('ftp') || type.includes('sftp')) return 'server';
-  return 'cloud';
+function getIconClass(type) {
+  if (!type) return 'fas fa-cloud';
+  type = type.toLowerCase().trim();
+
+  // Correspondência exata pelos nomes de backend do rclone (evita colisões, ex: "onedrive" vs "drive")
+  const exact = {
+    'drive': 'fab fa-google-drive',
+    'googlecloudstorage': 'fab fa-google',
+    'gcs': 'fab fa-google',
+    'dropbox': 'fab fa-dropbox',
+    'onedrive': 'fab fa-microsoft',
+    'yandex': 'fab fa-yandex',
+    'box': 'fas fa-box-archive',
+    'sftp': 'fas fa-server',
+    'ftp': 'fas fa-server',
+    'webdav': 'fas fa-globe',
+    'crypt': 'fas fa-lock',
+    's3': 'fas fa-database',
+    'b2': 'fas fa-database',
+    'azureblob': 'fas fa-database',
+    'storj': 'fas fa-database',
+    'swift': 'fas fa-database',
+    'local': 'fas fa-hard-drive',
+    'mega': 'fas fa-cloud',
+    'pcloud': 'fas fa-cloud',
+  };
+  if (exact[type]) return exact[type];
+
+  // Fallback por substring, só para variantes não previstas acima
+  if (type.includes('onedrive')) return 'fab fa-microsoft';
+  if (type.includes('dropbox')) return 'fab fa-dropbox';
+  if (type.includes('drive')) return 'fab fa-google-drive';
+  if (type.includes('yandex')) return 'fab fa-yandex';
+  if (type.includes('sftp') || type.includes('ftp')) return 'fas fa-server';
+  if (type.includes('webdav')) return 'fas fa-globe';
+  if (type.includes('crypt')) return 'fas fa-lock';
+  if (['s3', 'b2', 'azureblob', 'storj', 'gcs', 'swift'].some(x => type.includes(x))) return 'fas fa-database';
+  if (type.includes('local')) return 'fas fa-hard-drive';
+  if (type.includes('mega') || type.includes('pcloud')) return 'fas fa-cloud';
+  return 'fas fa-cloud';
 }
 
 /* ==================== Theme & language ==================== */
@@ -1114,7 +1145,7 @@ function renderClouds(remotes) {
     return `
     <div class="cloud-card">
       <div class="cloud-head">
-        <div class="cloud-icon"><i class="fab fa-${getIcon(r.type)}"></i></div>
+        <div class="cloud-icon"><i class="${getIconClass(r.type)}"></i></div>
         <div>
           <div class="cloud-name">${r.name}</div>
           <div class="cloud-type">${r.type}</div>
