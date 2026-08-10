@@ -121,7 +121,11 @@
   .icon-history { color: var(--text-faint); font-size: 14px; padding: 6px; }
 
   /* ---------- Cloud cards ---------- */
-  .cloud-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; margin-bottom: 12px; }
+  .cloud-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; margin-bottom: 12px; position: relative; }
+  .cloud-warn {
+    position: absolute; top: 12px; right: 12px; color: #eab308; font-size: 15px;
+    filter: drop-shadow(0 0 4px rgba(234,179,8,0.45));
+  }
   .cloud-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
   .cloud-icon { width: 40px; height: 40px; border-radius: 10px; background: var(--accent-dim); display: flex; align-items: center; justify-content: center; color: var(--accent); flex-shrink: 0; }
   .cloud-name { font-size: 13.5px; font-weight: 800; }
@@ -266,6 +270,10 @@
   }
   .conn-btn-primary { background: var(--accent); color: #fff; }
   .conn-btn-secondary { background: var(--card); color: var(--text); border: 1px solid var(--border); }
+  .conn-btn-danger { background: rgba(239,68,68,0.12); color: var(--red); border: 1px solid rgba(239,68,68,0.3); }
+  .conn-btn-danger:active { background: rgba(239,68,68,0.2); }
+  .conn-btn[disabled] { opacity: 0.55; pointer-events: none; }
+  .settings-hint { font-size: 10px; color: var(--text-faint); line-height: 1.5; margin: -4px 0 8px; }
   .conn-status { font-size: 10.5px; font-weight: 700; margin-top: 4px; min-height: 15px; }
   .conn-status.error { color: var(--red); }
   .conn-status.info { color: var(--accent); }
@@ -285,7 +293,7 @@
   <div id="connect-screen" class="hidden">
     <div class="conn-logo"><i class="fas fa-satellite-dish"></i></div>
     <div class="conn-title" data-i18n="conn_title">Ligar ao SyncPulse</div>
-    <div class="conn-sub" data-i18n="conn_sub">Introduz o endereço do teu servidor ou deteta-o automaticamente na rede local.</div>
+    <div class="conn-sub" data-i18n="conn_sub">Introduz o endereço do teu servidor ZimaOS ou deteta-o automaticamente na rede local.</div>
     <div class="conn-form">
       <input type="text" id="conn-input" class="conn-input" placeholder="192.168.1.50:8000" autocapitalize="off" autocorrect="off" spellcheck="false" onkeydown="if(event.key==='Enter') handleConnectScreenSubmit()">
       <button class="conn-btn conn-btn-primary" onclick="handleConnectScreenSubmit()"><i class="fas fa-plug"></i> <span data-i18n="conn_btn_connect">Ligar</span></button>
@@ -299,7 +307,7 @@
       <div class="conn-dot" id="conn-dot"></div>
       <div>
         <h1>SyncPulse</h1>
-        <span>Mobile Edition</span>
+        <span>ZimaOS Edition</span>
       </div>
     </div>
   </div>
@@ -334,6 +342,13 @@
       <button class="conn-btn conn-btn-secondary" onclick="autoDetectMDNS('settings-conn-status', onSettingsAutoSuccess)"><i class="fas fa-wifi"></i> <span data-i18n="conn_btn_auto">Detetar automaticamente</span></button>
       <button class="conn-btn conn-btn-secondary" onclick="forgetServer()"><i class="fas fa-rotate-left"></i> <span data-i18n="conn_btn_forget">Esquecer servidor</span></button>
       <div class="conn-status" id="settings-conn-status"></div>
+    </div>
+
+    <div class="settings-block">
+      <div class="settings-label" data-i18n="settings_maintenance">Manutenção</div>
+      <button class="conn-btn conn-btn-danger" id="btn-restart-server" onclick="handleRestartServer()"><i class="fas fa-power-off"></i> <span data-i18n="settings_restart_btn">Reiniciar servidor</span></button>
+      <div class="settings-hint" data-i18n="settings_restart_hint">Reinicia o processo do SyncPulse no servidor (não a máquina). A app volta a ligar-se automaticamente.</div>
+      <div class="conn-status" id="restart-status"></div>
     </div>
 
     <div class="settings-block">
@@ -398,15 +413,17 @@ const i18n = {
   pt: { nav_home:"Home", nav_clouds:"Clouds", nav_tasks:"Tarefas", nav_settings:"Definições",
     home_title:"Tarefas em execução", home_empty_title:"Nada em execução", home_empty_sub:"As tarefas ativas aparecem aqui em tempo real.",
     clouds_title:"Clouds ligadas", clouds_used:"Usado", clouds_total:"Total", clouds_empty:"Nenhuma cloud configurada", clouds_loading:"A carregar clouds...", clouds_error:"Não foi possível ligar ao servidor.",
+    cloud_err_timeout:"Tempo de resposta esgotado", cloud_err_auth:"Token expirado ou sem autorização", cloud_err_connection:"Não foi possível ligar", cloud_err_unknown:"Erro desconhecido",
     tasks_title:"Todas as tarefas", tasks_empty:"Ainda não há tarefas criadas",
     settings_title:"Definições", settings_theme:"Aparência", theme_dark:"Escuro", theme_light:"Claro", settings_language:"Idioma",
+    settings_maintenance:"Manutenção", settings_restart_btn:"Reiniciar servidor", settings_restart_hint:"Reinicia o processo do SyncPulse no servidor (não a máquina). A app volta a ligar-se automaticamente.", settings_restart_confirm:"Tens a certeza? Toca outra vez para confirmar.", settings_restart_progress:"A reiniciar o servidor...",
     mode_up:"Local->Cloud", mode_down:"Cloud->Local", mode_bi:"Bidirecional",
     status_active:"Ativo", status_sim:"Simulação", status_inactive:"Inativo", status_done:"Concluído",
     last_sync:"Última sinc.", btn_simulate:"Simular", btn_start:"Iniciar", btn_stop:"Parar", opt_real:"Tempo real", daily:"Diário",
     hist_title:"Histórico de Atividade", hist_empty:"Sem registos.", hist_view_err:"Ver Erro", hist_success:"Sucesso", hist_error:"Erro", hist_sim:"Simulação", hist_sync:"Sincronização",
     files_title:"Fila de Ficheiros", file_pending:"PENDENTE", file_skipped:"SEM ALTERAÇÃO", file_error:"ERRO", file_done:"CONCLUÍDO",
     tab_files:"Ficheiros", tab_log:"Log", log_empty:"À espera de atividade...",
-    settings_server:"Servidor", conn_title:"Ligar ao SyncPulse", conn_sub:"Introduz o endereço do teu servidor ou deteta-o automaticamente na rede local.",
+    settings_server:"Servidor", conn_title:"Ligar ao SyncPulse", conn_sub:"Introduz o endereço do teu servidor ZimaOS ou deteta-o automaticamente na rede local.",
     conn_btn_connect:"Ligar", conn_btn_auto:"Detetar automaticamente", conn_btn_forget:"Esquecer servidor",
     conn_testing:"A testar ligação...", conn_success:"Ligado com sucesso.", conn_err_empty:"Introduz um endereço.",
     conn_err_fail:"Não foi possível ligar a este endereço.", conn_err_no_mdns:"Deteção automática indisponível neste dispositivo.",
@@ -415,15 +432,17 @@ const i18n = {
   en: { nav_home:"Home", nav_clouds:"Clouds", nav_tasks:"Tasks", nav_settings:"Settings",
     home_title:"Running tasks", home_empty_title:"Nothing running", home_empty_sub:"Active tasks appear here in real time.",
     clouds_title:"Connected Clouds", clouds_used:"Used", clouds_total:"Total", clouds_empty:"No clouds configured", clouds_loading:"Loading clouds...", clouds_error:"Could not reach the server.",
+    cloud_err_timeout:"Timed out", cloud_err_auth:"Token expired or unauthorized", cloud_err_connection:"Could not connect", cloud_err_unknown:"Unknown error",
     tasks_title:"All tasks", tasks_empty:"No tasks created yet",
     settings_title:"Settings", settings_theme:"Appearance", theme_dark:"Dark", theme_light:"Light", settings_language:"Language",
+    settings_maintenance:"Maintenance", settings_restart_btn:"Restart server", settings_restart_hint:"Restarts the SyncPulse process on the server (not the machine). The app will reconnect automatically.", settings_restart_confirm:"Are you sure? Tap again to confirm.", settings_restart_progress:"Restarting server...",
     mode_up:"Local->Cloud", mode_down:"Cloud->Local", mode_bi:"Bidirectional",
     status_active:"Active", status_sim:"Simulating", status_inactive:"Inactive", status_done:"Done",
     last_sync:"Last sync", btn_simulate:"Simulate", btn_start:"Start", btn_stop:"Stop", opt_real:"Real-time", daily:"Daily",
     hist_title:"Activity History", hist_empty:"No records found.", hist_view_err:"View Error", hist_success:"Success", hist_error:"Error", hist_sim:"Simulation", hist_sync:"Sync",
     files_title:"Files Queue", file_pending:"PENDING", file_skipped:"NO CHANGE", file_error:"ERROR", file_done:"COMPLETED",
     tab_files:"Files", tab_log:"Log", log_empty:"Waiting for activity...",
-    settings_server:"Server", conn_title:"Connect to SyncPulse", conn_sub:"Enter your server address, or detect it automatically on the local network.",
+    settings_server:"Server", conn_title:"Connect to SyncPulse", conn_sub:"Enter your ZimaOS server address, or detect it automatically on the local network.",
     conn_btn_connect:"Connect", conn_btn_auto:"Auto-detect", conn_btn_forget:"Forget server",
     conn_testing:"Testing connection...", conn_success:"Connected successfully.", conn_err_empty:"Enter an address.",
     conn_err_fail:"Could not connect to this address.", conn_err_no_mdns:"Auto-detect isn't available on this device.",
@@ -432,15 +451,17 @@ const i18n = {
   es: { nav_home:"Inicio", nav_clouds:"Nubes", nav_tasks:"Tareas", nav_settings:"Ajustes",
     home_title:"Tareas en ejecución", home_empty_title:"Nada en ejecución", home_empty_sub:"Las tareas activas aparecen aquí en tiempo real.",
     clouds_title:"Nubes conectadas", clouds_used:"Usado", clouds_total:"Total", clouds_empty:"No hay nubes configuradas", clouds_loading:"Cargando nubes...", clouds_error:"No se pudo conectar al servidor.",
+    cloud_err_timeout:"Tiempo de espera agotado", cloud_err_auth:"Token caducado o sin autorización", cloud_err_connection:"No se pudo conectar", cloud_err_unknown:"Error desconocido",
     tasks_title:"Todas las tareas", tasks_empty:"Aún no hay tareas creadas",
     settings_title:"Ajustes", settings_theme:"Apariencia", theme_dark:"Oscuro", theme_light:"Claro", settings_language:"Idioma",
+    settings_maintenance:"Mantenimiento", settings_restart_btn:"Reiniciar servidor", settings_restart_hint:"Reinicia el proceso de SyncPulse en el servidor (no la máquina). La app se reconectará automáticamente.", settings_restart_confirm:"¿Seguro? Toca de nuevo para confirmar.", settings_restart_progress:"Reiniciando el servidor...",
     mode_up:"Local→Nube", mode_down:"Nube→Local", mode_bi:"Bidireccional",
     status_active:"Activo", status_sim:"Simulando", status_inactive:"Inactivo", status_done:"Hecho",
     last_sync:"Última sinc.", btn_simulate:"Simular", btn_start:"Iniciar", btn_stop:"Detener", opt_real:"Tiempo real", daily:"Diario",
     hist_title:"Historial de actividad", hist_empty:"No hay registros.", hist_view_err:"Ver error", hist_success:"Correcto", hist_error:"Error", hist_sim:"Simulación", hist_sync:"Sincronización",
     files_title:"Cola de Archivos", file_pending:"PENDIENTE", file_skipped:"SIN CAMBIOS", file_error:"ERROR", file_done:"COMPLETADO",
     tab_files:"Archivos", tab_log:"Registro", log_empty:"Esperando actividad...",
-    settings_server:"Servidor", conn_title:"Conectar a SyncPulse", conn_sub:"Introduce la dirección de tu servidor o detéctala automáticamente en la red local.",
+    settings_server:"Servidor", conn_title:"Conectar a SyncPulse", conn_sub:"Introduce la dirección de tu servidor ZimaOS o detéctala automáticamente en la red local.",
     conn_btn_connect:"Conectar", conn_btn_auto:"Detectar automáticamente", conn_btn_forget:"Olvidar servidor",
     conn_testing:"Probando conexión...", conn_success:"Conectado con éxito.", conn_err_empty:"Introduce una dirección.",
     conn_err_fail:"No se pudo conectar a esta dirección.", conn_err_no_mdns:"Detección automática no disponible en este dispositivo.",
@@ -449,15 +470,17 @@ const i18n = {
   fr: { nav_home:"Accueil", nav_clouds:"Clouds", nav_tasks:"Tâches", nav_settings:"Réglages",
     home_title:"Tâches en cours", home_empty_title:"Rien en cours", home_empty_sub:"Les tâches actives apparaissent ici en temps réel.",
     clouds_title:"Clouds connectés", clouds_used:"Utilisé", clouds_total:"Total", clouds_empty:"Aucun cloud configuré", clouds_loading:"Chargement des clouds...", clouds_error:"Connexion au serveur impossible.",
+    cloud_err_timeout:"Délai d'attente dépassé", cloud_err_auth:"Jeton expiré ou non autorisé", cloud_err_connection:"Connexion impossible", cloud_err_unknown:"Erreur inconnue",
     tasks_title:"Toutes les tâches", tasks_empty:"Aucune tâche créée",
     settings_title:"Réglages", settings_theme:"Apparence", theme_dark:"Sombre", theme_light:"Clair", settings_language:"Langue",
+    settings_maintenance:"Maintenance", settings_restart_btn:"Redémarrer le serveur", settings_restart_hint:"Redémarre le processus SyncPulse sur le serveur (pas la machine). L'app se reconnectera automatiquement.", settings_restart_confirm:"Sûr ? Appuie à nouveau pour confirmer.", settings_restart_progress:"Redémarrage du serveur...",
     mode_up:"Local→Cloud", mode_down:"Cloud→Local", mode_bi:"Bidirectionnel",
     status_active:"Actif", status_sim:"Simulation", status_inactive:"Inactif", status_done:"Terminé",
     last_sync:"Dern. sync.", btn_simulate:"Simuler", btn_start:"Démarrer", btn_stop:"Arrêter", opt_real:"Temps réel", daily:"Quotidien",
     hist_title:"Historique d'activité", hist_empty:"Aucun enregistrement.", hist_view_err:"Voir l'erreur", hist_success:"Succès", hist_error:"Erreur", hist_sim:"Simulation", hist_sync:"Synchronisation",
     files_title:"File d'attente", file_pending:"EN ATTENTE", file_skipped:"AUCUN CHANGEMENT", file_error:"ERREUR", file_done:"TERMINÉ",
     tab_files:"Fichiers", tab_log:"Journal", log_empty:"En attente d'activité...",
-    settings_server:"Serveur", conn_title:"Se connecter à SyncPulse", conn_sub:"Entrez l'adresse de votre serveur ou détectez-le automatiquement sur le réseau local.",
+    settings_server:"Serveur", conn_title:"Se connecter à SyncPulse", conn_sub:"Entrez l'adresse de votre serveur ZimaOS ou détectez-le automatiquement sur le réseau local.",
     conn_btn_connect:"Connecter", conn_btn_auto:"Détection automatique", conn_btn_forget:"Oublier le serveur",
     conn_testing:"Test de connexion...", conn_success:"Connecté avec succès.", conn_err_empty:"Entrez une adresse.",
     conn_err_fail:"Impossible de se connecter à cette adresse.", conn_err_no_mdns:"Détection automatique indisponible sur cet appareil.",
@@ -466,15 +489,17 @@ const i18n = {
   de: { nav_home:"Start", nav_clouds:"Clouds", nav_tasks:"Aufgaben", nav_settings:"Einstellungen",
     home_title:"Laufende Aufgaben", home_empty_title:"Nichts läuft", home_empty_sub:"Aktive Aufgaben erscheinen hier in Echtzeit.",
     clouds_title:"Verbundene Clouds", clouds_used:"Belegt", clouds_total:"Gesamt", clouds_empty:"Keine Clouds konfiguriert", clouds_loading:"Clouds werden geladen...", clouds_error:"Server nicht erreichbar.",
+    cloud_err_timeout:"Zeitüberschreitung", cloud_err_auth:"Token abgelaufen oder nicht autorisiert", cloud_err_connection:"Verbindung nicht möglich", cloud_err_unknown:"Unbekannter Fehler",
     tasks_title:"Alle Aufgaben", tasks_empty:"Noch keine Aufgaben erstellt",
     settings_title:"Einstellungen", settings_theme:"Erscheinungsbild", theme_dark:"Dunkel", theme_light:"Hell", settings_language:"Sprache",
+    settings_maintenance:"Wartung", settings_restart_btn:"Server neu starten", settings_restart_hint:"Startet den SyncPulse-Prozess auf dem Server neu (nicht die Maschine). Die App verbindet sich automatisch neu.", settings_restart_confirm:"Sicher? Nochmal tippen zum Bestätigen.", settings_restart_progress:"Server wird neu gestartet...",
     mode_up:"Lokal→Cloud", mode_down:"Cloud→Lokal", mode_bi:"Bidirektional",
     status_active:"Aktiv", status_sim:"Simulation", status_inactive:"Inaktiv", status_done:"Fertig",
     last_sync:"Letzte Sync.", btn_simulate:"Simulieren", btn_start:"Starten", btn_stop:"Stoppen", opt_real:"Echtzeit", daily:"Täglich",
     hist_title:"Aktivitätsverlauf", hist_empty:"Keine Einträge gefunden.", hist_view_err:"Fehler anzeigen", hist_success:"Erfolgreich", hist_error:"Fehler", hist_sim:"Simulation", hist_sync:"Synchronisierung",
     files_title:"Warteschlange", file_pending:"AUSSTEHEND", file_skipped:"KEINE ÄNDERUNG", file_error:"FEHLER", file_done:"FERTIG",
     tab_files:"Dateien", tab_log:"Protokoll", log_empty:"Warte auf Aktivität...",
-    settings_server:"Server", conn_title:"Mit SyncPulse verbinden", conn_sub:"Gib die Adresse deines Servers ein oder finde ihn automatisch im lokalen Netzwerk.",
+    settings_server:"Server", conn_title:"Mit SyncPulse verbinden", conn_sub:"Gib die Adresse deines ZimaOS-Servers ein oder finde ihn automatisch im lokalen Netzwerk.",
     conn_btn_connect:"Verbinden", conn_btn_auto:"Automatisch erkennen", conn_btn_forget:"Server vergessen",
     conn_testing:"Verbindung wird getestet...", conn_success:"Erfolgreich verbunden.", conn_err_empty:"Gib eine Adresse ein.",
     conn_err_fail:"Verbindung zu dieser Adresse nicht möglich.", conn_err_no_mdns:"Automatische Erkennung auf diesem Gerät nicht verfügbar.",
@@ -739,6 +764,27 @@ async function forgetServer() {
   updateServerSettingsDisplay();
   setStatus('settings-conn-status', '', '');
   openConnectScreen();
+}
+
+let restartConfirmPending = false;
+async function handleRestartServer() {
+  const btn = document.getElementById('btn-restart-server');
+  if (!SERVER_URL) return;
+
+  if (!restartConfirmPending) {
+    restartConfirmPending = true;
+    setStatus('restart-status', 'error', t().settings_restart_confirm);
+    setTimeout(() => { restartConfirmPending = false; setStatus('restart-status', '', ''); }, 5000);
+    return;
+  }
+
+  restartConfirmPending = false;
+  btn.disabled = true;
+  setStatus('restart-status', 'info', t().settings_restart_progress);
+  try {
+    await apiFetch('/api/system/restart', { method: 'POST' });
+  } catch (e) { /* esperado: a ligação cai assim que o processo reinicia */ }
+  setTimeout(() => { if (btn) btn.disabled = false; }, 6000);
 }
 
 /* ==================== Helpers ==================== */
@@ -1141,9 +1187,12 @@ function renderClouds(remotes) {
     const used = r.quota.used || 0;
     const percent = total > 0 ? Math.round((used / total) * 100) : 0;
     const supported = r.quota.supported;
+    const hasError = r.status === 'error';
+    const errKey = { timeout: 'cloud_err_timeout', auth: 'cloud_err_auth', connection: 'cloud_err_connection' }[r.error_detail] || 'cloud_err_unknown';
 
     return `
     <div class="cloud-card">
+      ${hasError ? `<i class="fas fa-triangle-exclamation cloud-warn" title="${t()[errKey]}"></i>` : ''}
       <div class="cloud-head">
         <div class="cloud-icon"><i class="${getIconClass(r.type)}"></i></div>
         <div>

@@ -1,4 +1,4 @@
-import os, json, asyncio, subprocess, re, typing, time, signal, shutil, hashlib, uuid, platform, httpx, socket
+import os, json, asyncio, subprocess, re, typing, time, signal, shutil, hashlib, uuid, platform, httpx, socket, sys
 from urllib.request import Request as UrlRequest, urlopen
 from urllib.error import URLError, HTTPError
 from fastapi import FastAPI, BackgroundTasks, Request, WebSocket, WebSocketDisconnect
@@ -1899,21 +1899,51 @@ async def list_remotes_with_quota():
                 
                 # 2. Tenta quota, mas com timeout curto para não travar a UI
                 quota = {"total": 0, "used": 0, "free": 0, "supported": False}
+                status, error_detail = "ok", None
                 try:
                     res_about = subprocess.run(["rclone", "--config", RCLONE_CONFIG, "about", f"{name}:", "--json"], 
-                                             capture_output=True, text=True, timeout=2)
+                                             capture_output=True, text=True, timeout=8)
                     if res_about.returncode == 0:
                         data = json.loads(res_about.stdout)
                         quota = { "total": data.get("total", 0), "used": data.get("used", 0), "supported": True }
-                except: pass
+                    else:
+                        err = (res_about.stderr or "").lower()
+                        if "not supported" in err or "doesn't support" in err:
+                            pass  # backend simplesmente não reporta quota, não é um erro de ligação
+                        elif any(k in err for k in ["invalid_grant", "oauth", "token", "401", "403", "unauthorized", "authentication"]):
+                            status, error_detail = "error", "auth"
+                        elif any(k in err for k in ["timeout", "deadline", "i/o timeout"]):
+                            status, error_detail = "error", "timeout"
+                        elif any(k in err for k in ["no such host", "connection refused", "network is unreachable", "couldn't", "could not", "dial tcp"]):
+                            status, error_detail = "error", "connection"
+                        elif err.strip():
+                            status, error_detail = "error", "unknown"
+                except subprocess.TimeoutExpired:
+                    status, error_detail = "error", "timeout"
+                except Exception:
+                    pass
                 
-                remotes.append({"name": name, "type": r_type, "quota": quota})
+                remotes.append({"name": name, "type": r_type, "quota": quota, "status": status, "error_detail": error_detail})
         return remotes
     except:
         return []
 
+
 @app.get("/api/health")
 async def get_health(): return HEALTH_CACHE
+
+@app.post("/api/system/restart")
+async def restart_server():
+    """Reinicia o processo do SyncPulse (não a máquina/SO).
+    Funciona da mesma forma em Docker, Windows, macOS ou Linux: relança
+    o próprio processo com o mesmo comando que o iniciou (sys.executable +
+    sys.argv), sem precisar de privilégios elevados nem de um supervisor
+    externo configurado com política de restart."""
+    async def _do_restart():
+        await asyncio.sleep(0.6)  # dá tempo à resposta HTTP chegar ao cliente
+        os.execv(sys.executable, [sys.executable] + sys.argv)
+    asyncio.create_task(_do_restart())
+    return {"status": "restarting"}
 
 @app.get("/api/discover")
 async def discover_ping():
