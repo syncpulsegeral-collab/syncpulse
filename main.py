@@ -168,6 +168,7 @@ def get_initial_state():
     is_valid = lic.get("active") is True and lic.get("hwid") == hwid_atual
 
     return {
+        "last_error_id": {}
         "running": {}, "logs": {}, "active_files": {}, "finished_files": {},
         "all_files": {}, "skipped_files": {}, "stats": {}, "failed_files": {},
         "file_sizes": {}, "task_error": {},
@@ -1599,12 +1600,14 @@ async def rclone_worker(task, manual_simulate=False):
                 "status": "Sucesso" if operation_succeeded else "Erro",
                 "log": "\n".join(STATE["logs"].get(tid, [])[:50])
             })
-            # Sinaliza erro ao nível da tarefa mesmo quando a falha acontece
-            # antes de qualquer ficheiro começar a transferir (ex: token expirado,
-            # sem ligação ao remote) — nesses casos "failed_files" fica vazio.
-            STATE["task_error"][tid] = not operation_succeeded
-            if operation_succeeded and not manual_simulate:
-                update_last_sync(tid, completed_at)
+            
+            # GATILHO PARA PUSH: Se falhou, gera um ID de erro único (timestamp + uuid)
+            if not operation_succeeded:
+                STATE["task_error"][tid] = True
+                STATE["last_error_id"][tid] = f"{time.time()}-{tid}" # <--- ADICIONA ESTA LINHA
+            else:
+                STATE["task_error"][tid] = False
+
             STATE["running"][tid] = "idle"
             STATE["active_files"][tid] = []
             await manager.broadcast({"type": "init", "tasks": load_tasks(), "state": STATE})

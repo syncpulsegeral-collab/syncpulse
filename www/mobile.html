@@ -747,44 +747,47 @@ async function sendLocalNotification(title, body) {
 }
 
 /* Deteta o fim de tarefas (running -> idle) comparando o estado anterior com o novo */
+// Variável global para não repetir notificações na mesma sessão
+let lastNotifiedErrorIds = {};
+
 function checkTaskNotifications(oldState, newState) {
   if (!notifPrefs.enabled) return;
 
   tasks.forEach(tk => {
     const tid = String(tk.id);
-    const prevRunning = oldState.running?.[tid] || 'idle';
-    const currRunning = newState.running?.[tid] || 'idle';
     
-    // Deteta se a tarefa parou OU se um novo erro apareceu
-    const justStopped = (prevRunning !== 'idle' && currRunning === 'idle');
-    const errorTriggered = (newState.task_error?.[tid] === true && oldState.task_error?.[tid] !== true);
-
-    if (justStopped || errorTriggered) {
-      // Ignora fim de simulação sem erro
-      if (prevRunning === 'simulating' && !errorTriggered) return;
-
-      if (newState.task_error?.[tid]) {
-        if (!notifPrefs.error) return;
-
-        const logs = newState.logs?.[tid] || [];
-        // Regex flexível: Procura "ERROR" seguido ou não de espaços e dois pontos
-        const errorLine = logs.find(l => /ERROR\s*:?/i.test(l)) || "";
+    // 1. LÓGICA DE ERRO (Baseada no ID único do backend)
+    const newErrorId = newState.last_error_id ? newState.last_error_id[tid] : null;
+    
+    if (newState.task_error?.[tid] === true && newErrorId && lastNotifiedErrorIds[tid] !== newErrorId) {
+      if (notifPrefs.error) {
+        lastNotifiedErrorIds[tid] = newErrorId; // Marca como notificado
         
-        // Extrai a mensagem após o erro e limpa
+        const logs = newState.logs?.[tid] || [];
+        // Captura o erro "file_size_limit_exceeded" ou outros (403)
+        const errorLine = logs.find(l => /ERROR\s*:?/i.test(l)) || "";
         let summary = errorLine.replace(/.*ERROR\s*:?\s*/i, '').trim();
         
-        // Tradução amigável para erros de Token (comum na Box/OneDrive)
-        if (summary.includes("invalid_grant") || summary.includes("token expired")) {
-            summary = "Login expirado. Reconnect necessário nas Clouds.";
+        // Tradução para o erro específico do teu print (Limite de tamanho)
+        if (summary.includes("file_size_limit_exceeded")) {
+            summary = "Ficheiro demasiado grande para o limite desta conta.";
+        } else if (summary.includes("invalid_grant")) {
+            summary = "Login expirado. Reconnect necessário.";
         }
 
         sendLocalNotification(
           t().notif_toast_error_title, 
-          `${tk.name}: ${summary || t().notif_toast_error_fallback}`
+          `${tk.name}: ${summary.substring(0, 100) || t().notif_toast_error_fallback}`
         );
-      } 
-      else if (justStopped && prevRunning === 'active') {
-        if (!notifPrefs.success) return;
+      }
+    }
+
+    // 2. LÓGICA DE SUCESSO (Quando a tarefa para sem erro)
+    const prevRunning = oldState.running?.[tid] || 'idle';
+    const currRunning = newState.running?.[tid] || 'idle';
+
+    if (prevRunning === 'active' && currRunning === 'idle' && !newState.task_error?.[tid]) {
+      if (notifPrefs.success) {
         sendLocalNotification(
           t().notif_toast_success_title, 
           t().notif_toast_success_body.replace('{task}', tk.name)
