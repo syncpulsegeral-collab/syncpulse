@@ -514,7 +514,7 @@ if (!i18n[lang]) lang = 'pt';
 let theme = localStorage.getItem('syncpulse_theme') || 'dark';
 
 let tasks = [];
-let STATE = { running:{}, stats:{}, active_files:{}, failed_files:{}, finished_files:{}, all_files:{}, skipped_files:{}, file_sizes:{}, logs:{}, license_active:false };
+let STATE = { running:{}, stats:{}, active_files:{}, failed_files:{}, finished_files:{}, all_files:{}, skipped_files:{}, file_sizes:{}, logs:{}, task_error:{}, license_active:false };
 let socket;
 let currentFilesTaskId = null;
 let currentFilesTab = 'files';
@@ -965,7 +965,7 @@ function renderTasks() {
     const status = STATE.running[tid] || 'idle';
     const isRunning = status !== 'idle';
     const licenseActive = STATE.license_active === true;
-    const hasErrors = STATE.failed_files[tid] && STATE.failed_files[tid].length > 0;
+    const hasErrors = (STATE.failed_files[tid] && STATE.failed_files[tid].length > 0) || STATE.task_error?.[tid] === true;
 
     const syncLabel = tk.type === 'bisync' ? t().mode_bi : (tk.type === 'upload' ? t().mode_up : t().mode_down);
     const triggerText = tk.trigger === 'real' ? t().opt_real : (tk.interval === 'daily' ? `${t().daily} ${tk.daily_time || '03:00'}` : (tk.interval || '—'));

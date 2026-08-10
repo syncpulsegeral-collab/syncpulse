@@ -170,7 +170,7 @@ def get_initial_state():
     return {
         "running": {}, "logs": {}, "active_files": {}, "finished_files": {},
         "all_files": {}, "skipped_files": {}, "stats": {}, "failed_files": {},
-        "file_sizes": {},
+        "file_sizes": {}, "task_error": {},
         "auto_simulate": s.get("auto_simulate", True),
         "terms_accepted": s.get("terms_accepted", False),
         # Enviamos as duas variantes para garantir que o Frontend e o Backend se entendem
@@ -1597,6 +1597,10 @@ async def rclone_worker(task, manual_simulate=False):
                 "status": "Sucesso" if operation_succeeded else "Erro",
                 "log": "\n".join(STATE["logs"].get(tid, [])[:50])
             })
+            # Sinaliza erro ao nível da tarefa mesmo quando a falha acontece
+            # antes de qualquer ficheiro começar a transferir (ex: token expirado,
+            # sem ligação ao remote) — nesses casos "failed_files" fica vazio.
+            STATE["task_error"][tid] = not operation_succeeded
             if operation_succeeded and not manual_simulate:
                 update_last_sync(tid, completed_at)
             STATE["running"][tid] = "idle"
