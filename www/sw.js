@@ -41,6 +41,34 @@ self.addEventListener('fetch', (event) => {
   if (url.origin !== self.location.origin) return;
   if (!SHELL_FILES.includes(url.pathname)) return;
 
+// ... (mantém todo o teu código de cache acima)
+
+// Ouvinte para mensagens enviadas pela página para disparar notificações
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SHOW_NOTIFICATION') {
+    const { title, body, icon } = event.data;
+    self.registration.showNotification(title, {
+      body: body,
+      icon: icon || '/icon-192.png',
+      badge: '/logo.svg', // ícone pequeno na barra de status
+      vibrate: [200, 100, 200],
+      tag: 'syncpulse-status' // impede duplicados da mesma tarefa
+    });
+  }
+});
+
+// Abre a app ao clicar na notificação
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      if (clientList.length > 0) return clientList[0].focus();
+      return clients.openWindow('/');
+    })
+  );
+});
+
+
   event.respondWith(
     caches.match(req).then((cached) => {
       const network = fetch(req).then((res) => {
