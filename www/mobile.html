@@ -99,6 +99,7 @@
   .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-faint); flex-shrink: 0; }
   .status-dot.active { background: var(--green); box-shadow: 0 0 8px var(--green); }
   .badge { font-size: 10px; background: var(--accent-dim); padding: 3px 10px; border-radius: 15px; color: var(--text-dim); font-weight: 800; white-space: nowrap; }
+  .badge-error { background: rgba(239,68,68,0.14); color: var(--red); }
 
   .path-line { font-size: 10.5px; color: var(--text-faint); margin-bottom: 3px; font-family: 'SF Mono', monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .path-line b { color: var(--text-dim); margin-right: 4px; }
@@ -418,7 +419,7 @@ const i18n = {
     settings_title:"Definições", settings_theme:"Aparência", theme_dark:"Escuro", theme_light:"Claro", settings_language:"Idioma",
     settings_maintenance:"Manutenção", settings_restart_btn:"Reiniciar servidor", settings_restart_hint:"Reinicia o processo do SyncPulse no servidor (não a máquina). A app volta a ligar-se automaticamente.", settings_restart_confirm:"Tens a certeza? Toca outra vez para confirmar.", settings_restart_progress:"A reiniciar o servidor...",
     mode_up:"Local->Cloud", mode_down:"Cloud->Local", mode_bi:"Bidirecional",
-    status_active:"Ativo", status_sim:"Simulação", status_inactive:"Inativo", status_done:"Concluído",
+    status_active:"Ativo", status_sim:"Simulação", status_inactive:"Inativo", status_done:"Concluído", status_error:"Erro",
     last_sync:"Última sinc.", btn_simulate:"Simular", btn_start:"Iniciar", btn_stop:"Parar", opt_real:"Tempo real", daily:"Diário",
     hist_title:"Histórico de Atividade", hist_empty:"Sem registos.", hist_view_err:"Ver Erro", hist_success:"Sucesso", hist_error:"Erro", hist_sim:"Simulação", hist_sync:"Sincronização",
     files_title:"Fila de Ficheiros", file_pending:"PENDENTE", file_skipped:"SEM ALTERAÇÃO", file_error:"ERRO", file_done:"CONCLUÍDO",
@@ -437,7 +438,7 @@ const i18n = {
     settings_title:"Settings", settings_theme:"Appearance", theme_dark:"Dark", theme_light:"Light", settings_language:"Language",
     settings_maintenance:"Maintenance", settings_restart_btn:"Restart server", settings_restart_hint:"Restarts the SyncPulse process on the server (not the machine). The app will reconnect automatically.", settings_restart_confirm:"Are you sure? Tap again to confirm.", settings_restart_progress:"Restarting server...",
     mode_up:"Local->Cloud", mode_down:"Cloud->Local", mode_bi:"Bidirectional",
-    status_active:"Active", status_sim:"Simulating", status_inactive:"Inactive", status_done:"Done",
+    status_active:"Active", status_sim:"Simulating", status_inactive:"Inactive", status_done:"Done", status_error:"Error",
     last_sync:"Last sync", btn_simulate:"Simulate", btn_start:"Start", btn_stop:"Stop", opt_real:"Real-time", daily:"Daily",
     hist_title:"Activity History", hist_empty:"No records found.", hist_view_err:"View Error", hist_success:"Success", hist_error:"Error", hist_sim:"Simulation", hist_sync:"Sync",
     files_title:"Files Queue", file_pending:"PENDING", file_skipped:"NO CHANGE", file_error:"ERROR", file_done:"COMPLETED",
@@ -456,7 +457,7 @@ const i18n = {
     settings_title:"Ajustes", settings_theme:"Apariencia", theme_dark:"Oscuro", theme_light:"Claro", settings_language:"Idioma",
     settings_maintenance:"Mantenimiento", settings_restart_btn:"Reiniciar servidor", settings_restart_hint:"Reinicia el proceso de SyncPulse en el servidor (no la máquina). La app se reconectará automáticamente.", settings_restart_confirm:"¿Seguro? Toca de nuevo para confirmar.", settings_restart_progress:"Reiniciando el servidor...",
     mode_up:"Local→Nube", mode_down:"Nube→Local", mode_bi:"Bidireccional",
-    status_active:"Activo", status_sim:"Simulando", status_inactive:"Inactivo", status_done:"Hecho",
+    status_active:"Activo", status_sim:"Simulando", status_inactive:"Inactivo", status_done:"Hecho", status_error:"Error",
     last_sync:"Última sinc.", btn_simulate:"Simular", btn_start:"Iniciar", btn_stop:"Detener", opt_real:"Tiempo real", daily:"Diario",
     hist_title:"Historial de actividad", hist_empty:"No hay registros.", hist_view_err:"Ver error", hist_success:"Correcto", hist_error:"Error", hist_sim:"Simulación", hist_sync:"Sincronización",
     files_title:"Cola de Archivos", file_pending:"PENDIENTE", file_skipped:"SIN CAMBIOS", file_error:"ERROR", file_done:"COMPLETADO",
@@ -475,7 +476,7 @@ const i18n = {
     settings_title:"Réglages", settings_theme:"Apparence", theme_dark:"Sombre", theme_light:"Clair", settings_language:"Langue",
     settings_maintenance:"Maintenance", settings_restart_btn:"Redémarrer le serveur", settings_restart_hint:"Redémarre le processus SyncPulse sur le serveur (pas la machine). L'app se reconnectera automatiquement.", settings_restart_confirm:"Sûr ? Appuie à nouveau pour confirmer.", settings_restart_progress:"Redémarrage du serveur...",
     mode_up:"Local→Cloud", mode_down:"Cloud→Local", mode_bi:"Bidirectionnel",
-    status_active:"Actif", status_sim:"Simulation", status_inactive:"Inactif", status_done:"Terminé",
+    status_active:"Actif", status_sim:"Simulation", status_inactive:"Inactif", status_done:"Terminé", status_error:"Erreur",
     last_sync:"Dern. sync.", btn_simulate:"Simuler", btn_start:"Démarrer", btn_stop:"Arrêter", opt_real:"Temps réel", daily:"Quotidien",
     hist_title:"Historique d'activité", hist_empty:"Aucun enregistrement.", hist_view_err:"Voir l'erreur", hist_success:"Succès", hist_error:"Erreur", hist_sim:"Simulation", hist_sync:"Synchronisation",
     files_title:"File d'attente", file_pending:"EN ATTENTE", file_skipped:"AUCUN CHANGEMENT", file_error:"ERREUR", file_done:"TERMINÉ",
@@ -494,7 +495,7 @@ const i18n = {
     settings_title:"Einstellungen", settings_theme:"Erscheinungsbild", theme_dark:"Dunkel", theme_light:"Hell", settings_language:"Sprache",
     settings_maintenance:"Wartung", settings_restart_btn:"Server neu starten", settings_restart_hint:"Startet den SyncPulse-Prozess auf dem Server neu (nicht die Maschine). Die App verbindet sich automatisch neu.", settings_restart_confirm:"Sicher? Nochmal tippen zum Bestätigen.", settings_restart_progress:"Server wird neu gestartet...",
     mode_up:"Lokal→Cloud", mode_down:"Cloud→Lokal", mode_bi:"Bidirektional",
-    status_active:"Aktiv", status_sim:"Simulation", status_inactive:"Inaktiv", status_done:"Fertig",
+    status_active:"Aktiv", status_sim:"Simulation", status_inactive:"Inaktiv", status_done:"Fertig", status_error:"Fehler",
     last_sync:"Letzte Sync.", btn_simulate:"Simulieren", btn_start:"Starten", btn_stop:"Stoppen", opt_real:"Echtzeit", daily:"Täglich",
     hist_title:"Aktivitätsverlauf", hist_empty:"Keine Einträge gefunden.", hist_view_err:"Fehler anzeigen", hist_success:"Erfolgreich", hist_error:"Fehler", hist_sim:"Simulation", hist_sync:"Synchronisierung",
     files_title:"Warteschlange", file_pending:"AUSSTEHEND", file_skipped:"KEINE ÄNDERUNG", file_error:"FEHLER", file_done:"FERTIG",
@@ -974,6 +975,7 @@ function renderTasks() {
     if (status === 'active') statusText = t().status_active;
     if (status === 'simulating') statusText = t().status_sim;
     if (status === 'idle' && stats && stats.percent === 100) statusText = t().status_done;
+    if (hasErrors) statusText = t().status_error;
 
     return `
     <div class="card ${isRunning ? 'running' : ''}" onclick="showFiles('${tk.id}')">
@@ -981,7 +983,7 @@ function renderTasks() {
         <div class="card-title"><div class="status-dot ${isRunning ? 'active' : ''}"></div><span>${tk.name}</span></div>
         <div style="display:flex; align-items:center; gap:8px;">
           ${hasErrors ? '<i class="fas fa-triangle-exclamation" style="color:#eab308;font-size:12px;"></i>' : ''}
-          <div class="badge">${statusText}</div>
+          <div class="badge ${hasErrors ? 'badge-error' : ''}">${statusText}</div>
         </div>
       </div>
       <div class="path-line"><b>L:</b>${tk.local}</div>
