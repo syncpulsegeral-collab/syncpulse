@@ -750,50 +750,40 @@ async function sendLocalNotification(title, body) {
 // Variável global para não repetir notificações na mesma sessão
 let lastNotifiedErrorIds = {};
 
-function checkTaskNotifications(oldState, newState) {
+function checkTaskNotifications(newState) {
   if (!notifPrefs.enabled) return;
 
-  tasks.forEach(tk => {
-    const tid = String(tk.id);
-    
-    // 1. LÓGICA DE ERRO (Baseada no ID único do backend)
-    const newErrorId = newState.last_error_id ? newState.last_error_id[tid] : null;
-    
-    if (newState.task_error?.[tid] === true && newErrorId && lastNotifiedErrorIds[tid] !== newErrorId) {
-      if (notifPrefs.error) {
-        lastNotifiedErrorIds[tid] = newErrorId; // Marca como notificado
-        
-        const logs = newState.logs?.[tid] || [];
-        // Captura o erro "file_size_limit_exceeded" ou outros (403)
-        const errorLine = logs.find(l => /ERROR\s*:?/i.test(l)) || "";
-        let summary = errorLine.replace(/.*ERROR\s*:?\s*/i, '').trim();
-        
-        // Tradução para o erro específico do teu print (Limite de tamanho)
-        if (summary.includes("file_size_limit_exceeded")) {
-            summary = "Ficheiro demasiado grande para o limite desta conta.";
-        } else if (summary.includes("invalid_grant")) {
-            summary = "Login expirado. Reconnect necessário.";
-        }
+  Object.keys(newState.last_error_id).forEach(tid => {
+    const eventId = newState.last_error_id[tid];
 
-        sendLocalNotification(
-          t().notif_toast_error_title, 
-          `${tk.name}: ${summary.substring(0, 100) || t().notif_toast_error_fallback}`
-        );
-      }
+    // Se este evento (Erro ou Sucesso) já foi mostrado, ignora
+    if (lastProcessedEventIds[tid] === eventId) return;
+    
+    // Procura o nome da tarefa
+    const tk = tasks.find(t => String(t.id) === tid);
+    if (!tk) return;
+
+    // É um ERRO?
+    if (eventId.startsWith('err-')) {
+      if (!notifPrefs.error) return;
+      
+      const logs = newState.logs?.[tid] || [];
+      const errorLine = logs.find(l => /ERROR\s*:?/i.test(l)) || "";
+      let summary = errorLine.replace(/.*ERROR\s*:?\s*/i, '').trim();
+      
+      if (summary.includes("file_size_limit_exceeded")) summary = "Ficheiro demasiado grande para o destino.";
+      if (summary.includes("invalid_grant")) summary = "Login expirado. Re-autentique a Cloud.";
+
+      sendLocalNotification(t().notif_toast_error_title, `${tk.name}: ${summary || t().notif_toast_error_fallback}`);
+    } 
+    // É um SUCESSO?
+    else if (eventId.startsWith('ok-')) {
+      if (!notifPrefs.success) return;
+      sendLocalNotification(t().notif_toast_success_title, t().notif_toast_success_body.replace('{task}', tk.name));
     }
 
-    // 2. LÓGICA DE SUCESSO (Quando a tarefa para sem erro)
-    const prevRunning = oldState.running?.[tid] || 'idle';
-    const currRunning = newState.running?.[tid] || 'idle';
-
-    if (prevRunning === 'active' && currRunning === 'idle' && !newState.task_error?.[tid]) {
-      if (notifPrefs.success) {
-        sendLocalNotification(
-          t().notif_toast_success_title, 
-          t().notif_toast_success_body.replace('{task}', tk.name)
-        );
-      }
-    }
+    // Guarda este ID para não repetir
+    lastProcessedEventIds[tid] = eventId;
   });
 }
 
@@ -1183,6 +1173,8 @@ function switchTab(tab) {
 }
 
 /* ==================== WebSocket ==================== */
+let lastProcessedEventIds = {}; 
+
 function connectWS() {
   if (!SERVER_URL) return;
   const wsUrl = SERVER_URL.replace(/^http/i, 'ws') + '/ws';
@@ -1193,30 +1185,26 @@ function connectWS() {
     document.getElementById('conn-dot').classList.remove('online');
     setTimeout(connectWS, 3000);
   };
-  socket.onerror = () => socket.close();
 
-socket.onmessage = (ev) => {
+  socket.onmessage = (ev) => {
     const data = JSON.parse(ev.data);
-    const oldState = JSON.parse(JSON.stringify(STATE)); // Guarda cópia do estado antigo
     
+    // 1. Processa as notificações ANTES de atualizar o estado global
+    if (data.state && data.state.last_error_id) {
+        checkTaskNotifications(data.state);
+        checkLicenseNotifications(data.state);
+    }
+
+    // 2. Atualiza a interface normalmente
     if (data.type === 'init') {
       tasks = data.tasks || [];
       STATE = data.state || STATE;
-      // Verifica licença ao abrir a app
-      checkLicenseNotifications(STATE);
     } else if (data.type === 'update') {
       STATE = data.state || STATE;
-      
-      // GATILHO: Compara o estado antigo com o novo para disparar notificações
-      checkTaskNotifications(oldState, STATE);
     }
     
     renderHome();
     renderTasks();
-    if (currentFilesTaskId && document.getElementById('mFiles').classList.contains('open')) {
-      renderFiles();
-      if (currentFilesTab === 'log') renderLog();
-    }
   };
 }
 

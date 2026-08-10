@@ -1593,25 +1593,30 @@ async def rclone_worker(task, manual_simulate=False):
             STATE["logs"][tid].insert(0, f"ERROR: {e}")
         finally:
             completed_at = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+            # Determina se houve erro real
+            had_error = not operation_succeeded
+            
             save_history(tid, {
                 "date": completed_at,
                 "type": operation_type,
                 "mode": task.get("type", "upload"),
-                "status": "Sucesso" if operation_succeeded else "Erro",
+                "status": "Sucesso" if not had_error else "Erro",
                 "log": "\n".join(STATE["logs"].get(tid, [])[:50])
             })
-            
-            # GATILHO PARA PUSH: Se falhou, gera um ID de erro único (timestamp + uuid)
-            if not operation_succeeded:
-                STATE["task_error"][tid] = True
-                STATE["last_error_id"][tid] = f"{time.time()}-{tid}" # <--- ADICIONA ESTA LINHA
+
+            # Atualiza o estado de erro e gera ID único para o telemóvel "acordar"
+            STATE["task_error"][tid] = had_error
+            if had_error:
+                STATE["last_error_id"][tid] = f"err-{time.time()}"
             else:
-                STATE["task_error"][tid] = False
+                STATE["last_error_id"][tid] = f"ok-{time.time()}"
 
             STATE["running"][tid] = "idle"
             STATE["active_files"][tid] = []
+            
+            # Envia o estado completo (tipo init garante que o telemóvel recebe tudo)
             await manager.broadcast({"type": "init", "tasks": load_tasks(), "state": STATE})
-
+            
 # --- ENDPOINTS E SERVICES ---
 
 @app.get("/api/browse/local")
