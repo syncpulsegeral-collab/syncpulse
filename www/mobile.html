@@ -146,6 +146,24 @@
   .lang-opt { padding: 12px 6px; border-radius: 9px; border: 1px solid var(--border); background: var(--bg); text-align: center; font-size: 11px; font-weight: 800; color: var(--text-dim); }
   .lang-opt.active { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
 
+  /* ---------- Notificações (bloco colapsável) ---------- */
+  .notif-header { display: flex; align-items: center; justify-content: space-between; cursor: pointer; }
+  .notif-header i { color: var(--text-dim); font-size: 12px; transition: transform 0.25s; }
+  .notif-header.open i { transform: rotate(180deg); }
+  .notif-body { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
+  .notif-body.open { max-height: 420px; margin-top: 14px; }
+  .notif-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 0; font-size: 12px; font-weight: 700; color: var(--text); border-bottom: 1px solid var(--border); }
+  .notif-row:last-of-type { border-bottom: none; }
+  .notif-row-master { font-weight: 800; }
+  .notif-divider { height: 1px; background: var(--border); margin: 2px 0 2px; }
+  .switch { position: relative; display: inline-block; width: 42px; height: 24px; flex-shrink: 0; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .switch .slider { position: absolute; cursor: pointer; inset: 0; background: var(--border); transition: 0.25s; border-radius: 24px; }
+  .switch .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background: #fff; transition: 0.25s; border-radius: 50%; }
+  .switch input:checked + .slider { background: var(--accent); }
+  .switch input:checked + .slider:before { transform: translateX(18px); }
+  .switch input:disabled + .slider { opacity: 0.4; cursor: not-allowed; }
+
   /* ---------- Bottom nav ---------- */
   .bottom-nav {
     position: fixed; left: 0; right: 0; bottom: 0; display: flex;
@@ -346,6 +364,37 @@
     </div>
 
     <div class="settings-block">
+      <div class="notif-header" id="notif-header" onclick="toggleNotifBlock()">
+        <div class="settings-label" style="margin-bottom:0;" data-i18n="settings_notifications">Notificações</div>
+        <i class="fas fa-chevron-down"></i>
+      </div>
+      <div class="notif-body" id="notif-body">
+        <div class="notif-row notif-row-master">
+          <span data-i18n="notif_master">Ativar notificações</span>
+          <label class="switch"><input type="checkbox" id="notif-toggle-enabled" onchange="onToggleNotifMaster(this)"><span class="slider"></span></label>
+        </div>
+        <div class="notif-divider"></div>
+        <div class="notif-row">
+          <span data-i18n="notif_success">Sincronização com sucesso</span>
+          <label class="switch"><input type="checkbox" id="notif-toggle-success" onchange="onToggleNotifPref('success', this)"><span class="slider"></span></label>
+        </div>
+        <div class="notif-row">
+          <span data-i18n="notif_error">Erro na sincronização</span>
+          <label class="switch"><input type="checkbox" id="notif-toggle-error" onchange="onToggleNotifPref('error', this)"><span class="slider"></span></label>
+        </div>
+        <div class="notif-row">
+          <span data-i18n="notif_license_expiring">Licença prestes a expirar (30/15/5 dias)</span>
+          <label class="switch"><input type="checkbox" id="notif-toggle-license_expiring" onchange="onToggleNotifPref('license_expiring', this)"><span class="slider"></span></label>
+        </div>
+        <div class="notif-row">
+          <span data-i18n="notif_license_expired">Licença expirada</span>
+          <label class="switch"><input type="checkbox" id="notif-toggle-license_expired" onchange="onToggleNotifPref('license_expired', this)"><span class="slider"></span></label>
+        </div>
+        <div class="conn-status" id="notif-status"></div>
+      </div>
+    </div>
+
+    <div class="settings-block">
       <div class="settings-label" data-i18n="settings_maintenance">Manutenção</div>
       <button class="conn-btn conn-btn-danger" id="btn-restart-server" onclick="handleRestartServer()"><i class="fas fa-power-off"></i> <span data-i18n="settings_restart_btn">Reiniciar servidor</span></button>
       <div class="settings-hint" data-i18n="settings_restart_hint">Reinicia o processo do SyncPulse no servidor (não a máquina). A app volta a ligar-se automaticamente.</div>
@@ -429,7 +478,14 @@ const i18n = {
     conn_testing:"A testar ligação...", conn_success:"Ligado com sucesso.", conn_err_empty:"Introduz um endereço.",
     conn_err_fail:"Não foi possível ligar a este endereço.", conn_err_no_mdns:"Deteção automática indisponível neste dispositivo.",
     conn_searching:"A procurar na rede local...", conn_err_not_found:"Nenhum servidor encontrado na rede.",
-    conn_err_saved_unreachable:"O servidor guardado não respondeu. Verifica o endereço." },
+    conn_err_saved_unreachable:"O servidor guardado não respondeu. Verifica o endereço.",
+    settings_notifications:"Notificações", notif_master:"Ativar notificações", notif_success:"Sincronização com sucesso", notif_error:"Erro na sincronização",
+    notif_license_expiring:"Licença prestes a expirar (30/15/5 dias)", notif_license_expired:"Licença expirada",
+    notif_permission_denied:"Permissão de notificações negada. Ativa-a nas definições do telemóvel.",
+    notif_toast_success_title:"Sincronização concluída", notif_toast_success_body:"{task} foi sincronizada com sucesso.",
+    notif_toast_error_title:"Erro na sincronização", notif_toast_error_fallback:"Ocorreu um erro. Consulta o registo na app.",
+    notif_toast_expiring_title:"A tua licença está prestes a expirar", notif_toast_expiring_body:"Faltam {days} dias para a tua licença SyncPulse expirar.",
+    notif_toast_expired_title:"Licença expirada", notif_toast_expired_body:"A tua licença SyncPulse expirou. Renova para continuares a sincronizar." },
   en: { nav_home:"Home", nav_clouds:"Clouds", nav_tasks:"Tasks", nav_settings:"Settings",
     home_title:"Running tasks", home_empty_title:"Nothing running", home_empty_sub:"Active tasks appear here in real time.",
     clouds_title:"Connected Clouds", clouds_used:"Used", clouds_total:"Total", clouds_empty:"No clouds configured", clouds_loading:"Loading clouds...", clouds_error:"Could not reach the server.",
@@ -448,7 +504,14 @@ const i18n = {
     conn_testing:"Testing connection...", conn_success:"Connected successfully.", conn_err_empty:"Enter an address.",
     conn_err_fail:"Could not connect to this address.", conn_err_no_mdns:"Auto-detect isn't available on this device.",
     conn_searching:"Searching local network...", conn_err_not_found:"No server found on the network.",
-    conn_err_saved_unreachable:"The saved server didn't respond. Check the address." },
+    conn_err_saved_unreachable:"The saved server didn't respond. Check the address.",
+    settings_notifications:"Notifications", notif_master:"Enable notifications", notif_success:"Successful sync", notif_error:"Sync error",
+    notif_license_expiring:"License about to expire (30/15/5 days)", notif_license_expired:"License expired",
+    notif_permission_denied:"Notification permission denied. Enable it in your phone settings.",
+    notif_toast_success_title:"Sync completed", notif_toast_success_body:"{task} synced successfully.",
+    notif_toast_error_title:"Sync error", notif_toast_error_fallback:"An error occurred. Check the log in the app.",
+    notif_toast_expiring_title:"Your license is about to expire", notif_toast_expiring_body:"{days} days left until your SyncPulse license expires.",
+    notif_toast_expired_title:"License expired", notif_toast_expired_body:"Your SyncPulse license has expired. Renew it to keep syncing." },
   es: { nav_home:"Inicio", nav_clouds:"Nubes", nav_tasks:"Tareas", nav_settings:"Ajustes",
     home_title:"Tareas en ejecución", home_empty_title:"Nada en ejecución", home_empty_sub:"Las tareas activas aparecen aquí en tiempo real.",
     clouds_title:"Nubes conectadas", clouds_used:"Usado", clouds_total:"Total", clouds_empty:"No hay nubes configuradas", clouds_loading:"Cargando nubes...", clouds_error:"No se pudo conectar al servidor.",
@@ -467,7 +530,14 @@ const i18n = {
     conn_testing:"Probando conexión...", conn_success:"Conectado con éxito.", conn_err_empty:"Introduce una dirección.",
     conn_err_fail:"No se pudo conectar a esta dirección.", conn_err_no_mdns:"Detección automática no disponible en este dispositivo.",
     conn_searching:"Buscando en la red local...", conn_err_not_found:"No se encontró ningún servidor en la red.",
-    conn_err_saved_unreachable:"El servidor guardado no respondió. Verifica la dirección." },
+    conn_err_saved_unreachable:"El servidor guardado no respondió. Verifica la dirección.",
+    settings_notifications:"Notificaciones", notif_master:"Activar notificaciones", notif_success:"Sincronización correcta", notif_error:"Error de sincronización",
+    notif_license_expiring:"Licencia a punto de caducar (30/15/5 días)", notif_license_expired:"Licencia caducada",
+    notif_permission_denied:"Permiso de notificaciones denegado. Actívalo en los ajustes del teléfono.",
+    notif_toast_success_title:"Sincronización completada", notif_toast_success_body:"{task} se sincronizó correctamente.",
+    notif_toast_error_title:"Error de sincronización", notif_toast_error_fallback:"Se produjo un error. Consulta el registro en la app.",
+    notif_toast_expiring_title:"Tu licencia está a punto de caducar", notif_toast_expiring_body:"Quedan {days} días para que caduque tu licencia SyncPulse.",
+    notif_toast_expired_title:"Licencia caducada", notif_toast_expired_body:"Tu licencia SyncPulse ha caducado. Renuévala para seguir sincronizando." },
   fr: { nav_home:"Accueil", nav_clouds:"Clouds", nav_tasks:"Tâches", nav_settings:"Réglages",
     home_title:"Tâches en cours", home_empty_title:"Rien en cours", home_empty_sub:"Les tâches actives apparaissent ici en temps réel.",
     clouds_title:"Clouds connectés", clouds_used:"Utilisé", clouds_total:"Total", clouds_empty:"Aucun cloud configuré", clouds_loading:"Chargement des clouds...", clouds_error:"Connexion au serveur impossible.",
@@ -486,7 +556,14 @@ const i18n = {
     conn_testing:"Test de connexion...", conn_success:"Connecté avec succès.", conn_err_empty:"Entrez une adresse.",
     conn_err_fail:"Impossible de se connecter à cette adresse.", conn_err_no_mdns:"Détection automatique indisponible sur cet appareil.",
     conn_searching:"Recherche sur le réseau local...", conn_err_not_found:"Aucun serveur trouvé sur le réseau.",
-    conn_err_saved_unreachable:"Le serveur enregistré n'a pas répondu. Vérifiez l'adresse." },
+    conn_err_saved_unreachable:"Le serveur enregistré n'a pas répondu. Vérifiez l'adresse.",
+    settings_notifications:"Notifications", notif_master:"Activer les notifications", notif_success:"Synchronisation réussie", notif_error:"Erreur de synchronisation",
+    notif_license_expiring:"Licence bientôt expirée (30/15/5 jours)", notif_license_expired:"Licence expirée",
+    notif_permission_denied:"Permission de notifications refusée. Active-la dans les réglages du téléphone.",
+    notif_toast_success_title:"Synchronisation terminée", notif_toast_success_body:"{task} a été synchronisée avec succès.",
+    notif_toast_error_title:"Erreur de synchronisation", notif_toast_error_fallback:"Une erreur est survenue. Consulte le journal dans l'app.",
+    notif_toast_expiring_title:"Ta licence arrive bientôt à expiration", notif_toast_expiring_body:"Il reste {days} jours avant l'expiration de ta licence SyncPulse.",
+    notif_toast_expired_title:"Licence expirée", notif_toast_expired_body:"Ta licence SyncPulse a expiré. Renouvelle-la pour continuer à synchroniser." },
   de: { nav_home:"Start", nav_clouds:"Clouds", nav_tasks:"Aufgaben", nav_settings:"Einstellungen",
     home_title:"Laufende Aufgaben", home_empty_title:"Nichts läuft", home_empty_sub:"Aktive Aufgaben erscheinen hier in Echtzeit.",
     clouds_title:"Verbundene Clouds", clouds_used:"Belegt", clouds_total:"Gesamt", clouds_empty:"Keine Clouds konfiguriert", clouds_loading:"Clouds werden geladen...", clouds_error:"Server nicht erreichbar.",
@@ -505,7 +582,14 @@ const i18n = {
     conn_testing:"Verbindung wird getestet...", conn_success:"Erfolgreich verbunden.", conn_err_empty:"Gib eine Adresse ein.",
     conn_err_fail:"Verbindung zu dieser Adresse nicht möglich.", conn_err_no_mdns:"Automatische Erkennung auf diesem Gerät nicht verfügbar.",
     conn_searching:"Suche im lokalen Netzwerk...", conn_err_not_found:"Kein Server im Netzwerk gefunden.",
-    conn_err_saved_unreachable:"Der gespeicherte Server hat nicht geantwortet. Adresse prüfen." }
+    conn_err_saved_unreachable:"Der gespeicherte Server hat nicht geantwortet. Adresse prüfen.",
+    settings_notifications:"Benachrichtigungen", notif_master:"Benachrichtigungen aktivieren", notif_success:"Erfolgreiche Synchronisierung", notif_error:"Synchronisierungsfehler",
+    notif_license_expiring:"Lizenz läuft bald ab (30/15/5 Tage)", notif_license_expired:"Lizenz abgelaufen",
+    notif_permission_denied:"Benachrichtigungsberechtigung verweigert. Aktiviere sie in den Telefoneinstellungen.",
+    notif_toast_success_title:"Synchronisierung abgeschlossen", notif_toast_success_body:"{task} wurde erfolgreich synchronisiert.",
+    notif_toast_error_title:"Synchronisierungsfehler", notif_toast_error_fallback:"Ein Fehler ist aufgetreten. Prüfe das Protokoll in der App.",
+    notif_toast_expiring_title:"Deine Lizenz läuft bald ab", notif_toast_expiring_body:"Noch {days} Tage, bis deine SyncPulse-Lizenz abläuft.",
+    notif_toast_expired_title:"Lizenz abgelaufen", notif_toast_expired_body:"Deine SyncPulse-Lizenz ist abgelaufen. Erneuere sie, um weiter zu synchronisieren." }
 };
 const LANG_LABELS = { pt:"PT", en:"EN", es:"ES", fr:"FR", de:"DE" };
 
@@ -548,6 +632,169 @@ async function storageRemove(key) {
     }
   } catch (e) {}
   localStorage.removeItem(key);
+}
+
+/* ==================== Notificações push (locais) ==================== */
+const NOTIF_KEYS = { success: 'syncpulse_notif_success', error: 'syncpulse_notif_error', license_expiring: 'syncpulse_notif_license_expiring', license_expired: 'syncpulse_notif_license_expired' };
+let notifPrefs = { enabled: false, success: true, error: true, license_expiring: true, license_expired: true };
+let notifIdCounter = Math.floor(Date.now() / 1000) % 1000000;
+
+async function loadNotifPrefs() {
+  const enabledVal = await storageGet('syncpulse_notif_enabled');
+  notifPrefs.enabled = enabledVal === 'true';
+  for (const k of Object.keys(NOTIF_KEYS)) {
+    const v = await storageGet(NOTIF_KEYS[k]);
+    notifPrefs[k] = v === null || v === undefined ? true : v === 'true';
+  }
+  renderNotifSettings();
+}
+
+function renderNotifSettings() {
+  const masterEl = document.getElementById('notif-toggle-enabled');
+  if (!masterEl) return;
+  masterEl.checked = notifPrefs.enabled;
+  for (const k of Object.keys(NOTIF_KEYS)) {
+    const el = document.getElementById('notif-toggle-' + k);
+    if (!el) continue;
+    el.checked = notifPrefs[k];
+    el.disabled = !notifPrefs.enabled;
+  }
+}
+
+function toggleNotifBlock() {
+  document.getElementById('notif-body').classList.toggle('open');
+  document.getElementById('notif-header').classList.toggle('open');
+}
+
+async function requestNotificationPermission() {
+  try {
+    if (window.Capacitor?.Plugins?.LocalNotifications) {
+      const res = await window.Capacitor.Plugins.LocalNotifications.requestPermissions();
+      return res && res.display === 'granted';
+    }
+  } catch (e) {}
+  try {
+    if ('Notification' in window) {
+      if (Notification.permission === 'granted') return true;
+      if (Notification.permission === 'denied') return false;
+      const perm = await Notification.requestPermission();
+      return perm === 'granted';
+    }
+  } catch (e) {}
+  return false;
+}
+
+async function onToggleNotifMaster(checkbox) {
+  if (checkbox.checked) {
+    const granted = await requestNotificationPermission();
+    if (!granted) {
+      checkbox.checked = false;
+      notifPrefs.enabled = false;
+      await storageSet('syncpulse_notif_enabled', 'false');
+      setStatus('notif-status', 'error', t().notif_permission_denied);
+      renderNotifSettings();
+      return;
+    }
+    notifPrefs.enabled = true;
+    await storageSet('syncpulse_notif_enabled', 'true');
+    setStatus('notif-status', '', '');
+  } else {
+    notifPrefs.enabled = false;
+    await storageSet('syncpulse_notif_enabled', 'false');
+  }
+  renderNotifSettings();
+}
+
+async function onToggleNotifPref(key, checkbox) {
+  notifPrefs[key] = checkbox.checked;
+  await storageSet(NOTIF_KEYS[key], String(checkbox.checked));
+}
+
+async function sendLocalNotification(title, body) {
+  try {
+    if (window.Capacitor?.Plugins?.LocalNotifications) {
+      await window.Capacitor.Plugins.LocalNotifications.schedule({
+        notifications: [{ id: notifIdCounter++, title, body, schedule: { at: new Date(Date.now() + 200) } }]
+      });
+      return;
+    }
+  } catch (e) {}
+  try {
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification(title, { body });
+    }
+  } catch (e) {}
+}
+
+/* Deteta o fim de tarefas (running -> idle) comparando o estado anterior com o novo */
+function checkTaskNotifications(oldState, newState) {
+  if (!notifPrefs.enabled || (!notifPrefs.success && !notifPrefs.error)) return;
+  tasks.forEach(tk => {
+    const tid = String(tk.id);
+    const prevStatus = (oldState.running && oldState.running[tid]) || 'idle';
+    const newStatus = (newState.running && newState.running[tid]) || 'idle';
+    if (prevStatus === 'idle' || newStatus !== 'idle') return;
+    // Ignora o fim de simulações; só notifica sincronizações reais.
+    if (prevStatus === 'simulating') return;
+    const hadError = newState.task_error && newState.task_error[tid] === true;
+    if (hadError) {
+      if (!notifPrefs.error) return;
+      const logs = (newState.logs && newState.logs[tid]) || [];
+      const errLine = logs.find(l => /^ERROR:/i.test(l)) || logs[0] || '';
+      let summary = errLine.replace(/^ERROR:\s*/i, '').trim();
+      if (!summary) summary = t().notif_toast_error_fallback;
+      if (summary.length > 140) summary = summary.slice(0, 140) + '…';
+      sendLocalNotification(t().notif_toast_error_title, `${tk.name}: ${summary}`);
+    } else {
+      if (!notifPrefs.success) return;
+      sendLocalNotification(t().notif_toast_success_title, t().notif_toast_success_body.replace('{task}', tk.name));
+    }
+  });
+}
+
+/* Converte "2027-07-27 20:53:52+00" (formato devolvido pelo Railway) numa Date válida */
+function parseExpiresAt(raw) {
+  if (!raw) return null;
+  let s = String(raw).trim().replace(' ', 'T');
+  s = s.replace(/([+-]\d{2})$/, '$1:00');
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+/* Avisa aos 30/15/5 dias e quando a licença expira, sem repetir o mesmo aviso */
+async function checkLicenseNotifications(state) {
+  if (!notifPrefs.enabled) return;
+  const info = state.license_info || {};
+  const expiresRaw = info.expires_at;
+  const expiresDate = parseExpiresAt(expiresRaw);
+  if (!expiresDate) return;
+  const licenseKey = String(expiresRaw);
+  const daysLeft = Math.ceil((expiresDate.getTime() - Date.now()) / 86400000);
+
+  if (daysLeft <= 0) {
+    if (!notifPrefs.license_expired) return;
+    const notifiedFor = await storageGet('syncpulse_notif_expired_for');
+    if (notifiedFor === licenseKey) return;
+    sendLocalNotification(t().notif_toast_expired_title, t().notif_toast_expired_body);
+    await storageSet('syncpulse_notif_expired_for', licenseKey);
+    return;
+  }
+
+  if (!notifPrefs.license_expiring) return;
+  const thresholds = [30, 15, 5];
+  const storageKey = 'syncpulse_notif_expiring_for_' + licenseKey;
+  const notifiedRaw = await storageGet(storageKey);
+  let notifiedList = [];
+  try { notifiedList = notifiedRaw ? JSON.parse(notifiedRaw) : []; } catch (e) { notifiedList = []; }
+  let changed = false;
+  for (const th of thresholds) {
+    if (daysLeft <= th && !notifiedList.includes(th)) {
+      sendLocalNotification(t().notif_toast_expiring_title, t().notif_toast_expiring_body.replace('{days}', daysLeft));
+      notifiedList.push(th);
+      changed = true;
+    }
+  }
+  if (changed) await storageSet(storageKey, JSON.stringify(notifiedList));
 }
 
 let lastPingError = '';
