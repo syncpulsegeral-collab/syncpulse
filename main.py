@@ -183,6 +183,7 @@ def get_initial_state():
             "activated_at": lic.get("activated_at", ""),
             "plan": lic.get("plan", 1),
             "active": is_valid,
+            "expires_at": lic.get("expires_at", ""), # <--- Garante que este campo vai para o front
             "hwid": lic.get("hwid", "")
         },
         "hwid": hwid_atual

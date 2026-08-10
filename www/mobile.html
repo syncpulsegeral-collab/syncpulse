@@ -728,26 +728,33 @@ async function sendLocalNotification(title, body) {
 
 /* Deteta o fim de tarefas (running -> idle) comparando o estado anterior com o novo */
 function checkTaskNotifications(oldState, newState) {
-  if (!notifPrefs.enabled || (!notifPrefs.success && !notifPrefs.error)) return;
+  if (!notifPrefs.enabled) return;
+
   tasks.forEach(tk => {
     const tid = String(tk.id);
-    const prevStatus = (oldState.running && oldState.running[tid]) || 'idle';
-    const newStatus = (newState.running && newState.running[tid]) || 'idle';
-    if (prevStatus === 'idle' || newStatus !== 'idle') return;
-    // Ignora o fim de simulações; só notifica sincronizações reais.
-    if (prevStatus === 'simulating') return;
-    const hadError = newState.task_error && newState.task_error[tid] === true;
-    if (hadError) {
-      if (!notifPrefs.error) return;
-      const logs = (newState.logs && newState.logs[tid]) || [];
-      const errLine = logs.find(l => /^ERROR:/i.test(l)) || logs[0] || '';
-      let summary = errLine.replace(/^ERROR:\s*/i, '').trim();
-      if (!summary) summary = t().notif_toast_error_fallback;
-      if (summary.length > 140) summary = summary.slice(0, 140) + '…';
-      sendLocalNotification(t().notif_toast_error_title, `${tk.name}: ${summary}`);
-    } else {
-      if (!notifPrefs.success) return;
-      sendLocalNotification(t().notif_toast_success_title, t().notif_toast_success_body.replace('{task}', tk.name));
+    const prevRunning = oldState.running?.[tid] || 'idle';
+    const currRunning = newState.running?.[tid] || 'idle';
+
+    // Se a tarefa passou de 'active' ou 'simulating' para 'idle', ela terminou
+    if (prevRunning !== 'idle' && currRunning === 'idle') {
+      
+      // Ignora notificações se for apenas o fim de uma simulação
+      if (prevRunning === 'simulating') return;
+
+      const hasError = newState.task_error?.[tid] === true;
+
+      if (hasError) {
+        if (!notifPrefs.error) return;
+        // Extrai o erro resumido: procura a primeira linha que começa com ERROR:
+        const logs = newState.logs?.[tid] || [];
+        const errorLine = logs.find(l => l.toUpperCase().includes("ERROR:")) || "";
+        const summary = errorLine.split("ERROR:").pop().trim() || t().notif_toast_error_fallback;
+        
+        sendLocalNotification(t().notif_toast_error_title, `${tk.name}: ${summary.substring(0, 80)}...`);
+      } else {
+        if (!notifPrefs.success) return;
+        sendLocalNotification(t().notif_toast_success_title, t().notif_toast_success_body.replace('{task}', tk.name));
+      }
     }
   });
 }
@@ -763,38 +770,45 @@ function parseExpiresAt(raw) {
 
 /* Avisa aos 30/15/5 dias e quando a licença expira, sem repetir o mesmo aviso */
 async function checkLicenseNotifications(state) {
-  if (!notifPrefs.enabled) return;
-  const info = state.license_info || {};
-  const expiresRaw = info.expires_at;
-  const expiresDate = parseExpiresAt(expiresRaw);
-  if (!expiresDate) return;
-  const licenseKey = String(expiresRaw);
-  const daysLeft = Math.ceil((expiresDate.getTime() - Date.now()) / 86400000);
+  if (!notifPrefs.enabled || !notifPrefs.license_expiring) return;
 
-  if (daysLeft <= 0) {
+  const expiresAt = state.license_info?.expires_at;
+  const expiresDate = parseExpiresAt(expiresAt);
+  if (!expiresDate) return;
+
+  // Cálculo da diferença de dias
+  const diffTime = expiresDate.getTime() - Date.now();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  
+  const licenseKey = state.license_info.key;
+
+  // Se já expirou
+  if (diffDays <= 0) {
     if (!notifPrefs.license_expired) return;
-    const notifiedFor = await storageGet('syncpulse_notif_expired_for');
-    if (notifiedFor === licenseKey) return;
+    const notified = await storageGet('notif_expired_' + licenseKey);
+    if (notified) return;
+    
     sendLocalNotification(t().notif_toast_expired_title, t().notif_toast_expired_body);
-    await storageSet('syncpulse_notif_expired_for', licenseKey);
+    await storageSet('notif_expired_' + licenseKey, 'true');
     return;
   }
 
-  if (!notifPrefs.license_expiring) return;
+  // Se está prestes a expirar (30, 15, 5 dias)
   const thresholds = [30, 15, 5];
-  const storageKey = 'syncpulse_notif_expiring_for_' + licenseKey;
-  const notifiedRaw = await storageGet(storageKey);
-  let notifiedList = [];
-  try { notifiedList = notifiedRaw ? JSON.parse(notifiedRaw) : []; } catch (e) { notifiedList = []; }
-  let changed = false;
-  for (const th of thresholds) {
-    if (daysLeft <= th && !notifiedList.includes(th)) {
-      sendLocalNotification(t().notif_toast_expiring_title, t().notif_toast_expiring_body.replace('{days}', daysLeft));
-      notifiedList.push(th);
-      changed = true;
+  for (const day of thresholds) {
+    if (diffDays === day) {
+      const storageKey = `notif_exp_${day}_${licenseKey}`;
+      const alreadyNotified = await storageGet(storageKey);
+      
+      if (!alreadyNotified) {
+        sendLocalNotification(
+          t().notif_toast_expiring_title, 
+          t().notif_toast_expiring_body.replace('{days}', day)
+        );
+        await storageSet(storageKey, 'true');
+      }
     }
   }
-  if (changed) await storageSet(storageKey, JSON.stringify(notifiedList));
 }
 
 let lastPingError = '';
@@ -1143,14 +1157,22 @@ function connectWS() {
   };
   socket.onerror = () => socket.close();
 
-  socket.onmessage = (ev) => {
+socket.onmessage = (ev) => {
     const data = JSON.parse(ev.data);
+    const oldState = JSON.parse(JSON.stringify(STATE)); // Guarda cópia do estado antigo
+    
     if (data.type === 'init') {
       tasks = data.tasks || [];
       STATE = data.state || STATE;
+      // Verifica licença ao abrir a app
+      checkLicenseNotifications(STATE);
     } else if (data.type === 'update') {
       STATE = data.state || STATE;
+      
+      // GATILHO: Compara o estado antigo com o novo para disparar notificações
+      checkTaskNotifications(oldState, STATE);
     }
+    
     renderHome();
     renderTasks();
     if (currentFilesTaskId && document.getElementById('mFiles').classList.contains('open')) {
