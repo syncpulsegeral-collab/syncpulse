@@ -168,7 +168,7 @@ def get_initial_state():
     is_valid = lic.get("active") is True and lic.get("hwid") == hwid_atual
 
     return {
-        "last_error_id": {}
+        "last_error_id": {},
         "running": {}, "logs": {}, "active_files": {}, "finished_files": {},
         "all_files": {}, "skipped_files": {}, "stats": {}, "failed_files": {},
         "file_sizes": {}, "task_error": {},
