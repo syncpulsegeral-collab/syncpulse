@@ -748,38 +748,42 @@ async function sendLocalNotification(title, body) {
 
 /* Deteta o fim de tarefas (running -> idle) comparando o estado anterior com o novo */
 function checkTaskNotifications(oldState, newState) {
-  // Se o mestre das notificações estiver desligado, não faz nada
   if (!notifPrefs.enabled) return;
 
   tasks.forEach(tk => {
     const tid = String(tk.id);
+    const prevRunning = oldState.running?.[tid] || 'idle';
+    const currRunning = newState.running?.[tid] || 'idle';
     
-    // Estados: 'active', 'simulating', 'idle'
-    const prevStatus = oldState.running ? (oldState.running[tid] || 'idle') : 'idle';
-    const currStatus = newState.running ? (newState.running[tid] || 'idle') : 'idle';
+    // Deteta se a tarefa parou OU se um novo erro apareceu
+    const justStopped = (prevRunning !== 'idle' && currRunning === 'idle');
+    const errorTriggered = (newState.task_error?.[tid] === true && oldState.task_error?.[tid] !== true);
 
-    // Se a tarefa acabou de parar (estava a correr e agora está idle)
-    if (prevStatus !== 'idle' && currStatus === 'idle') {
-      
-      // 1. Verifica se houve erro (mesmo que failed_files esteja vazio, o motor envia task_error)
-      const hadError = newState.task_error && newState.task_error[tid] === true;
+    if (justStopped || errorTriggered) {
+      // Ignora fim de simulação sem erro
+      if (prevRunning === 'simulating' && !errorTriggered) return;
 
-      if (hadError) {
+      if (newState.task_error?.[tid]) {
         if (!notifPrefs.error) return;
+
+        const logs = newState.logs?.[tid] || [];
+        // Regex flexível: Procura "ERROR" seguido ou não de espaços e dois pontos
+        const errorLine = logs.find(l => /ERROR\s*:?/i.test(l)) || "";
         
-        // Extração do Erro Resumido
-        const logs = newState.logs ? (newState.logs[tid] || []) : [];
-        // Procura a linha que contém "ERROR:"
-        const errorMsg = logs.find(l => l.includes("ERROR:")) || "";
-        const cleanError = errorMsg.split("ERROR:").pop().trim();
+        // Extrai a mensagem após o erro e limpa
+        let summary = errorLine.replace(/.*ERROR\s*:?\s*/i, '').trim();
         
+        // Tradução amigável para erros de Token (comum na Box/OneDrive)
+        if (summary.includes("invalid_grant") || summary.includes("token expired")) {
+            summary = "Login expirado. Reconnect necessário nas Clouds.";
+        }
+
         sendLocalNotification(
           t().notif_toast_error_title, 
-          `${tk.name}: ${cleanError || t().notif_toast_error_fallback}`
+          `${tk.name}: ${summary || t().notif_toast_error_fallback}`
         );
       } 
-      // 2. Se não houve erro e não era uma simulação, é Sucesso
-      else if (prevStatus !== 'simulating') {
+      else if (justStopped && prevRunning === 'active') {
         if (!notifPrefs.success) return;
         sendLocalNotification(
           t().notif_toast_success_title, 

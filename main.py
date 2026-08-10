@@ -1532,6 +1532,7 @@ async def rclone_worker(task, manual_simulate=False):
         for key in ["failed_files", "active_files", "finished_files", "skipped_files", "logs", "file_sizes"]:
             STATE[key][tid] = {} if key == "file_sizes" else []
         STATE["stats"][tid] = {"transferred": "0.00 B", "total": "---", "percent": 0.0}
+        STATE["task_error"][tid] = False # <--- ADICIONA ESTA LINHA AQUI
         STATE["running"][tid] = "active"
         await manager.broadcast({"type": "update", "state": STATE})
 
