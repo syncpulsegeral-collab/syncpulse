@@ -642,10 +642,13 @@ let notifIdCounter = Math.floor(Date.now() / 1000) % 1000000;
 async function loadNotifPrefs() {
   const enabledVal = await storageGet('syncpulse_notif_enabled');
   notifPrefs.enabled = enabledVal === 'true';
+  
   for (const k of Object.keys(NOTIF_KEYS)) {
     const v = await storageGet(NOTIF_KEYS[k]);
     notifPrefs[k] = v === null || v === undefined ? true : v === 'true';
   }
+  
+  // MUITO IMPORTANTE: Atualiza os switches no HTML para refletir o que foi carregado
   renderNotifSettings();
 }
 
@@ -711,49 +714,73 @@ async function onToggleNotifPref(key, checkbox) {
 }
 
 async function sendLocalNotification(title, body) {
-  try {
-    if (window.Capacitor?.Plugins?.LocalNotifications) {
-      await window.Capacitor.Plugins.LocalNotifications.schedule({
-        notifications: [{ id: notifIdCounter++, title, body, schedule: { at: new Date(Date.now() + 200) } }]
-      });
-      return;
-    }
-  } catch (e) {}
-  try {
-    if ('Notification' in window && Notification.permission === 'granted') {
+  console.log("Tentando enviar notificação:", title, body); // Debug para veres na consola se o gatilho disparou
+
+  // Se for App Nativa (Capacitor)
+  if (window.Capacitor?.Plugins?.LocalNotifications) {
+    await window.Capacitor.Plugins.LocalNotifications.schedule({
+      notifications: [{
+        id: notifIdCounter++,
+        title: title,
+        body: body,
+        smallIcon: 'res://drawable/notification_icon', // opcional
+        schedule: { at: new Date(Date.now() + 100) }
+      }]
+    });
+    return;
+  }
+
+  // Se for Browser/PWA
+  if ('Notification' in window && Notification.permission === 'granted') {
+    // Usamos o Service Worker se disponível (mais fiável no Android)
+    const reg = await navigator.serviceWorker.getRegistration();
+    if (reg) {
+      reg.showNotification(title, { body, icon: 'logo.png' });
+    } else {
       new Notification(title, { body });
     }
-  } catch (e) {}
+  }
 }
 
 /* Deteta o fim de tarefas (running -> idle) comparando o estado anterior com o novo */
 function checkTaskNotifications(oldState, newState) {
+  // Se o mestre das notificações estiver desligado, não faz nada
   if (!notifPrefs.enabled) return;
 
   tasks.forEach(tk => {
     const tid = String(tk.id);
-    const prevRunning = oldState.running?.[tid] || 'idle';
-    const currRunning = newState.running?.[tid] || 'idle';
+    
+    // Estados: 'active', 'simulating', 'idle'
+    const prevStatus = oldState.running ? (oldState.running[tid] || 'idle') : 'idle';
+    const currStatus = newState.running ? (newState.running[tid] || 'idle') : 'idle';
 
-    // Se a tarefa passou de 'active' ou 'simulating' para 'idle', ela terminou
-    if (prevRunning !== 'idle' && currRunning === 'idle') {
+    // Se a tarefa acabou de parar (estava a correr e agora está idle)
+    if (prevStatus !== 'idle' && currStatus === 'idle') {
       
-      // Ignora notificações se for apenas o fim de uma simulação
-      if (prevRunning === 'simulating') return;
+      // 1. Verifica se houve erro (mesmo que failed_files esteja vazio, o motor envia task_error)
+      const hadError = newState.task_error && newState.task_error[tid] === true;
 
-      const hasError = newState.task_error?.[tid] === true;
-
-      if (hasError) {
+      if (hadError) {
         if (!notifPrefs.error) return;
-        // Extrai o erro resumido: procura a primeira linha que começa com ERROR:
-        const logs = newState.logs?.[tid] || [];
-        const errorLine = logs.find(l => l.toUpperCase().includes("ERROR:")) || "";
-        const summary = errorLine.split("ERROR:").pop().trim() || t().notif_toast_error_fallback;
         
-        sendLocalNotification(t().notif_toast_error_title, `${tk.name}: ${summary.substring(0, 80)}...`);
-      } else {
+        // Extração do Erro Resumido
+        const logs = newState.logs ? (newState.logs[tid] || []) : [];
+        // Procura a linha que contém "ERROR:"
+        const errorMsg = logs.find(l => l.includes("ERROR:")) || "";
+        const cleanError = errorMsg.split("ERROR:").pop().trim();
+        
+        sendLocalNotification(
+          t().notif_toast_error_title, 
+          `${tk.name}: ${cleanError || t().notif_toast_error_fallback}`
+        );
+      } 
+      // 2. Se não houve erro e não era uma simulação, é Sucesso
+      else if (prevStatus !== 'simulating') {
         if (!notifPrefs.success) return;
-        sendLocalNotification(t().notif_toast_success_title, t().notif_toast_success_body.replace('{task}', tk.name));
+        sendLocalNotification(
+          t().notif_toast_success_title, 
+          t().notif_toast_success_body.replace('{task}', tk.name)
+        );
       }
     }
   });
@@ -1487,6 +1514,7 @@ function renderClouds(remotes) {
 /* ==================== Init ==================== */
 async function boot() {
   setTheme(theme);
+  await loadNotifPrefs(); 
   applyStaticI18n();
   renderLangGrid();
 
