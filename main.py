@@ -31,13 +31,61 @@ try:
 except ImportError:
     ZEROCONF_AVAILABLE = False
 
-# --- CONFIGURAÇÕES DE CAMINHOS ---
-# Agora apontamos SEMPRE para as pastas dos volumes (/app e /www)
-# Assim, se editares no ZimaOS, a alteração é aplicada.
-WWW_PATH = "/www"
-CONFIG_DIR = "/config"
+# --- CONFIGURAÇÕES DE CAMINHOS (híbrido ZimaOS/Docker + Windows/macOS/Linux) ---
+# Dentro do container ZimaOS a imagem tem sempre /app_dist e /www_dist (criadas
+# no build), por isso usamos a presença dessas pastas para saber que estamos
+# "dentro" do container. Nesse caso os caminhos continuam fixos, como sempre
+# (/app, /www, /config são os volumes montados pelo ZimaOS). Fora do
+# container -- ou seja, quando corres o main.py diretamente no Windows, no
+# macOS ou num Linux "normal" -- usamos as pastas de configuração nativas de
+# cada SO, para não precisares de permissões de root nem de caminhos tipo
+# /config que não existem fora do Docker.
+IS_CONTAINER = os.path.exists("/app_dist") and os.path.exists("/www_dist")
+IS_WINDOWS = platform.system() == "Windows"
+IS_MACOS = platform.system() == "Darwin"
+
+# Pasta onde o main.py (ou o executável empacotado, ex. PyInstaller) está
+# instalado -- usada para encontrar a pasta "www" (frontend) fora do Docker.
+APP_DIR = os.path.dirname(os.path.abspath(getattr(sys, "_MEIPASS", None) or __file__))
+
+def _default_config_dir():
+    """Pasta nativa de configuração do SyncPulse quando não estamos em Docker."""
+    if IS_WINDOWS:
+        base = os.getenv("APPDATA") or os.path.join(os.path.expanduser("~"), "AppData", "Roaming")
+        return os.path.join(base, "SyncPulse")
+    if IS_MACOS:
+        return os.path.join(os.path.expanduser("~"), "Library", "Application Support", "SyncPulse")
+    # Linux nativo (fora de Docker) -> segue o padrão XDG
+    xdg = os.getenv("XDG_CONFIG_HOME") or os.path.join(os.path.expanduser("~"), ".config")
+    return os.path.join(xdg, "syncpulse")
+
+def _default_rclone_config():
+    """Por omissão aponta para o rclone.conf 'oficial' de cada SO (o mesmo
+    sítio onde o rclone normal guarda a configuração), para o SyncPulse
+    aproveitar automaticamente remotes já configurados pelo utilizador:
+      Windows -> %APPDATA%\\rclone\\rclone.conf
+      macOS   -> ~/Library/Application Support/rclone/rclone.conf
+      Linux   -> ~/.config/rclone/rclone.conf
+    Pode sempre ser sobreposto com a variável de ambiente
+    SYNCPULSE_RCLONE_CONFIG."""
+    if IS_WINDOWS:
+        base = os.getenv("APPDATA") or os.path.join(os.path.expanduser("~"), "AppData", "Roaming")
+        return os.path.join(base, "rclone", "rclone.conf")
+    if IS_MACOS:
+        return os.path.join(os.path.expanduser("~"), "Library", "Application Support", "rclone", "rclone.conf")
+    xdg = os.getenv("XDG_CONFIG_HOME") or os.path.join(os.path.expanduser("~"), ".config")
+    return os.path.join(xdg, "rclone", "rclone.conf")
+
+if IS_CONTAINER:
+    WWW_PATH = os.getenv("SYNCPULSE_WWW_PATH", "/www")
+    CONFIG_DIR = os.getenv("SYNCPULSE_CONFIG_DIR", "/config")
+    RCLONE_CONFIG = os.getenv("SYNCPULSE_RCLONE_CONFIG", os.path.join(CONFIG_DIR, "rclone.conf"))
+else:
+    WWW_PATH = os.getenv("SYNCPULSE_WWW_PATH", os.path.join(APP_DIR, "www"))
+    CONFIG_DIR = os.getenv("SYNCPULSE_CONFIG_DIR", _default_config_dir())
+    RCLONE_CONFIG = os.getenv("SYNCPULSE_RCLONE_CONFIG", _default_rclone_config())
+
 CONFIG_FILE = os.path.join(CONFIG_DIR, "tasks.json")
-RCLONE_CONFIG = os.path.join(CONFIG_DIR, "rclone.conf")
 LOGS_DIR = os.path.join(CONFIG_DIR, "logs")
 HISTORY_FILE = os.path.join(CONFIG_DIR, "history.json")
 SETTINGS_FILE = os.path.join(CONFIG_DIR, "settings.json")
@@ -64,8 +112,8 @@ MDNS_PORT = int(os.getenv("SYNCPULSE_PORT", "8000"))
 ZC_INSTANCE = None
 ZC_SERVICE_INFO = None
 
-for p in [LOGS_DIR, BISYNC_WORKDIR, "/config"]:
-    if not os.path.exists(p): os.makedirs(p, exist_ok=True)
+for p in [CONFIG_DIR, LOGS_DIR, BISYNC_WORKDIR, os.path.dirname(RCLONE_CONFIG)]:
+    if p and not os.path.exists(p): os.makedirs(p, exist_ok=True)
     
 # --- 2. CONFIGURAÇÕES E AGENDADOR ---
 app_scheduler = AsyncIOScheduler()
@@ -81,14 +129,30 @@ def get_secure_hwid():
         except OSError:
             pass
     if not machine_id:
-        for path in ("/etc/machine-id", "/var/lib/dbus/machine-id"):
-            try:
-                with open(path, "r", encoding="utf-8") as source:
-                    machine_id = source.read().strip()
-                if machine_id:
-                    break
-            except OSError:
-                pass
+        try:
+            if IS_WINDOWS:
+                import winreg
+                with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\Cryptography") as key:
+                    machine_id = winreg.QueryValueEx(key, "MachineGuid")[0]
+            elif IS_MACOS:
+                out = subprocess.check_output(
+                    ["ioreg", "-rd1", "-c", "IOPlatformExpertDevice"], text=True, timeout=5
+                )
+                m = re.search(r'"IOPlatformUUID"\s*=\s*"([^"]+)"', out)
+                if m:
+                    machine_id = m.group(1)
+            else:
+                # Linux (container ou nativo)
+                for path in ("/etc/machine-id", "/var/lib/dbus/machine-id"):
+                    try:
+                        with open(path, "r", encoding="utf-8") as source:
+                            machine_id = source.read().strip()
+                        if machine_id:
+                            break
+                    except OSError:
+                        pass
+        except Exception:
+            pass
     if not machine_id:
         machine_id = f"{uuid.getnode()}|{platform.node()}"
     try:
@@ -228,8 +292,14 @@ HEALTH_CACHE = []
 
     
 # --- 1. LÓGICA DE AUTO-INSTALAÇÃO (BOOTSTRAP) ---
-# Deve correr logo no início
+# Só faz sentido dentro do container ZimaOS/Docker, onde a imagem traz o
+# código "de fábrica" em /app_dist e /www_dist e os copia para os volumes
+# /app, /www e /config. No Windows, macOS ou Linux nativo não há nada para
+# "instalar" -- o main.py já corre diretamente da pasta onde está, por isso
+# a função nem é chamada (ver mais abaixo).
 def bootstrap():
+    if not IS_CONTAINER:
+        return
     src_app, src_www = "/app_dist", "/www_dist"
     dst_app, dst_www, dst_config = "/app", "/www", "/config"
 
@@ -2263,4 +2333,12 @@ async def discover_ping():
 
 @app.get("/")
 async def serve_index(): return FileResponse(os.path.join(WWW_PATH, "index.html"))
+
+# Fora do container, a pasta "www" (frontend) tem de ser distribuída junto do
+# main.py. Se faltar (ex. instalação incompleta), criamos uma pasta vazia em
+# vez de deixar o StaticFiles rebentar o arranque do servidor todo.
+if not os.path.isdir(WWW_PATH):
+    print(f">>> [AVISO] Pasta do frontend não encontrada em: {WWW_PATH}")
+    print(">>> [AVISO] Copia a pasta 'www' para esse caminho (ou define SYNCPULSE_WWW_PATH).")
+    os.makedirs(WWW_PATH, exist_ok=True)
 app.mount("/", StaticFiles(directory=WWW_PATH), name="static")
