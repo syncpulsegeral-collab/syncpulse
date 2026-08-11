@@ -398,6 +398,7 @@
           <span data-i18n="notif_license_expired">Licença expirada</span>
           <label class="switch"><input type="checkbox" id="notif-toggle-license_expired" onchange="onToggleNotifPref('license_expired', this)"><span class="slider"></span></label>
         </div>
+        <button class="conn-btn conn-btn-secondary" onclick="sendTestPush()"><i class="fas fa-bell"></i> <span data-i18n="notif_test_btn">Enviar notificação de teste</span></button>
         <div class="conn-status" id="notif-status"></div>
       </div>
     </div>
@@ -492,6 +493,7 @@ const i18n = {
     settings_notifications:"Notificações", notif_master:"Ativar notificações", notif_success:"Sincronização com sucesso", notif_error:"Erro na sincronização",
     notif_license_expiring:"Licença prestes a expirar (30/15/5 dias)", notif_license_expired:"Licença expirada",
     notif_permission_denied:"Permissão de notificações negada. Ativa-a nas definições do telemóvel.",
+    notif_test_btn:"Enviar notificação de teste", notif_test_no_sub:"Ativa as notificações primeiro.", notif_test_sent:"Notificação de teste enviada.", notif_test_failed:"Falha ao enviar a notificação de teste.",
     notif_toast_success_title:"Sincronização concluída", notif_toast_success_body:"{task} foi sincronizada com sucesso.",
     notif_toast_error_title:"Erro na sincronização", notif_toast_error_fallback:"Ocorreu um erro. Consulta o registo na app.",
     notif_toast_expiring_title:"A tua licença está prestes a expirar", notif_toast_expiring_body:"Faltam {days} dias para a tua licença SyncPulse expirar.",
@@ -518,6 +520,7 @@ const i18n = {
     settings_notifications:"Notifications", notif_master:"Enable notifications", notif_success:"Successful sync", notif_error:"Sync error",
     notif_license_expiring:"License about to expire (30/15/5 days)", notif_license_expired:"License expired",
     notif_permission_denied:"Notification permission denied. Enable it in your phone settings.",
+    notif_test_btn:"Send test notification", notif_test_no_sub:"Enable notifications first.", notif_test_sent:"Test notification sent.", notif_test_failed:"Failed to send test notification.",
     notif_toast_success_title:"Sync completed", notif_toast_success_body:"{task} synced successfully.",
     notif_toast_error_title:"Sync error", notif_toast_error_fallback:"An error occurred. Check the log in the app.",
     notif_toast_expiring_title:"Your license is about to expire", notif_toast_expiring_body:"{days} days left until your SyncPulse license expires.",
@@ -544,6 +547,7 @@ const i18n = {
     settings_notifications:"Notificaciones", notif_master:"Activar notificaciones", notif_success:"Sincronización correcta", notif_error:"Error de sincronización",
     notif_license_expiring:"Licencia a punto de caducar (30/15/5 días)", notif_license_expired:"Licencia caducada",
     notif_permission_denied:"Permiso de notificaciones denegado. Actívalo en los ajustes del teléfono.",
+    notif_test_btn:"Enviar notificación de prueba", notif_test_no_sub:"Activa las notificaciones primero.", notif_test_sent:"Notificación de prueba enviada.", notif_test_failed:"Error al enviar la notificación de prueba.",
     notif_toast_success_title:"Sincronización completada", notif_toast_success_body:"{task} se sincronizó correctamente.",
     notif_toast_error_title:"Error de sincronización", notif_toast_error_fallback:"Se produjo un error. Consulta el registro en la app.",
     notif_toast_expiring_title:"Tu licencia está a punto de caducar", notif_toast_expiring_body:"Quedan {days} días para que caduque tu licencia SyncPulse.",
@@ -570,6 +574,7 @@ const i18n = {
     settings_notifications:"Notifications", notif_master:"Activer les notifications", notif_success:"Synchronisation réussie", notif_error:"Erreur de synchronisation",
     notif_license_expiring:"Licence bientôt expirée (30/15/5 jours)", notif_license_expired:"Licence expirée",
     notif_permission_denied:"Permission de notifications refusée. Active-la dans les réglages du téléphone.",
+    notif_test_btn:"Envoyer une notification de test", notif_test_no_sub:"Active d'abord les notifications.", notif_test_sent:"Notification de test envoyée.", notif_test_failed:"Échec de l'envoi de la notification de test.",
     notif_toast_success_title:"Synchronisation terminée", notif_toast_success_body:"{task} a été synchronisée avec succès.",
     notif_toast_error_title:"Erreur de synchronisation", notif_toast_error_fallback:"Une erreur est survenue. Consulte le journal dans l'app.",
     notif_toast_expiring_title:"Ta licence arrive bientôt à expiration", notif_toast_expiring_body:"Il reste {days} jours avant l'expiration de ta licence SyncPulse.",
@@ -596,6 +601,7 @@ const i18n = {
     settings_notifications:"Benachrichtigungen", notif_master:"Benachrichtigungen aktivieren", notif_success:"Erfolgreiche Synchronisierung", notif_error:"Synchronisierungsfehler",
     notif_license_expiring:"Lizenz läuft bald ab (30/15/5 Tage)", notif_license_expired:"Lizenz abgelaufen",
     notif_permission_denied:"Benachrichtigungsberechtigung verweigert. Aktiviere sie in den Telefoneinstellungen.",
+    notif_test_btn:"Test-Benachrichtigung senden", notif_test_no_sub:"Aktiviere zuerst die Benachrichtigungen.", notif_test_sent:"Test-Benachrichtigung gesendet.", notif_test_failed:"Test-Benachrichtigung fehlgeschlagen.",
     notif_toast_success_title:"Synchronisierung abgeschlossen", notif_toast_success_body:"{task} wurde erfolgreich synchronisiert.",
     notif_toast_error_title:"Synchronisierungsfehler", notif_toast_error_fallback:"Ein Fehler ist aufgetreten. Prüfe das Protokoll in der App.",
     notif_toast_expiring_title:"Deine Lizenz läuft bald ab", notif_toast_expiring_body:"Noch {days} Tage, bis deine SyncPulse-Lizenz abläuft.",
@@ -702,6 +708,93 @@ async function requestNotificationPermission() {
   return false;
 }
 
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(base64);
+  const arr = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+  return arr;
+}
+
+function currentNotifPrefsPayload() {
+  const payload = {};
+  for (const k of Object.keys(NOTIF_KEYS)) payload[k] = !!notifPrefs[k];
+  return payload;
+}
+
+/* Subscreve (ou atualiza as preferências de) push a sério no servidor —
+   é isto que faz as notificações chegarem com o ecrã desligado / app
+   fechada. Sem HTTPS ou sem 'pywebpush' no servidor, falha em silêncio e
+   a app continua a usar só as notificações locais (fallback já existente). */
+async function subscribeToPush() {
+  try {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    if (!SERVER_URL) return;
+
+    const keyRes = await apiFetch('/api/push/vapid_public_key');
+    if (!keyRes.ok) return; // servidor sem push disponível (sem pywebpush, ou sem HTTPS)
+    const { key } = await keyRes.json();
+    if (!key) return;
+
+    const registration = await navigator.serviceWorker.ready;
+    let subscription = await registration.pushManager.getSubscription();
+    if (!subscription) {
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(key),
+      });
+    }
+
+    await apiFetch('/api/push/subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ subscription, prefs: currentNotifPrefsPayload() }),
+    });
+  } catch (e) {
+    console.warn('Push subscribe falhou (fica só a notificação local):', e);
+  }
+}
+
+async function unsubscribeFromPush() {
+  try {
+    if (!('serviceWorker' in navigator)) return;
+    const registration = await navigator.serviceWorker.ready;
+    const subscription = await registration.pushManager.getSubscription();
+    if (!subscription) return;
+    const endpoint = subscription.endpoint;
+    await subscription.unsubscribe();
+    if (SERVER_URL) {
+      await apiFetch('/api/push/unsubscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ endpoint }),
+      }).catch(() => {});
+    }
+  } catch (e) {
+    console.warn('Push unsubscribe falhou:', e);
+  }
+}
+
+async function sendTestPush() {
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    const subscription = await registration.pushManager.getSubscription();
+    if (!subscription) {
+      setStatus('notif-status', 'error', t().notif_test_no_sub);
+      return;
+    }
+    const res = await apiFetch('/api/push/test', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ endpoint: subscription.endpoint }),
+    });
+    setStatus('notif-status', res.ok ? 'success' : 'error', res.ok ? t().notif_test_sent : t().notif_test_failed);
+  } catch (e) {
+    setStatus('notif-status', 'error', t().notif_test_failed);
+  }
+}
+
 async function onToggleNotifMaster(checkbox) {
   if (checkbox.checked) {
     const granted = await requestNotificationPermission();
@@ -716,9 +809,11 @@ async function onToggleNotifMaster(checkbox) {
     notifPrefs.enabled = true;
     await storageSet('syncpulse_notif_enabled', 'true');
     setStatus('notif-status', '', '');
+    await subscribeToPush();
   } else {
     notifPrefs.enabled = false;
     await storageSet('syncpulse_notif_enabled', 'false');
+    await unsubscribeFromPush();
   }
   renderNotifSettings();
 }
@@ -726,6 +821,7 @@ async function onToggleNotifMaster(checkbox) {
 async function onToggleNotifPref(key, checkbox) {
   notifPrefs[key] = checkbox.checked;
   await storageSet(NOTIF_KEYS[key], String(checkbox.checked));
+  if (notifPrefs.enabled) await subscribeToPush(); // reenvia prefs atualizadas ao servidor
 }
 
 async function sendLocalNotification(title, body) {
@@ -1561,6 +1657,7 @@ async function boot() {
       renderHome();
       renderTasks();
       connectWS();
+      if (notifPrefs.enabled) subscribeToPush(); // garante que a subscrição push continua válida
       return;
     }
     document.getElementById('conn-input').value = saved.replace(/^https?:\/\//i, '');

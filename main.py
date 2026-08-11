@@ -1,13 +1,26 @@
-import os, json, asyncio, subprocess, re, typing, time, signal, shutil, hashlib, uuid, platform, httpx, socket, sys
+import os, json, asyncio, subprocess, re, typing, time, signal, shutil, hashlib, uuid, platform, httpx, socket, sys, base64
 from urllib.request import Request as UrlRequest, urlopen
 from urllib.error import URLError, HTTPError
 from fastapi import FastAPI, BackgroundTasks, Request, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from datetime import datetime
+from datetime import datetime, timezone
 from contextlib import asynccontextmanager # <--- Garante este import
 from fastapi.middleware.cors import CORSMiddleware
+
+# --- Web Push (notificações push a sério, mesmo com o ecrã desligado) ---
+# Dependência opcional: sem 'pywebpush'/'cryptography' instalados, a app
+# continua a funcionar normalmente, só sem push (fica só a notificação
+# local, que já existia, ativa enquanto a app está aberta).
+try:
+    from pywebpush import webpush, WebPushException
+    from cryptography.hazmat.primitives.asymmetric import ec
+    from cryptography.hazmat.primitives import serialization
+    PUSH_AVAILABLE = True
+except ImportError:
+    PUSH_AVAILABLE = False
+    print(">>> [PUSH] 'pywebpush'/'cryptography' não instalados — push desativado. Corre: pip install pywebpush")
 
 # --- mDNS/Bonjour (deteção automática do servidor na rede local) ---
 # Dependência opcional: se 'zeroconf' não estiver instalado, a app continua a
@@ -33,6 +46,16 @@ DEVICE_ID_FILE = os.path.join(CONFIG_DIR, "device-id")
 BISYNC_WORKDIR = os.path.join(CONFIG_DIR, "bisync")
 HWID_SALT = os.getenv("SYNCPULSE_HWID_SALT", "syncpulse-hwid-v1")
 LAST_BOX_CHECK_TIME = 0
+
+# --- Notificações push (Web Push) ---
+VAPID_PRIVATE_FILE = os.path.join(CONFIG_DIR, "vapid_private.pem")
+VAPID_PUBLIC_FILE = os.path.join(CONFIG_DIR, "vapid_public_key.txt")
+PUSH_SUBS_FILE = os.path.join(CONFIG_DIR, "push_subscriptions.json")
+NOTIFY_STATE_FILE = os.path.join(CONFIG_DIR, "notify_state.json")
+DEFAULT_PUSH_PREFS = {
+    "success": True, "error": True,
+    "license_expiring": True, "license_expired": True,
+}
 
 # Porto onde o servidor está exposto na rede local. Se mapeares o container
 # para outro porto no ZimaOS, ajusta via variável de ambiente SYNCPULSE_PORT.
@@ -278,6 +301,8 @@ async def silent_license_check():
                 STATE["license_info"]["hwid"] = hwid
                 STATE["license_info"]["last_check"] = datetime.now().isoformat()
                 STATE["license_info"]["plan"] = res_data.get("plan", STATE["license_info"].get("plan", 1))
+                if res_data.get("expires_at"):
+                    STATE["license_info"]["expires_at"] = res_data.get("expires_at")
                 save_license(STATE["license_info"])
                 await refresh_automation_services()
                 await manager.broadcast({"type": "update", "state": STATE})
@@ -326,6 +351,15 @@ async def lifespan(app: FastAPI):
 
     # 3. LANÇA A VERIFICAÇÃO HÍBRIDA EM SEGUNDO PLANO
     asyncio.create_task(silent_license_check())
+
+    # 4. Notificações push: verifica expiração da licença já no arranque,
+    #    e depois recorrentemente a cada 24h.
+    asyncio.create_task(check_license_expiry_and_notify())
+    app_scheduler.add_job(
+        check_license_expiry_and_notify, 'interval', hours=24,
+        id='license-expiry-check', replace_existing=True,
+        max_instances=1, coalesce=True
+    )
 
     app_scheduler.start()
     
@@ -418,7 +452,8 @@ async def activate_license_local(request: Request):
             "device_name": device_name,
             "plan": res_data.get("plan", 1),
             "activated_at": datetime.now().isoformat(),
-            "last_check": datetime.now().isoformat() 
+            "last_check": datetime.now().isoformat(),
+            "expires_at": res_data.get("expires_at", "")
         }
 
         # 4. PERSISTÊNCIA FÍSICA (Garante que sobrevive ao Reboot)
@@ -1616,8 +1651,262 @@ async def rclone_worker(task, manual_simulate=False):
             
             # Envia o estado completo (tipo init garante que o telemóvel recebe tudo)
             await manager.broadcast({"type": "init", "tasks": load_tasks(), "state": STATE})
+
+            # Push a sério (funciona com o ecrã desligado/app fechada) — só
+            # para sincronizações reais, não para simulações.
+            if not manual_simulate:
+                task_name = task.get("name", "Tarefa")
+                if had_error:
+                    reason = summarize_error_log(STATE["logs"].get(tid, []))
+                    await asyncio.to_thread(
+                        notify_push, "error", "Erro na sincronização",
+                        f"{task_name}: {reason}", f"sync-{tid}",
+                    )
+                else:
+                    await asyncio.to_thread(
+                        notify_push, "success", "Sincronização concluída",
+                        f"{task_name} foi sincronizada com sucesso.", f"sync-{tid}",
+                    )
             
 # --- ENDPOINTS E SERVICES ---
+
+# ==================== NOTIFICAÇÕES PUSH (Web Push) ====================
+
+def ensure_vapid_keys():
+    """Gera (uma única vez) e devolve o par de chaves VAPID usado para assinar
+    as notificações push. A chave pública é enviada ao browser; a privada
+    nunca sai do servidor."""
+    if not PUSH_AVAILABLE:
+        return None, None
+    if not os.path.exists(VAPID_PRIVATE_FILE):
+        private_key = ec.generate_private_key(ec.SECP256R1())
+        pem = private_key.private_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PrivateFormat.PKCS8,
+            encryption_algorithm=serialization.NoEncryption(),
+        )
+        with open(VAPID_PRIVATE_FILE, "wb") as f:
+            f.write(pem)
+        public_key = private_key.public_key()
+        raw_pub = public_key.public_bytes(
+            encoding=serialization.Encoding.X962,
+            format=serialization.PublicFormat.UncompressedPoint,
+        )
+        pub_b64 = base64.urlsafe_b64encode(raw_pub).rstrip(b"=").decode("utf-8")
+        with open(VAPID_PUBLIC_FILE, "w", encoding="utf-8") as f:
+            f.write(pub_b64)
+    with open(VAPID_PUBLIC_FILE, "r", encoding="utf-8") as f:
+        pub_b64 = f.read().strip()
+    return VAPID_PRIVATE_FILE, pub_b64
+
+def load_push_subs():
+    if os.path.exists(PUSH_SUBS_FILE):
+        try:
+            with open(PUSH_SUBS_FILE, "r", encoding="utf-8") as f: return json.load(f)
+        except: return {}
+    return {}
+
+def save_push_subs(subs):
+    with open(PUSH_SUBS_FILE, "w", encoding="utf-8") as f:
+        json.dump(subs, f, indent=2, ensure_ascii=False)
+
+def _sub_id_for(endpoint):
+    return hashlib.sha256(endpoint.encode("utf-8")).hexdigest()[:24]
+
+def _send_push_sync(subscription_info, payload, private_key_path):
+    """Envio síncrono (a lib pywebpush é bloqueante) — chamar sempre via
+    asyncio.to_thread para não travar o event loop."""
+    try:
+        webpush(
+            subscription_info=subscription_info,
+            data=json.dumps(payload, ensure_ascii=False),
+            vapid_private_key=private_key_path,
+            vapid_claims={"sub": "mailto:suporte@syncpulse.app"},
+            ttl=3600,
+        )
+        return "ok"
+    except WebPushException as e:
+        status = getattr(e.response, "status_code", None)
+        if status in (404, 410):
+            return "gone"  # subscrição inválida/expirada no lado do browser
+        print(f">>> [PUSH] Falha ao enviar: {e}")
+        return "error"
+    except Exception as e:
+        print(f">>> [PUSH] Falha ao enviar: {e}")
+        return "error"
+
+def notify_push(notif_type, title, body, tag=None, url="/mobile.html"):
+    """Envia uma notificação a todos os dispositivos subscritos que a tenham
+    ativada nas preferências. Função síncrona — chamar via asyncio.to_thread."""
+    if not PUSH_AVAILABLE:
+        return
+    private_path, _ = ensure_vapid_keys()
+    subs = load_push_subs()
+    changed = False
+    for sub_id, entry in list(subs.items()):
+        if not entry.get("prefs", {}).get(notif_type, True):
+            continue
+        result = _send_push_sync(entry["subscription"], {
+            "title": title, "body": body, "tag": tag, "url": url
+        }, private_path)
+        if result == "gone":
+            del subs[sub_id]
+            changed = True
+    if changed:
+        save_push_subs(subs)
+
+def summarize_error_log(log_lines):
+    """Resume as últimas linhas de log a uma frase curta — mesmo critério
+    usado no lado do frontend para as notificações locais, para os dois
+    tipos de aviso dizerem a mesma coisa."""
+    text = " ".join(log_lines[:5]) if log_lines else ""
+    if "file_size_limit_exceeded" in text:
+        return "Ficheiro demasiado grande para o destino."
+    if "invalid_grant" in text:
+        return "Login expirado. Reautentica a Cloud."
+    lower = text.lower()
+    if any(k in lower for k in ["oauth", "401", "403", "unauthorized", "authentication"]):
+        return "Token expirado ou sem autorização."
+    if any(k in lower for k in ["timeout", "deadline", "i/o timeout"]):
+        return "Tempo de resposta esgotado."
+    if any(k in lower for k in ["no such host", "connection refused", "network is unreachable", "dial tcp", "couldn't", "could not"]):
+        return "Não foi possível ligar ao servidor remoto."
+    if log_lines and log_lines[0].strip():
+        first = log_lines[0].strip()
+        return (first[:140] + "…") if len(first) > 140 else first
+    return "Erro desconhecido."
+
+def parse_license_expiry(expires_at_raw):
+    """Interpreta o campo expires_at devolvido pelo servidor de licenças
+    (formato Postgres, ex: '2027-07-27 20:53:52+00') como datetime UTC."""
+    if not expires_at_raw:
+        return None
+    s = str(expires_at_raw).strip()
+    if not s:
+        return None
+    s = s.replace(" ", "T", 1)
+    s = re.sub(r"([+-]\d{2})$", r"\1:00", s)  # "+00" -> "+00:00"
+    try:
+        dt = datetime.fromisoformat(s)
+    except ValueError:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt
+
+def load_notify_state():
+    if os.path.exists(NOTIFY_STATE_FILE):
+        try:
+            with open(NOTIFY_STATE_FILE, "r", encoding="utf-8") as f: return json.load(f)
+        except: return {}
+    return {}
+
+def save_notify_state(data):
+    with open(NOTIFY_STATE_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+
+async def check_license_expiry_and_notify():
+    """Corrido no arranque e depois a cada 24h. Avisa aos 30/15/5 dias e no
+    dia da expiração — cada aviso é enviado uma única vez (fica marcado em
+    notify_state.json), e reinicia-se sozinho se a data de expiração mudar
+    (renovação da licença)."""
+    if not PUSH_AVAILABLE:
+        return
+    expires_raw = STATE.get("license_info", {}).get("expires_at")
+    dt = parse_license_expiry(expires_raw)
+    if dt is None:
+        return
+
+    notify_state = load_notify_state()
+    if notify_state.get("expires_at") != expires_raw:
+        notify_state = {"expires_at": expires_raw}
+
+    now = datetime.now(timezone.utc)
+    days_left = (dt - now).days
+
+    for days, key in [(30, "license_30"), (15, "license_15"), (5, "license_5")]:
+        if days_left <= days and days_left > 0 and not notify_state.get(key):
+            await asyncio.to_thread(
+                notify_push, "license_expiring", "A tua licença SyncPulse vai expirar",
+                f"Restam {days_left} dias. Renova para não perderes o acesso.",
+                "license-expiry",
+            )
+            notify_state[key] = True
+
+    if days_left <= 0 and not notify_state.get("license_expired"):
+        await asyncio.to_thread(
+            notify_push, "license_expired", "A tua licença SyncPulse expirou",
+            "As sincronizações automáticas estão paradas. Renova a licença para continuar.",
+            "license-expired",
+        )
+        notify_state["license_expired"] = True
+
+    save_notify_state(notify_state)
+
+@app.get("/api/push/vapid_public_key")
+async def push_vapid_public_key():
+    if not PUSH_AVAILABLE:
+        return JSONResponse(status_code=501, content={"message": "Notificações push indisponíveis: instala 'pywebpush' no servidor."})
+    _, pub = ensure_vapid_keys()
+    return {"key": pub}
+
+@app.post("/api/push/subscribe")
+async def push_subscribe(request: Request):
+    if not PUSH_AVAILABLE:
+        return JSONResponse(status_code=501, content={"message": "Notificações push indisponíveis: instala 'pywebpush' no servidor."})
+    body = await request.json()
+    subscription = body.get("subscription")
+    prefs = body.get("prefs") or {}
+    if not subscription or not subscription.get("endpoint"):
+        return JSONResponse(status_code=400, content={"message": "Subscrição inválida."})
+    sub_id = _sub_id_for(subscription["endpoint"])
+    subs = load_push_subs()
+    subs[sub_id] = {
+        "subscription": subscription,
+        "prefs": {**DEFAULT_PUSH_PREFS, **prefs},
+        "updated_at": datetime.now().isoformat(),
+    }
+    save_push_subs(subs)
+    return {"status": "ok", "id": sub_id}
+
+@app.post("/api/push/unsubscribe")
+async def push_unsubscribe(request: Request):
+    body = await request.json()
+    endpoint = body.get("endpoint")
+    if not endpoint:
+        return JSONResponse(status_code=400, content={"message": "Endpoint em falta."})
+    subs = load_push_subs()
+    sub_id = _sub_id_for(endpoint)
+    if sub_id in subs:
+        del subs[sub_id]
+        save_push_subs(subs)
+    return {"status": "ok"}
+
+@app.post("/api/push/test")
+async def push_test(request: Request):
+    if not PUSH_AVAILABLE:
+        return JSONResponse(status_code=501, content={"message": "Notificações push indisponíveis: instala 'pywebpush' no servidor."})
+    body = await request.json()
+    endpoint = body.get("endpoint")
+    if not endpoint:
+        return JSONResponse(status_code=400, content={"message": "Endpoint em falta."})
+    sub_id = _sub_id_for(endpoint)
+    subs = load_push_subs()
+    entry = subs.get(sub_id)
+    if not entry:
+        return JSONResponse(status_code=404, content={"message": "Subscrição não encontrada."})
+    private_path, _ = ensure_vapid_keys()
+    result = await asyncio.to_thread(_send_push_sync, entry["subscription"], {
+        "title": "SyncPulse", "body": "Notificação de teste — está tudo a funcionar!", "tag": "test", "url": "/mobile.html"
+    }, private_path)
+    if result == "gone":
+        del subs[sub_id]
+        save_push_subs(subs)
+        return JSONResponse(status_code=410, content={"message": "Subscrição expirada. Ativa as notificações outra vez."})
+    if result != "ok":
+        return JSONResponse(status_code=502, content={"message": "Falha ao enviar a notificação de teste."})
+    return {"status": "ok"}
+
 
 @app.get("/api/browse/local")
 def browse_local_endpoint(path: str = "/mnt"):

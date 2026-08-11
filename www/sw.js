@@ -80,14 +80,34 @@ self.addEventListener('message', (event) => {
   }
 });
 
+// Notificação push a sério, enviada pelo servidor via VAPID — este é o
+// único caminho que funciona com o ecrã desligado ou a app fechada, porque
+// é o sistema operativo (não a app) que acorda o SW para a mostrar.
+self.addEventListener('push', (event) => {
+  let data = {};
+  try { data = event.data ? event.data.json() : {}; } catch (e) {
+    data = { title: 'SyncPulse', body: event.data ? event.data.text() : '' };
+  }
+  event.waitUntil(
+    self.registration.showNotification(data.title || 'SyncPulse', {
+      body: data.body || '',
+      icon: '/icon-192.png',
+      badge: '/icon-192.png',
+      tag: data.tag || undefined,
+      data: { url: data.url || '/mobile.html' },
+    })
+  );
+});
+
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
+  const targetUrl = (event.notification.data && event.notification.data.url) || '/mobile.html';
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
       for (const client of clientList) {
         if ('focus' in client) return client.focus();
       }
-      if (clients.openWindow) return clients.openWindow('/mobile.html');
+      if (clients.openWindow) return clients.openWindow(targetUrl);
     })
   );
 });
