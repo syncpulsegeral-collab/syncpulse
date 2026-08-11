@@ -44,9 +44,16 @@ IS_CONTAINER = os.path.exists("/app_dist") and os.path.exists("/www_dist")
 IS_WINDOWS = platform.system() == "Windows"
 IS_MACOS = platform.system() == "Darwin"
 
-# Pasta onde o main.py (ou o executável empacotado, ex. PyInstaller) está
-# instalado -- usada para encontrar a pasta "www" (frontend) fora do Docker.
-APP_DIR = os.path.dirname(os.path.abspath(getattr(sys, "_MEIPASS", None) or __file__))
+# Pasta onde a app está instalada -- usada para encontrar a pasta "www"
+# (frontend) fora do Docker. Se for um .exe empacotado (PyInstaller +
+# Inno Setup), usamos a pasta onde o .exe está instalado (sys.executable),
+# que é onde o Inno Setup copia a pasta "www" como ficheiros soltos.
+# Se for o main.py a correr diretamente (python main.py), usamos a pasta
+# do próprio script.
+if getattr(sys, "frozen", False):
+    APP_DIR = os.path.dirname(os.path.abspath(sys.executable))
+else:
+    APP_DIR = os.path.dirname(os.path.abspath(__file__))
 
 def _default_config_dir():
     """Pasta nativa de configuração do SyncPulse quando não estamos em Docker."""
