@@ -118,7 +118,15 @@
   .btn-sim { color: var(--orange); }
   .btn-play { color: var(--accent); }
   .btn-stop { color: var(--red); }
-  .btn-action.disabled { opacity: 0.35; }
+  .btn-action.disabled { opacity: 0.4; cursor: not-allowed; }
+  .toast {
+    position: fixed; left: 50%; bottom: 90px; transform: translateX(-50%) translateY(10px);
+    background: var(--bg-elevated); border: 1px solid var(--border); color: var(--text);
+    font-size: 11.5px; font-weight: 700; padding: 10px 16px; border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.35); z-index: 300; opacity: 0; pointer-events: none;
+    transition: opacity 0.25s, transform 0.25s; max-width: 85%; text-align: center;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
   .icon-history { color: var(--text-faint); font-size: 14px; padding: 6px; }
 
   /* ---------- Cloud cards ---------- */
@@ -143,6 +151,7 @@
   .theme-opt { flex: 1; text-align: center; padding: 10px; border-radius: 7px; font-size: 12px; font-weight: 700; color: var(--text-dim); display: flex; align-items: center; justify-content: center; gap: 7px; }
   .theme-opt.active { background: var(--accent); color: #fff; }
   .lang-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .app-version { text-align: center; font-size: 10px; color: var(--text-faint); font-weight: 700; padding: 6px 0 24px; }
   .lang-opt { padding: 12px 6px; border-radius: 9px; border: 1px solid var(--border); background: var(--bg); text-align: center; font-size: 11px; font-weight: 800; color: var(--text-dim); }
   .lang-opt.active { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
 
@@ -412,6 +421,8 @@
       <div class="settings-label" data-i18n="settings_language">Idioma</div>
       <div class="lang-grid" id="lang-grid"></div>
     </div>
+
+    <div class="app-version" id="app-version-footer"></div>
   </div>
 
   <div class="bottom-nav">
@@ -468,7 +479,7 @@ const i18n = {
     settings_maintenance:"Manutenção", settings_restart_btn:"Reiniciar servidor", settings_restart_hint:"Reinicia o processo do SyncPulse no servidor (não a máquina). A app volta a ligar-se automaticamente.", settings_restart_confirm:"Tens a certeza? Toca outra vez para confirmar.", settings_restart_progress:"A reiniciar o servidor...",
     mode_up:"Local->Cloud", mode_down:"Cloud->Local", mode_bi:"Bidirecional",
     status_active:"Ativo", status_sim:"Simulação", status_inactive:"Inativo", status_done:"Concluído", status_error:"Erro",
-    last_sync:"Última sinc.", btn_simulate:"Simular", btn_start:"Iniciar", btn_stop:"Parar", opt_real:"Tempo real", daily:"Diário",
+    last_sync:"Última sinc.", btn_simulate:"Simular", btn_start:"Iniciar", btn_stop:"Parar", opt_real:"Tempo real", daily:"Diário", license_inactive_hint:"Precisas de uma licença ativa para iniciar sincronizações",
     hist_title:"Histórico de Atividade", hist_empty:"Sem registos.", hist_view_err:"Ver Erro", hist_success:"Sucesso", hist_error:"Erro", hist_sim:"Simulação", hist_sync:"Sincronização",
     files_title:"Fila de Ficheiros", file_pending:"PENDENTE", file_skipped:"SEM ALTERAÇÃO", file_error:"ERRO", file_done:"CONCLUÍDO",
     tab_files:"Ficheiros", tab_log:"Log", log_empty:"À espera de atividade...",
@@ -494,7 +505,7 @@ const i18n = {
     settings_maintenance:"Maintenance", settings_restart_btn:"Restart server", settings_restart_hint:"Restarts the SyncPulse process on the server (not the machine). The app will reconnect automatically.", settings_restart_confirm:"Are you sure? Tap again to confirm.", settings_restart_progress:"Restarting server...",
     mode_up:"Local->Cloud", mode_down:"Cloud->Local", mode_bi:"Bidirectional",
     status_active:"Active", status_sim:"Simulating", status_inactive:"Inactive", status_done:"Done", status_error:"Error",
-    last_sync:"Last sync", btn_simulate:"Simulate", btn_start:"Start", btn_stop:"Stop", opt_real:"Real-time", daily:"Daily",
+    last_sync:"Last sync", btn_simulate:"Simulate", btn_start:"Start", btn_stop:"Stop", opt_real:"Real-time", daily:"Daily", license_inactive_hint:"You need an active license to start syncs",
     hist_title:"Activity History", hist_empty:"No records found.", hist_view_err:"View Error", hist_success:"Success", hist_error:"Error", hist_sim:"Simulation", hist_sync:"Sync",
     files_title:"Files Queue", file_pending:"PENDING", file_skipped:"NO CHANGE", file_error:"ERROR", file_done:"COMPLETED",
     tab_files:"Files", tab_log:"Log", log_empty:"Waiting for activity...",
@@ -520,7 +531,7 @@ const i18n = {
     settings_maintenance:"Mantenimiento", settings_restart_btn:"Reiniciar servidor", settings_restart_hint:"Reinicia el proceso de SyncPulse en el servidor (no la máquina). La app se reconectará automáticamente.", settings_restart_confirm:"¿Seguro? Toca de nuevo para confirmar.", settings_restart_progress:"Reiniciando el servidor...",
     mode_up:"Local→Nube", mode_down:"Nube→Local", mode_bi:"Bidireccional",
     status_active:"Activo", status_sim:"Simulando", status_inactive:"Inactivo", status_done:"Hecho", status_error:"Error",
-    last_sync:"Última sinc.", btn_simulate:"Simular", btn_start:"Iniciar", btn_stop:"Detener", opt_real:"Tiempo real", daily:"Diario",
+    last_sync:"Última sinc.", btn_simulate:"Simular", btn_start:"Iniciar", btn_stop:"Detener", opt_real:"Tiempo real", daily:"Diario", license_inactive_hint:"Necesitas una licencia activa para iniciar sincronizaciones",
     hist_title:"Historial de actividad", hist_empty:"No hay registros.", hist_view_err:"Ver error", hist_success:"Correcto", hist_error:"Error", hist_sim:"Simulación", hist_sync:"Sincronización",
     files_title:"Cola de Archivos", file_pending:"PENDIENTE", file_skipped:"SIN CAMBIOS", file_error:"ERROR", file_done:"COMPLETADO",
     tab_files:"Archivos", tab_log:"Registro", log_empty:"Esperando actividad...",
@@ -546,7 +557,7 @@ const i18n = {
     settings_maintenance:"Maintenance", settings_restart_btn:"Redémarrer le serveur", settings_restart_hint:"Redémarre le processus SyncPulse sur le serveur (pas la machine). L'app se reconnectera automatiquement.", settings_restart_confirm:"Sûr ? Appuie à nouveau pour confirmer.", settings_restart_progress:"Redémarrage du serveur...",
     mode_up:"Local→Cloud", mode_down:"Cloud→Local", mode_bi:"Bidirectionnel",
     status_active:"Actif", status_sim:"Simulation", status_inactive:"Inactif", status_done:"Terminé", status_error:"Erreur",
-    last_sync:"Dern. sync.", btn_simulate:"Simuler", btn_start:"Démarrer", btn_stop:"Arrêter", opt_real:"Temps réel", daily:"Quotidien",
+    last_sync:"Dern. sync.", btn_simulate:"Simuler", btn_start:"Démarrer", btn_stop:"Arrêter", opt_real:"Temps réel", daily:"Quotidien", license_inactive_hint:"Une licence active est nécessaire pour démarrer une synchronisation",
     hist_title:"Historique d'activité", hist_empty:"Aucun enregistrement.", hist_view_err:"Voir l'erreur", hist_success:"Succès", hist_error:"Erreur", hist_sim:"Simulation", hist_sync:"Synchronisation",
     files_title:"File d'attente", file_pending:"EN ATTENTE", file_skipped:"AUCUN CHANGEMENT", file_error:"ERREUR", file_done:"TERMINÉ",
     tab_files:"Fichiers", tab_log:"Journal", log_empty:"En attente d'activité...",
@@ -572,7 +583,7 @@ const i18n = {
     settings_maintenance:"Wartung", settings_restart_btn:"Server neu starten", settings_restart_hint:"Startet den SyncPulse-Prozess auf dem Server neu (nicht die Maschine). Die App verbindet sich automatisch neu.", settings_restart_confirm:"Sicher? Nochmal tippen zum Bestätigen.", settings_restart_progress:"Server wird neu gestartet...",
     mode_up:"Lokal→Cloud", mode_down:"Cloud→Lokal", mode_bi:"Bidirektional",
     status_active:"Aktiv", status_sim:"Simulation", status_inactive:"Inaktiv", status_done:"Fertig", status_error:"Fehler",
-    last_sync:"Letzte Sync.", btn_simulate:"Simulieren", btn_start:"Starten", btn_stop:"Stoppen", opt_real:"Echtzeit", daily:"Täglich",
+    last_sync:"Letzte Sync.", btn_simulate:"Simulieren", btn_start:"Starten", btn_stop:"Stoppen", opt_real:"Echtzeit", daily:"Täglich", license_inactive_hint:"Du brauchst eine aktive Lizenz, um Synchronisationen zu starten",
     hist_title:"Aktivitätsverlauf", hist_empty:"Keine Einträge gefunden.", hist_view_err:"Fehler anzeigen", hist_success:"Erfolgreich", hist_error:"Fehler", hist_sim:"Simulation", hist_sync:"Synchronisierung",
     files_title:"Warteschlange", file_pending:"AUSSTEHEND", file_skipped:"KEINE ÄNDERUNG", file_error:"FEHLER", file_done:"FERTIG",
     tab_files:"Dateien", tab_log:"Protokoll", log_empty:"Warte auf Aktivität...",
@@ -595,6 +606,11 @@ const LANG_LABELS = { pt:"PT", en:"EN", es:"ES", fr:"FR", de:"DE" };
 let lang = localStorage.getItem('syncpulse_language_v2') || 'pt';
 if (!i18n[lang]) lang = 'pt';
 let theme = localStorage.getItem('syncpulse_theme') || 'dark';
+
+// Versão do frontend mobile — muda isto a cada deploy (junto com o
+// CACHE_NAME do sw.js). Aparece em Definições, para saberes de relance
+// qual a versão que está a correr no telemóvel.
+const APP_VERSION = '1.0.0';
 
 let tasks = [];
 let STATE = { running:{}, stats:{}, active_files:{}, failed_files:{}, finished_files:{}, all_files:{}, skipped_files:{}, file_sizes:{}, logs:{}, task_error:{}, license_active:false };
@@ -1078,6 +1094,21 @@ async function handleRestartServer() {
 /* ==================== Helpers ==================== */
 function t() { return i18n[lang] || i18n.pt; }
 
+let toastTimer = null;
+function showToast(text) {
+  let el = document.getElementById('quick-toast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'quick-toast';
+    el.className = 'toast';
+    document.body.appendChild(el);
+  }
+  el.textContent = text;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
+}
+
 function formatSize(bytes) {
   if (!bytes || bytes === 0) return "0 B";
   const i = Math.floor(Math.log(bytes) / Math.log(1024));
@@ -1288,8 +1319,8 @@ function renderTasks() {
       <div class="last-sync">${t().last_sync}: ${tk.last_sync || '—'}</div>
       <div class="card-footer">
         <button class="btn-action btn-sim" onclick="event.stopPropagation(); startSync('${tk.id}', true)"><i class="fas fa-flask"></i> ${t().btn_simulate}</button>
-        <button class="btn-action ${isRunning ? 'btn-stop' : 'btn-play'} ${!licenseActive ? 'disabled' : ''}"
-          onclick="event.stopPropagation(); ${licenseActive ? (isRunning ? `stopSync('${tk.id}')` : `startSync('${tk.id}', false)`) : ''}">
+        <button class="btn-action ${isRunning ? 'btn-stop' : 'btn-play'} ${(!isRunning && !licenseActive) ? 'disabled' : ''}"
+          onclick="event.stopPropagation(); ${(isRunning || licenseActive) ? (isRunning ? `stopSync('${tk.id}')` : `startSync('${tk.id}', false)`) : `showToast(t().license_inactive_hint)`}">
           <i class="fas ${isRunning ? 'fa-stop' : 'fa-play'}"></i> ${isRunning ? t().btn_stop : t().btn_start}
         </button>
         <i class="fas fa-history icon-history" onclick="event.stopPropagation(); showHistory('${tk.id}')"></i>
@@ -1514,6 +1545,8 @@ async function boot() {
   await loadNotifPrefs(); 
   applyStaticI18n();
   renderLangGrid();
+  const verEl = document.getElementById('app-version-footer');
+  if (verEl) verEl.textContent = `SyncPulse Mobile v${APP_VERSION}`;
 
   const saved = await storageGet(STORAGE_KEY_SERVER);
   if (saved) {
@@ -1556,7 +1589,38 @@ document.addEventListener('visibilitychange', () => {
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => {});
+    navigator.serviceWorker.register('/sw.js').then((registration) => {
+      // Verifica logo por uma versão nova do sw.js (não espera pelo
+      // intervalo periódico do browser).
+      registration.update().catch(() => {});
+
+      // Assim que houver uma versão nova instalada e pronta, ativa-a de
+      // imediato e recarrega a app uma única vez para a apanhar — sem
+      // isto, a nova versão só entra em ação na visita seguinte.
+      registration.addEventListener('updatefound', () => {
+        const newWorker = registration.installing;
+        if (!newWorker) return;
+        newWorker.addEventListener('statechange', () => {
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            newWorker.postMessage('skipWaiting');
+          }
+        });
+      });
+    }).catch(() => {});
+
+    // Volta a verificar sempre que a app volta ao primeiro plano.
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        navigator.serviceWorker.getRegistration().then((reg) => reg && reg.update().catch(() => {}));
+      }
+    });
+
+    let reloadedForUpdate = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (reloadedForUpdate) return;
+      reloadedForUpdate = true;
+      window.location.reload();
+    });
   });
 }
 

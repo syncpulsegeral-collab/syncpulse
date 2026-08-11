@@ -1,9 +1,16 @@
 // Service Worker do SyncPulse Mobile (PWA).
-// Âmbito: apenas o "shell" da app mobile (mobile.html + ícones + manifest).
-// Nunca intercepta chamadas à API nem ao WebSocket — essas vão sempre à rede,
-// para o servidor configurado em SERVER_URL (que pode ser de origem diferente).
+//
+// Estratégia: NETWORK-FIRST para o "shell" da app (mobile.html, manifest,
+// ícones) — tenta sempre a rede primeiro, e só usa a cache como reserva se
+// estiver offline. Isto evita o problema de ficar preso numa versão antiga:
+// basta abrir a app com rede para apanhar sempre o HTML mais recente do
+// servidor, sem precisar de 2 recarregamentos nem de limpar cache à mão.
+//
+// Nunca intercepta chamadas à API nem ao WebSocket — essas vão sempre à
+// rede, para o servidor configurado em SERVER_URL (que pode ser de origem
+// diferente da PWA).
 
-const CACHE_NAME = 'syncpulse-shell-v3';
+const CACHE_NAME = 'syncpulse-shell-v4';
 const SHELL_FILES = [
   '/mobile.html',
   '/manifest.json',
@@ -31,9 +38,6 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   const req = event.request;
-
-  // Só GET, só o mesmo domínio, e só ficheiros da shell — tudo o resto
-  // (API, WS, index.html, chamadas a outros servidores) segue direto à rede.
   if (req.method !== 'GET') return;
 
   let url;
@@ -41,43 +45,49 @@ self.addEventListener('fetch', (event) => {
   if (url.origin !== self.location.origin) return;
   if (!SHELL_FILES.includes(url.pathname)) return;
 
-// ... (mantém todo o teu código de cache acima)
+  event.respondWith(
+    fetch(req, { cache: 'no-store' }).then((res) => {
+      if (res && res.ok) {
+        const clone = res.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(req, clone));
+      }
+      return res;
+    }).catch(() => caches.match(req))
+  );
+});
 
-// Ouvinte para mensagens enviadas pela página para disparar notificações
+// Mensagens vindas da app (mobile.html)
 self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'SHOW_NOTIFICATION') {
-    const { title, body, icon } = event.data;
-    self.registration.showNotification(title, {
-      body: body,
-      icon: icon || '/icon-192.png',
-      badge: '/logo.svg', // ícone pequeno na barra de status
-      vibrate: [200, 100, 200],
-      tag: 'syncpulse-status' // impede duplicados da mesma tarefa
-    });
+  const data = event.data;
+
+  // Permite forçar a ativação imediata de uma nova versão do SW
+  if (data === 'skipWaiting' || (data && data.type === 'SKIP_WAITING')) {
+    self.skipWaiting();
+    return;
+  }
+
+  // Exibir uma notificação local (disparada pela app via WebSocket) —
+  // via SW é mais fiável no Android do que "new Notification()" direto.
+  if (data && data.type === 'SHOW_NOTIFICATION') {
+    event.waitUntil(
+      self.registration.showNotification(data.title || 'SyncPulse', {
+        body: data.body || '',
+        icon: '/icon-192.png',
+        badge: '/icon-192.png',
+        tag: data.tag || undefined,
+      })
+    );
   }
 });
 
-// Abre a app ao clicar na notificação
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      if (clientList.length > 0) return clientList[0].focus();
-      return clients.openWindow('/');
-    })
-  );
-});
-
-
-  event.respondWith(
-    caches.match(req).then((cached) => {
-      const network = fetch(req).then((res) => {
-        if (res && res.ok) {
-          caches.open(CACHE_NAME).then((cache) => cache.put(req, res.clone()));
-        }
-        return res;
-      }).catch(() => cached);
-      return cached || network;
+      for (const client of clientList) {
+        if ('focus' in client) return client.focus();
+      }
+      if (clients.openWindow) return clients.openWindow('/mobile.html');
     })
   );
 });
