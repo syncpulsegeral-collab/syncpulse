@@ -1540,6 +1540,22 @@ async function boot() {
   openConnectScreen();
 }
 
+// --- DETETOR DE REENTRADA NA APP ---
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    console.log("App voltou ao primeiro plano. A sincronizar...");
+    
+    // 1. Força a reconetividade do WebSocket se tiver caído
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
+        connectWS();
+    }
+    
+    // 2. Procura imediatamente por novos eventos no servidor (via API)
+    // Isto garante que recebes a notificação mesmo que o WS ainda esteja a ligar
+    fetchData(); 
+  }
+});
+
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').catch(() => {});
