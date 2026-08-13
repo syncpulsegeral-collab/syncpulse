@@ -26,7 +26,7 @@ services:
         target: /www
       - type: bind
         source: /mnt
-        target: /mnt
+        target: /mnt/storage
 x-casaos:
   author: self
   category: self
