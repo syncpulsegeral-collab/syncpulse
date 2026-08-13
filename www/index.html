@@ -453,9 +453,9 @@
 					<!-- Secção 2: Rclone Compliance (CRÍTICO) -->
 					<section class="bg-blue-500/5 border border-blue-500/10 p-4 rounded-xl">
 						<h4 class="text-white font-bold mb-2 uppercase text-[11px] flex items-center gap-2">
-							<i class="fas fa-code-branch text-blue-500"></i> Open Source & Credits
+							<i class="fas fa-code-branch text-blue-500"></i> <span data-key="open_source_title">Open Source & Credits</span>
 						</h4>
-						<p class="text-slate-400 text-[11px]">
+						<p class="text-slate-400 text-[11px]" data-key="open_source_text">
 							O SyncPulse utiliza o motor <b>Rclone</b> (rclone.org) como backend de comunicação. 
 							O Rclone é um software de código aberto distribuído sob a <b>Licença MIT</b>. 
 							Nós orgulhamo-nos de apoiar e utilizar tecnologias open-source para garantir a robustez do nosso serviço.
@@ -470,10 +470,10 @@
 					<section>
 						<h4 class="text-red-400 font-bold mb-2 uppercase text-xs tracking-tighter" data-key="eula_title">Termos de Utilização (EULA)</h4>
 						<div class="text-[10px] text-slate-500 space-y-2 bg-black/20 p-3 rounded-lg border border-white/5 font-mono">
-							<p>1. O software é fornecido "COMO ESTÁ", sem garantias de qualquer tipo.</p>
-							<p>2. O programador não se responsabiliza por perda de dados decorrente de má configuração ou falhas de terceiros.</p>
-							<p>3. A licença é vinculada a 1 dispositivo físico (Hardware ID) por slot adquirido.</p>
-							<p>4. É proibida a engenharia reversa do sistema de ativação.</p>
+							<p data-key="eula_step_1">1. O software é fornecido "COMO ESTÁ", sem garantias de qualquer tipo.</p>
+							<p data-key="eula_step_2">2. O programador não se responsabiliza por perda de dados decorrente de má configuração ou falhas de terceiros.</p>
+							<p data-key="eula_step_3">3. A licença é vinculada a 1 dispositivo físico (Hardware ID) por slot adquirido.</p>
+							<p data-key="eula_step_4">4. É proibida a engenharia reversa do sistema de ativação.</p>
 						</div>
 					</section>
 
@@ -849,7 +849,7 @@
                 </div>
                 
                 <div class="text-center opacity-70 text-[11px] font-mono text-slate-500 pt-2">
-                    SyncPulse ZIMAOS EDITION<br>VERSION 1.3
+                    SyncPulse ZIMAOS EDITION<br>VERSION 1.2
                 </div>
             </div>
 
@@ -866,7 +866,7 @@
 			en: {
 				// Splash & Welcome
 				starting_app: "Starting SyncPulse...",
-				welcome_title: "SyncPulse V1.3",
+				welcome_title: "SyncPulse V1.1",
 				zima_edition: "ZimaOS Edition",
 				about_sync_title: "About the Project",
 				about_sync_text: "SyncPulse is a professional interface and automation engine designed to simplify hybrid storage management on ZimaOS. It acts as an intelligent bridge between your hardware and the leading Cloud services.",
@@ -981,7 +981,7 @@
 			},
 			pt: {
 				starting_app: "A iniciar SyncPulse...",
-				welcome_title: "SyncPulse V1.3",
+				welcome_title: "SyncPulse V1.1",
 				zima_edition: "ZimaOS Edition",
 				about_sync_title: "Sobre o Projeto",
 				about_sync_text: "O SyncPulse é uma interface profissional e motor de automação desenvolvido para simplificar a gestão de storage híbrida no ZimaOS. Atua como uma ponte inteligente entre o seu hardware e os principais serviços de Cloud.",
@@ -1073,7 +1073,7 @@
 			},
 			es: {
 				starting_app: "Iniciando SyncPulse...",
-				welcome_title: "SyncPulse V1.3",
+				welcome_title: "SyncPulse V1.1",
 				zima_edition: "ZimaOS Edition",
 				about_sync_title: "Sobre el Proyecto",
 				about_sync_text: "SyncPulse es una interfaz profesional y un motor de automatización diseñado para simplificar la gestión del almacenamiento híbrido en ZimaOS.",
@@ -1117,7 +1117,7 @@
 			},
 			fr: {
 				starting_app: "Démarrage de SyncPulse...",
-				welcome_title: "SyncPulse V1.3",
+				welcome_title: "SyncPulse V1.1",
 				zima_edition: "ZimaOS Edition",
 				about_sync_title: "À propos du projet",
 				about_sync_text: "SyncPulse est une interface professionnelle et un moteur d'automatisation conçu pour simplifier la gestion du stockage hybride sur ZimaOS.",
@@ -1154,11 +1154,11 @@
 			},
 			de: {
 				starting_app: "SyncPulse wird gestartet...",
-				welcome_title: "SyncPulse V1.3",
+				welcome_title: "SyncPulse V1.1",
 				zima_edition: "ZimaOS Edition",
 				about_sync_title: "Über das Projekt",
 				about_sync_text: "SyncPulse ist eine professionelle Schnittstelle und Automatisierungs-Engine zur Vereinfachung der hybriden Speicherverwaltung auf ZimaOS.",
-				open_source_title: "Open Source & Credits",
+				open_source_title: "Open Source & Danksagungen",
 				open_source_text: "SyncPulse verwendet die Rclone-Engine (rclone.org). Rclone ist Open-Source-Software unter der MIT-Lizenz.",
 				privacy_title: "Datenschutz",
 				privacy_text: "Ihre Zugangsdaten werden verschlüsselt und lokal gespeichert. SyncPulse sendet keine privaten Daten an externe Server.",
@@ -1422,7 +1422,7 @@
                 const status = STATE.running[tidKey] || 'idle';
                 const isRunning = status !== 'idle';
                 const isSelected = tidStr && tidKey === tidStr;
-                const hasErrors = STATE.failed_files[tidKey] && STATE.failed_files[tidKey].length > 0;
+                const hasErrors = STATE.task_error?.[tidKey] === true || (STATE.failed_files[tidKey] && STATE.failed_files[tidKey].length > 0);
     
                 let syncLabel = t.type === 'bisync' ? lo.mode_bi : (t.type === 'upload' ? lo.mode_up : lo.mode_down);
                 let triggerText = t.trigger === 'real' ? lo.opt_real : (t.interval === 'daily' ? `${lo.daily} às ${t.daily_time || '03:00'}` : t.interval);
