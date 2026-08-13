@@ -54,6 +54,7 @@ if getattr(sys, "frozen", False):
     APP_DIR = os.path.dirname(os.path.abspath(sys.executable))
 else:
     APP_DIR = os.path.dirname(os.path.abspath(__file__))
+BUNDLE_DIR = getattr(sys, "_MEIPASS", APP_DIR)
 
 def _default_config_dir():
     """Pasta nativa de configuração do SyncPulse quando não estamos em Docker."""
@@ -88,7 +89,8 @@ if IS_CONTAINER:
     CONFIG_DIR = os.getenv("SYNCPULSE_CONFIG_DIR", "/config")
     RCLONE_CONFIG = os.getenv("SYNCPULSE_RCLONE_CONFIG", os.path.join(CONFIG_DIR, "rclone.conf"))
 else:
-    WWW_PATH = os.getenv("SYNCPULSE_WWW_PATH", os.path.join(APP_DIR, "www"))
+    # Em aplicações PyInstaller os assets vivem em _MEIPASS, não junto do .exe.
+    WWW_PATH = os.getenv("SYNCPULSE_WWW_PATH", os.path.join(BUNDLE_DIR, "www"))
     CONFIG_DIR = os.getenv("SYNCPULSE_CONFIG_DIR", _default_config_dir())
     RCLONE_CONFIG = os.getenv("SYNCPULSE_RCLONE_CONFIG", _default_rclone_config())
 
@@ -99,6 +101,8 @@ SETTINGS_FILE = os.path.join(CONFIG_DIR, "settings.json")
 LICENSE_FILE = os.path.join(CONFIG_DIR, "license.json")
 DEVICE_ID_FILE = os.path.join(CONFIG_DIR, "device-id")
 BISYNC_WORKDIR = os.path.join(CONFIG_DIR, "bisync")
+_bundled_rclone = os.path.join(BUNDLE_DIR, "rclone", "rclone.exe" if IS_WINDOWS else "rclone")
+RCLONE_EXE = os.getenv("SYNCPULSE_RCLONE_PATH", _bundled_rclone if os.path.isfile(_bundled_rclone) else "rclone")
 HWID_SALT = os.getenv("SYNCPULSE_HWID_SALT", "syncpulse-hwid-v1")
 LAST_BOX_CHECK_TIME = 0
 
@@ -242,6 +246,30 @@ def load_license():
     except (OSError, json.JSONDecodeError):
         return {}
 
+def license_is_current(license_data):
+    raw_expiry = str(license_data.get("expires_at") or "").strip()
+    if not raw_expiry:
+        return False
+    try:
+        expires_at = datetime.fromisoformat(raw_expiry.replace("Z", "+00:00"))
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        return expires_at > datetime.now(timezone.utc)
+    except ValueError:
+        return False
+
+def license_is_expired(license_data):
+    raw_expiry = str(license_data.get("expires_at") or "").strip()
+    if not raw_expiry:
+        return False
+    try:
+        expires_at = datetime.fromisoformat(raw_expiry.replace("Z", "+00:00"))
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        return expires_at <= datetime.now(timezone.utc)
+    except ValueError:
+        return False
+
 def load_tasks():
     if os.path.exists(CONFIG_FILE):
         try:
@@ -259,7 +287,8 @@ def get_initial_state():
     # Validação Híbrida:
     # 1. O ficheiro tem de ter "active": true (como no teu print)
     # 2. O HWID gravado tem de ser IGUAL ao HWID atual do hardware
-    is_valid = lic.get("active") is True and lic.get("hwid") == hwid_atual
+    is_valid = lic.get("active") is True and lic.get("hwid") == hwid_atual and license_is_current(lic)
+    is_expired = lic.get("active") is True and license_is_expired(lic)
 
     return {
         "last_error_id": {},
@@ -271,6 +300,7 @@ def get_initial_state():
         # Enviamos as duas variantes para garantir que o Frontend e o Backend se entendem
         "licensed": has_saved_license,
         "license_active": is_valid, 
+        "license_expired": is_expired,
         "license_info": {
             "email": lic.get("email", ""),
             "key": lic.get("key", ""),
@@ -374,6 +404,7 @@ async def silent_license_check():
                 # Licença confirmada! Atualizamos o ficheiro local com a data do check
                 STATE["licensed"] = True
                 STATE["license_active"] = True
+                STATE["license_expired"] = False
                 STATE["license_info"]["active"] = True
                 STATE["license_info"]["hwid"] = hwid
                 STATE["license_info"]["last_check"] = datetime.now().isoformat()
@@ -387,12 +418,17 @@ async def silent_license_check():
             else:
                 # O servidor diz que a licença já não é válida (ex: refund ou remoção de slot)
                 print(">>> [BACKGROUND] Licença revogada pelo servidor!")
-                await revoke_license_local()
+                if res_data.get("reason") == "expired":
+                    STATE["license_info"]["expires_at"] = res_data.get("expires_at", "")
+                await revoke_license_local(expired=res_data.get("reason") == "expired")
         elif response.status_code in (400, 401, 403):
             # Estas respostas recusam explicitamente a licença/HWID; não são
             # uma falha de ligação e devem bloquear a ativação local.
             print(">>> [BACKGROUND] Licença recusada pelo servidor!")
-            await revoke_license_local()
+            details = response.json()
+            if details.get("reason") == "expired":
+                STATE["license_info"]["expires_at"] = details.get("expires_at", "")
+            await revoke_license_local(expired=details.get("reason") == "expired")
         else:
             # Servidor offline ou erro 500: mantemos o utilizador ativo (Modo Híbrido/Offline)
             print(f">>> [BACKGROUND] Servidor central indisponível ({response.status_code}).")
@@ -542,6 +578,7 @@ async def activate_license_local(request: Request):
         # 5. ATUALIZAÇÃO DO ESTADO EM MEMÓRIA (Desbloqueio instantâneo)
         STATE["licensed"] = True
         STATE["license_active"] = True
+        STATE["license_expired"] = False
         STATE["license_info"] = license_data
 
         # 6. LIGAR MOTORES DE SINCRONIZAÇÃO (Agora que temos licença)
@@ -570,12 +607,17 @@ async def activate_license_local(request: Request):
             content={"message": "Erro ao contactar servidor de ativação."}
         )
 
-async def revoke_license_local():
+async def revoke_license_local(expired=False):
     """Bloqueia a app imediatamente se a validação falhar."""
     STATE["licensed"] = False
     STATE["license_active"] = False
-    STATE["license_info"] = {}
-    if os.path.exists(LICENSE_FILE):
+    STATE["license_expired"] = expired
+    if expired:
+        STATE["license_info"]["active"] = False
+        save_license(STATE["license_info"])
+    else:
+        STATE["license_info"] = {}
+    if not expired and os.path.exists(LICENSE_FILE):
         os.remove(LICENSE_FILE)
     
     # Parar os motores de sincronização para respeitar o bloqueio
@@ -665,7 +707,7 @@ def validate_license_with_api(email, license_key, device_name=None):
 
 def is_license_active():
     license_data = load_license()
-    return license_data.get("active") is True and license_data.get("hwid") == get_secure_hwid()
+    return license_data.get("active") is True and license_data.get("hwid") == get_secure_hwid() and license_is_current(license_data)
 
 def stop_all_realtime_watchers():
     for tid in list(WATCHERS):
@@ -831,7 +873,7 @@ async def get_remote_snapshot(remote):
     """Obtém uma assinatura estável dos ficheiros de uma cloud sem os transferir."""
     try:
         proc = await asyncio.create_subprocess_exec(
-            "rclone", "--config", RCLONE_CONFIG, "lsjson", "--recursive", "--files-only", remote,
+            RCLONE_EXE, "--config", RCLONE_CONFIG, "lsjson", "--recursive", "--files-only", remote,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE
         )
@@ -1060,7 +1102,7 @@ def get_bisync_workdir(task_id):
 async def list_rclone_files(path):
     """Lista caminhos relativos, quer a origem seja local ou cloud."""
     proc = await asyncio.create_subprocess_exec(
-        "rclone", "--config", RCLONE_CONFIG, "lsf", "-R", "--files-only", path,
+        RCLONE_EXE, "--config", RCLONE_CONFIG, "lsf", "-R", "--files-only", path,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE
     )
@@ -1085,7 +1127,7 @@ async def list_bisync_files(local_path, remote_path):
 def build_bisync_command(task, tid, remote_type, dry_run=False):
     """Prepara um bisync persistente e recuperável; o resync ocorre apenas na primeira vez."""
     cmd = [
-        "rclone", "--config", RCLONE_CONFIG, "bisync", task["local"], task["remote"],
+        RCLONE_EXE, "--config", RCLONE_CONFIG, "bisync", task["local"], task["remote"],
         "-P", "-v", "--stats", "1s", "--stats-file-name-length", "0",
         "--transfers", "1", "--checkers", "1", "--multi-thread-streams", "0",
         "--create-empty-src-dirs", "--resilient", "--recover",
@@ -1111,7 +1153,7 @@ async def dryrun_step(src, dst, tid, sorted_files):
     STATE["skipped_files"][tid] = list(sorted_files)
     STATE["file_sizes"][tid] = {}
 
-    cmd = ["rclone", "--config", RCLONE_CONFIG, "copy", src, dst, "-v", "--dry-run", "--update", "--modify-window", "2s", "--stats", "1s"]
+    cmd = [RCLONE_EXE, "--config", RCLONE_CONFIG, "copy", src, dst, "-v", "--dry-run", "--update", "--modify-window", "2s", "--stats", "1s"]
     proc = await asyncio.create_subprocess_exec(*cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT)
     
     while True:
@@ -1368,7 +1410,7 @@ async def real_copy_step_sim(src, dst, tid, sorted_files, r_type, phase_label):
         return True
 
     STATE["running"][tid] = "active"
-    cmd = ["rclone", "--config", RCLONE_CONFIG, "copy", src, dst, "-P", "-v", "--update", "--modify-window", "2s", "--stats", "1s", "--stats-file-name-length", "0", "--transfers", "1", "--checkers", "1", "--multi-thread-streams", "0"]
+    cmd = [RCLONE_EXE, "--config", RCLONE_CONFIG, "copy", src, dst, "-P", "-v", "--update", "--modify-window", "2s", "--stats", "1s", "--stats-file-name-length", "0", "--transfers", "1", "--checkers", "1", "--multi-thread-streams", "0"]
     if r_type == "onedrive": cmd += ["--onedrive-chunk-size", "10M"]
 
     proc = await asyncio.create_subprocess_exec(*cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT)
@@ -1479,7 +1521,7 @@ async def real_copy_step(src, dst, tid, sorted_files, r_type, phase_label, offse
     STATE["logs"][tid].insert(0, f"--- INICIANDO: {phase_label} ---")
 
     cmd = [
-        "rclone", "--config", RCLONE_CONFIG, "copy", src, dst, 
+        RCLONE_EXE, "--config", RCLONE_CONFIG, "copy", src, dst, 
         "-vv", "-P", "--stats", "1s",
         "--transfers", "1", "--checkers", "1", "--multi-thread-streams", "0"
     ]
@@ -1678,7 +1720,7 @@ async def rclone_worker(task, manual_simulate=False):
             
             # Listagem (Única fonte de verdade para a lista visual)
             all_detected = set()
-            lsf = await asyncio.create_subprocess_exec("rclone", "--config", RCLONE_CONFIG, "lsf", "-R", "--files-only", src, stdout=asyncio.subprocess.PIPE)
+            lsf = await asyncio.create_subprocess_exec(RCLONE_EXE, "--config", RCLONE_CONFIG, "lsf", "-R", "--files-only", src, stdout=asyncio.subprocess.PIPE)
             out, _ = await lsf.communicate()
             for f in out.decode('utf-8', errors='ignore').split("\n"):
                 clean_f = f.strip().strip('/')
@@ -1990,6 +2032,12 @@ def browse_local_endpoint(path: str = "/mnt"):
     """Lista apenas pastas do sistema local."""
     if not path or path == "undefined":
         path = "/mnt"
+    if IS_WINDOWS and path in {"/", "/mnt"}:
+        import string
+        return [
+            {"name": f"{letter}:\\", "path": f"{letter}:\\", "is_dir": True, "is_drive": True}
+            for letter in string.ascii_uppercase if os.path.exists(f"{letter}:\\")
+        ]
     
     try:
         if not os.path.exists(path):
@@ -2009,12 +2057,29 @@ def browse_local_endpoint(path: str = "/mnt"):
         print(f"Erro ao navegar localmente em {path}: {e}")
         return []
 
+@app.post("/api/remotes/terminal/start")
+def start_rclone_config_terminal():
+    """Abre o configurador interativo apenas na aplicação Windows nativa."""
+    if not IS_WINDOWS or IS_CONTAINER:
+        return JSONResponse(status_code=400, content={
+            "message": "A configuração por terminal é exclusiva da versão Windows."
+        })
+    if not os.path.isfile(RCLONE_EXE):
+        return JSONResponse(status_code=500, content={"message": "rclone.exe não foi encontrado na instalação."})
+    try:
+        # A sintaxe cmd/start evita problemas com espaços no caminho de instalação.
+        command = f'start cmd /c ""{RCLONE_EXE}" --config "{RCLONE_CONFIG}" config"'
+        subprocess.Popen(command, shell=True, cwd=os.path.dirname(RCLONE_EXE))
+        return {"status": "ok"}
+    except OSError as error:
+        return JSONResponse(status_code=500, content={"message": str(error)})
+
 @app.get("/api/browse/remotes")
 def list_remotes_endpoint():
     """Lista os nomes das clouds configuradas no rclone.conf"""
     try:
         # Adicionado o --config RCLONE_CONFIG para ele encontrar os teus remotes
-        out = subprocess.check_output(["rclone", "--config", RCLONE_CONFIG, "listremotes"]).decode("utf-8")
+        out = subprocess.check_output([RCLONE_EXE, "--config", RCLONE_CONFIG, "listremotes"]).decode("utf-8")
         return [l.strip().replace(":", "") for l in out.split("\n") if l.strip()]
     except Exception as e:
         print(f"Erro ao listar remotes: {e}")
@@ -2027,7 +2092,7 @@ def browse_cloud_endpoint(remote: str, path: str = ""):
         # Garante que o nome do remote tem os dois pontos no final
         remote_name = remote.replace(":", "") + ":"
         res = subprocess.check_output([
-            "rclone", "--config", RCLONE_CONFIG, "lsd", 
+            RCLONE_EXE, "--config", RCLONE_CONFIG, "lsd", 
             f"{remote_name}{path.lstrip('/')}"
         ]).decode("utf-8")
         # Extrai o nome da pasta (o rclone lsd tem um formato fixo)
@@ -2038,7 +2103,7 @@ def browse_cloud_endpoint(remote: str, path: str = ""):
 
 def get_remote_type(remote_name):
     try:
-        res = subprocess.check_output(["rclone", "--config", RCLONE_CONFIG, "listremotes", "--long"]).decode()
+        res = subprocess.check_output([RCLONE_EXE, "--config", RCLONE_CONFIG, "listremotes", "--long"]).decode()
         for line in res.split("\n"):
             if line.startswith(remote_name.replace(":", "") + ":"): return line.split(":")[1].strip().lower()
     except: pass
@@ -2046,7 +2111,7 @@ def get_remote_type(remote_name):
 
 async def check_single_remote(remote_name):
     try:
-        proc = await asyncio.create_subprocess_exec("rclone", "--config", RCLONE_CONFIG, "lsd", f"{remote_name}:", "--max-depth", "1", stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+        proc = await asyncio.create_subprocess_exec(RCLONE_EXE, "--config", RCLONE_CONFIG, "lsd", f"{remote_name}:", "--max-depth", "1", stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
         stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=7.0)
         if proc.returncode == 0: return {"name": remote_name, "status": "online", "message": "OK"}
         return {"name": remote_name, "status": "offline", "message": "Erro de Token/Acesso"}
@@ -2056,7 +2121,7 @@ async def update_health_cache():
     global HEALTH_CACHE, LAST_BOX_CHECK_TIME
     try:
         # 1. Obtemos a lista longa para saber o tipo de cada cloud (drive, box, onedrive...)
-        out = subprocess.check_output(["rclone", "--config", RCLONE_CONFIG, "listremotes", "--long"]).decode("utf-8")
+        out = subprocess.check_output([RCLONE_EXE, "--config", RCLONE_CONFIG, "listremotes", "--long"]).decode("utf-8")
         
         remotes_to_check = []
         now = time.time()
@@ -2151,7 +2216,13 @@ def get_settings():
         "terms_accepted": settings["terms_accepted"],
         "license_email": license_data.get("email", ""),
         "license_active": is_license_active(),
-        "license_info": {"plan": license_data.get("plan"), "device_name": license_data.get("device_name"), "activated_at": license_data.get("activated_at")}
+        "license_expired": license_is_expired(license_data),
+        "license_info": {
+            "plan": license_data.get("plan"),
+            "device_name": license_data.get("device_name"),
+            "activated_at": license_data.get("activated_at"),
+            "expires_at": license_data.get("expires_at")
+        }
     }
 
 
@@ -2242,7 +2313,7 @@ async def delete_cloud_config(name: str):
         
         # Executamos o comando e capturamos a saída
         result = subprocess.run([
-            "rclone", "--config", RCLONE_CONFIG, "config", "delete", clean_name
+            RCLONE_EXE, "--config", RCLONE_CONFIG, "config", "delete", clean_name
         ], capture_output=True, text=True)
 
         if result.returncode != 0:
@@ -2267,7 +2338,7 @@ async def list_remotes_with_quota():
     
     try:
         # 1. Lista remotes
-        res_list = subprocess.run(["rclone", "--config", RCLONE_CONFIG, "listremotes", "--long"], 
+        res_list = subprocess.run([RCLONE_EXE, "--config", RCLONE_CONFIG, "listremotes", "--long"], 
                                   capture_output=True, text=True, timeout=5)
         if res_list.returncode != 0: return []
         
@@ -2281,7 +2352,7 @@ async def list_remotes_with_quota():
                 quota = {"total": 0, "used": 0, "free": 0, "supported": False}
                 status, error_detail = "ok", None
                 try:
-                    res_about = subprocess.run(["rclone", "--config", RCLONE_CONFIG, "about", f"{name}:", "--json"], 
+                    res_about = subprocess.run([RCLONE_EXE, "--config", RCLONE_CONFIG, "about", f"{name}:", "--json"], 
                                              capture_output=True, text=True, timeout=8)
                     if res_about.returncode == 0:
                         data = json.loads(res_about.stdout)
@@ -2332,7 +2403,7 @@ async def discover_ping():
     válido antes de o guardar como servidor ativo."""
     return {
         "app": "syncpulse",
-        "edition": "zimaos",
+        "edition": "zimaos" if IS_CONTAINER else ("windows" if IS_WINDOWS else ("macos" if IS_MACOS else "linux")),
         "version": "1.1",
         "device_name": (platform.node() or "syncpulse").split(".")[0],
         "hwid_short": get_secure_hwid()[:12],
