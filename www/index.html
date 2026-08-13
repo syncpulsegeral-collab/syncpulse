@@ -657,19 +657,19 @@
                     <label class="block"><span data-key="sync_type">Modo</span><select id="in-typ" class="input-box mt-1"><option value="upload">Local->Cloud</option><option value="download">Cloud->Local</option><option value="bisync">Bisync</option></select></label>
                     <label class="block"><span data-key="trigger">Trigger</span>
 						<select id="in-trig" class="input-box mt-2" onchange="toggleTriggerFields(this.value)">
-							<option value="sched">Agendado</option>
-							<option value="real">Tempo Real</option>
+							<option value="sched" data-key="opt_sched">Scheduled</option>
+							<option value="real" data-key="opt_real">Real-time</option>
 						</select>
 					</label>
                     <div id="interval-wrap" class="mt-4">
 						<label class="block"><span data-key="interval">Intervalo</span>
 							<select id="in-int" class="input-box mt-2" onchange="toggleTimeField(this.value)">
-								<option value="1m">1 min</option>
-								<option value="5m">5 min</option>
-								<option value="15m">15 min</option>
-								<option value="30m">30 min</option>
-								<option value="1h">1 hora</option>
-								<option value="daily">Diário</option>
+								<option value="1m" data-key="interval_1m">Every minute</option>
+								<option value="5m" data-key="interval_5m">Every 5 minutes</option>
+								<option value="15m" data-key="interval_15m">Every 15 minutes</option>
+								<option value="30m" data-key="interval_30m">Every 30 minutes</option>
+								<option value="1h" data-key="interval_1h">Every hour</option>
+								<option value="daily" data-key="daily">Daily</option>
 							</select>
 						</label>
 					</div>
@@ -1218,6 +1218,12 @@
         Object.assign(i18n.es, { clouds_loading: 'Sincronizando cuotas...', clouds_empty: 'No hay nubes configuradas', clouds_used: 'Usado', clouds_total: 'Total', clouds_connection_error: 'No se pudo contactar con el motor de sincronización.', clouds_remove_confirm: '¿Seguro que deseas eliminar la conexión "{name}"?', clouds_command_copied: 'Comando copiado al portapapeles.' });
         Object.assign(i18n.fr, { clouds_loading: 'Synchronisation des quotas...', clouds_empty: 'Aucun cloud configuré', clouds_used: 'Utilisé', clouds_total: 'Total', clouds_connection_error: 'Impossible de contacter le moteur de synchronisation.', clouds_remove_confirm: 'Voulez-vous vraiment supprimer la connexion « {name} » ?', clouds_command_copied: 'Commande copiée dans le presse-papiers.' });
         Object.assign(i18n.de, { clouds_loading: 'Kontingente werden synchronisiert...', clouds_empty: 'Keine Clouds konfiguriert', clouds_used: 'Belegt', clouds_total: 'Gesamt', clouds_connection_error: 'Die Synchronisierungs-Engine konnte nicht erreicht werden.', clouds_remove_confirm: 'Möchten Sie die Verbindung „{name}“ wirklich löschen?', clouds_command_copied: 'Befehl wurde in die Zwischenablage kopiert.' });
+
+        Object.assign(i18n.en, { interval_1m: 'Every minute', interval_5m: 'Every 5 minutes', interval_15m: 'Every 15 minutes', interval_30m: 'Every 30 minutes', interval_1h: 'Every hour' });
+        Object.assign(i18n.pt, { interval_1m: 'A cada minuto', interval_5m: 'A cada 5 minutos', interval_15m: 'A cada 15 minutos', interval_30m: 'A cada 30 minutos', interval_1h: 'A cada hora' });
+        Object.assign(i18n.es, { interval_1m: 'Cada minuto', interval_5m: 'Cada 5 minutos', interval_15m: 'Cada 15 minutos', interval_30m: 'Cada 30 minutos', interval_1h: 'Cada hora' });
+        Object.assign(i18n.fr, { interval_1m: 'Chaque minute', interval_5m: 'Toutes les 5 minutes', interval_15m: 'Toutes les 15 minutes', interval_30m: 'Toutes les 30 minutes', interval_1h: 'Toutes les heures' });
+        Object.assign(i18n.de, { interval_1m: 'Jede Minute', interval_5m: 'Alle 5 Minuten', interval_15m: 'Alle 15 Minuten', interval_30m: 'Alle 30 Minuten', interval_1h: 'Jede Stunde' });
 
         const licenseI18n = {
             pt: { title: 'Ativação da licença', desc: 'A licença desbloqueia sincronização e automatismos.', active: 'Ativa', inactive: 'Inativa', email: 'Email da licença', device: 'Nome do dispositivo (ex.: NAS da Sala)', key: 'Chave de licença', activate: 'Ativar licença', note: 'Sem licença, pode simular, mas não iniciar/parar sincronizações nem usar processos automáticos.', success: 'Licença ativada. Todos os recursos estão disponíveis.', invalid: 'Licença inválida ou inativa. A simulação continua disponível.', unavailable: 'Não foi possível validar a licença.', maxDevices: 'Número máximo de dispositivos atingido. Efetue a gestão dos dispositivos no portal.', blocked: 'Ative a licença para sincronizar.' },

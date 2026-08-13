@@ -2409,8 +2409,11 @@ async def discover_ping():
         "hwid_short": get_secure_hwid()[:12],
     }
 
+FRONTEND_FILE = "index_win.html" if IS_WINDOWS and not IS_CONTAINER else "index.html"
+
 @app.get("/")
-async def serve_index(): return FileResponse(os.path.join(WWW_PATH, "index.html"))
+async def serve_index():
+    return FileResponse(os.path.join(WWW_PATH, FRONTEND_FILE))
 
 # Fora do container, a pasta "www" (frontend) tem de ser distribuída junto do
 # main.py. Se faltar (ex. instalação incompleta), criamos uma pasta vazia em
@@ -2419,4 +2422,6 @@ if not os.path.isdir(WWW_PATH):
     print(f">>> [AVISO] Pasta do frontend não encontrada em: {WWW_PATH}")
     print(">>> [AVISO] Copia a pasta 'www' para esse caminho (ou define SYNCPULSE_WWW_PATH).")
     os.makedirs(WWW_PATH, exist_ok=True)
+if not os.path.isfile(os.path.join(WWW_PATH, FRONTEND_FILE)):
+    raise RuntimeError(f"Frontend '{FRONTEND_FILE}' não encontrado em: {WWW_PATH}")
 app.mount("/", StaticFiles(directory=WWW_PATH), name="static")

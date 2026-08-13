@@ -44,6 +44,6 @@ jobs:
           # Agora garantimos que a variável OWNER_LC está preenchida e em minúsculas
           tags: |
             
-            ghcr.io/${{ env.OWNER_LC }}/syncpulse:beta-3.2
+            ghcr.io/${{ env.OWNER_LC }}/syncpulse:beta-3.3
           cache-from: type=gha
           cache-to: type=inline
