@@ -291,6 +291,7 @@
 		/* ÁREA DE CARTÕES COM SCROLL */
 		#cloud-manager-list {
 			flex: 1; /* Ocupa o espaço central */
+			min-height: 0;
 			overflow-y: auto; /* ATIVA O SCROLL AQUI */
 			padding: 10px;
 			margin-bottom: 15px;
@@ -299,6 +300,71 @@
 			gap: 20px;
 			align-content: start;
 		}
+
+		.wiz-body { flex: 1; overflow-y: auto; padding: 4px 2px; }
+		.field-label { font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: 800; letter-spacing: .06em; margin-bottom: 6px; display: block; }
+
+		/* Rail / indicador de passos */
+		.rail { display: flex; align-items: center; }
+		.rail-step { display: flex; align-items: center; gap: 8px; }
+		.rail-dot { width: 24px; height: 24px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800; background: #0f172a; border: 1px solid #1e293b; color: #64748b; transition: .2s; flex-shrink: 0; }
+		.rail-label { font-size: 9px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; color: #64748b; transition: .2s; white-space: nowrap; }
+		.rail-line { width: 20px; height: 2px; background: #1e293b; margin: 0 6px; border-radius: 2px; overflow: hidden; position: relative; flex-shrink: 0; }
+		.rail-line i { position: absolute; inset: 0; background: linear-gradient(90deg,#3b82f6,#00d4ff); transform: scaleX(0); transform-origin: left; transition: transform .35s ease; }
+		.rail-line.done i { transform: scaleX(1); }
+		.rail-step.active .rail-dot { background: linear-gradient(135deg,#3b82f6,#00d4ff); border-color: transparent; color: #04101f; box-shadow: 0 0 0 4px rgba(59,130,246,.15); }
+		.rail-step.active .rail-label { color: #fff; }
+		.rail-step.done .rail-dot { background: #0f172a; border-color: #3b82f6; color: #00d4ff; }
+		.rail-step.done .rail-dot::before { content:"\f00c"; font-family:"Font Awesome 6 Free"; font-weight: 900; font-size: 8px; }
+		.rail-step.done .rail-dot span { display: none; }
+
+		/* Transição entre passos */
+		.wiz-step { display: none; }
+		.wiz-step.active { display: block; animation: wiz-step-in .3s cubic-bezier(.22,1,.36,1); }
+		@keyframes wiz-step-in { from{ opacity:0; transform:translateX(8px); } to{ opacity:1; transform:translateX(0); } }
+
+		.btn-ghost { color: #64748b; transition: .15s; background: none; border: none; }
+		.btn-ghost:hover:not(:disabled) { color: #fff; }
+		.btn-ghost:disabled { opacity: .3; cursor: not-allowed; }
+		.btn-wiz-next { background: linear-gradient(135deg,#3b82f6,#2563eb); transition: .18s; box-shadow: 0 8px 20px -8px rgba(59,130,246,.55); }
+		.btn-wiz-next:hover:not(:disabled) { filter: brightness(1.08); }
+		.btn-wiz-next:disabled { opacity: .35; cursor: not-allowed; box-shadow: none; }
+
+		/* ===== WIZARD DE TAREFA (novo/editar tarefa) ===== */
+		#mTask .wizard-card { width: min(640px, calc(100vw - 32px)); max-height: min(720px, calc(100vh - 32px)); display: flex; flex-direction: column; overflow: hidden; }
+
+		.browser-box { background: #0b111d; border: 1px solid #1e293b; border-radius: 14px; overflow: hidden; margin-top: 8px; }
+		.browser-toolbar { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-bottom: 1px solid #1e293b; background: #0f172a; }
+		.browser-up-btn { background: #1e293b; border: none; color: #94a3b8; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; padding: 6px 10px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 6px; flex-shrink: 0; transition: .15s; }
+		.browser-up-btn:hover { background: #334155; color: #fff; }
+		.browser-path { font-size: 10px; font-family: monospace; color: #64748b; white-space: nowrap; overflow-x: auto; flex: 1; }
+		.browser-list { height: 240px; overflow-y: auto; }
+		.browser-item { padding: 10px 14px; border-bottom: 1px solid #131f30; cursor: pointer; display: flex; align-items: center; gap: 10px; font-size: 12px; color: #cbd5e1; transition: .1s; }
+		.browser-item:hover { background: rgba(59,130,246,.1); color: #3b82f6; }
+		.browser-item i { color: #eab308; width: 14px; text-align: center; }
+		.browser-empty, .browser-loading, .browser-error { padding: 40px 10px; text-align: center; font-size: 11px; color: #475569; font-style: italic; }
+		.browser-error { color: #ef4444; }
+
+		/* Grelha de seleção de cloud (passo Pasta Cloud) */
+		.tw-cloud-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; max-height: 300px; overflow-y: auto; padding: 2px; margin-top: 4px; }
+		.tw-cloud-tile { background: #0f172a; border: 1px solid #1e293b; border-radius: 14px; padding: 16px 10px; display: flex; flex-direction: column; align-items: center; gap: 8px; cursor: pointer; transition: .15s; text-align: center; }
+		.tw-cloud-tile:hover { border-color: rgba(59,130,246,.4); transform: translateY(-1px); background: #16202c; }
+		.tw-cloud-tile i { font-size: 20px; color: #00d4ff; }
+		.tw-cloud-tile span { font-size: 10px; font-weight: 800; color: #cbd5e1; word-break: break-all; }
+		.tw-change-cloud { background: none; border: none; color: #3b82f6; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; cursor: pointer; padding: 4px 0; display: flex; align-items: center; gap: 6px; }
+		.tw-change-cloud:hover { color: #00d4ff; }
+
+		/* Cartões de modo / trigger */
+		.tw-mode-grid, .tw-trigger-grid { display: grid; gap: 12px; margin-top: 4px; }
+		.tw-mode-grid { grid-template-columns: repeat(3, 1fr); }
+		.tw-trigger-grid { grid-template-columns: repeat(2, 1fr); }
+		.tw-mode-card, .tw-trigger-card { background: #0f172a; border: 1px solid #1e293b; border-radius: 14px; padding: 22px 12px; display: flex; flex-direction: column; align-items: center; gap: 10px; cursor: pointer; transition: .15s; text-align: center; }
+		.tw-mode-card:hover, .tw-trigger-card:hover { border-color: rgba(59,130,246,.4); background: #16202c; }
+		.tw-mode-card i, .tw-trigger-card i { font-size: 22px; color: #64748b; transition: .15s; }
+		.tw-mode-card span, .tw-trigger-card span { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: #cbd5e1; }
+		.tw-mode-card.selected, .tw-trigger-card.selected { border-color: #3b82f6; background: rgba(59,130,246,.08); box-shadow: 0 0 0 1px #3b82f6; }
+		.tw-mode-card.selected i, .tw-trigger-card.selected i { color: #3b82f6; }
+		.tw-desc-box { margin-top: 14px; font-size: 11px; line-height: 1.6; color: #94a3b8; background: #0b111d; border: 1px solid #1e293b; border-radius: 12px; padding: 12px 14px; min-height: 20px; }
 
 		/* FIX DA PERCENTAGEM E GRÁFICO */
 		.quota-circle {
@@ -434,7 +500,7 @@
 							<path d="M100 256H160L190 140L256 380L322 140L352 256H412" stroke="#3b82f6" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>
 						</svg>
 					</div>
-					<h2 class="text-xl font-black text-white uppercase tracking-widest">SyncPulse <span class="text-blue-500">V1.1</span></h2>
+					<h2 class="text-xl font-black text-white uppercase tracking-widest" data-key="welcome_title">SyncPulse Version 1.4</h2>
 					<p class="text-[10px] text-slate-500 font-bold uppercase mt-1">ZimaOS Edition</p>
 				</div>
 
@@ -643,65 +709,131 @@
     </main>
 
 
-    <!-- MODAL TAREFA -->
+    <!-- MODAL TAREFA (WIZARD) -->
     <div id="mTask" class="modal-overlay hidden">
-        <div class="bg-slate-900 border border-slate-700 w-full max-w-2xl rounded-2xl p-10">
-            <h3 id="modalTitle" class="text-2xl font-black mb-8 text-white" data-key="config_task">Configurar Tarefa</h3>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 text-sm">
-                <div class="space-y-4 text-slate-300">
-                    <label class="block"><span data-key="task_name">Nome</span><input id="in-name" type="text" class="input-box mt-1"></label>
-                    <label class="block"><span data-key="local_folder">Pasta Local</span><div class="flex gap-2 mt-1"><input id="in-loc" type="text" class="input-box" readonly><button onclick="openExp('local')" class="bg-blue-600 px-3 rounded text-white"><i class="fas fa-folder"></i></button></div></label>
-                    <label class="block"><span data-key="remote_folder">Pasta Cloud</span><div class="flex gap-2 mt-1"><input id="in-rem" type="text" class="input-box" readonly><button onclick="openExp('cloud')" class="bg-blue-600 px-3 rounded text-white"><i class="fas fa-cloud"></i></button></div></label>
+        <div class="wizard-card bg-slate-900 border border-slate-700 rounded-[26px] p-7 shadow-2xl">
+
+            <!-- CABEÇALHO + RAIL -->
+            <div class="shrink-0 mb-5">
+                <div class="flex justify-between items-start mb-5">
+                    <div><h3 id="modalTitle" class="text-xl font-black text-white uppercase" data-key="config_task">Configurar Tarefa</h3><p id="tw-subtitle" class="text-slate-500 text-[10px] font-bold uppercase tracking-[2px] mt-1"></p></div>
+                    <button type="button" onclick="toggleModal('mTask', false)" class="text-slate-500 hover:text-white text-3xl leading-none">&times;</button>
                 </div>
-                <div class="space-y-4 text-slate-300">
-                    <label class="block"><span data-key="sync_type">Modo</span><select id="in-typ" class="input-box mt-1"><option value="upload">Local->Cloud</option><option value="download">Cloud->Local</option><option value="bisync">Bisync</option></select></label>
-                    <label class="block"><span data-key="trigger">Trigger</span>
-						<select id="in-trig" class="input-box mt-2" onchange="toggleTriggerFields(this.value)">
-							<option value="sched" data-key="opt_sched">Scheduled</option>
-							<option value="real" data-key="opt_real">Real-time</option>
-						</select>
-					</label>
-                    <div id="interval-wrap" class="mt-4">
-						<label class="block"><span data-key="interval">Intervalo</span>
-							<select id="in-int" class="input-box mt-2" onchange="toggleTimeField(this.value)">
-								<option value="1m" data-key="interval_1m">Every minute</option>
-								<option value="5m" data-key="interval_5m">Every 5 minutes</option>
-								<option value="15m" data-key="interval_15m">Every 15 minutes</option>
-								<option value="30m" data-key="interval_30m">Every 30 minutes</option>
-								<option value="1h" data-key="interval_1h">Every hour</option>
-								<option value="daily" data-key="daily">Daily</option>
-							</select>
-						</label>
-					</div>
-					<!-- Contentor da Hora (Aparece se for Daily) -->
-					<div id="time-wrap" class="hidden mt-4 space-y-2">
-						<label class="block">
-							<span data-key="start_time" class="text-slate-400 text-xs font-bold uppercase tracking-wider">Hora de Início (24h)</span>
-							<input id="in-time" type="time" class="input-box mt-2" step="60" value="03:00">
-						</label>
-					</div>
+                <div id="tw-rail" class="rail"></div>
+            </div>
+
+            <!-- CORPO / PASSOS -->
+            <div class="wiz-body">
+
+                <!-- PASSO 1: NOME -->
+                <div class="wiz-step" data-tw-step="name">
+                    <label class="field-label"><span data-key="task_name">Nome</span> *</label>
+                    <input id="in-name" type="text" class="input-box text-sm" placeholder="Ex: Backup Documentos" autocomplete="off">
                 </div>
+
+                <!-- PASSO 2: PASTA LOCAL -->
+                <div class="wiz-step" data-tw-step="local">
+                    <label class="field-label" data-key="local_folder">Pasta Local</label>
+                    <div class="browser-box">
+                        <div class="browser-toolbar">
+                            <button type="button" onclick="twLocalNavUp()" class="browser-up-btn"><i class="fas fa-arrow-up"></i> <span data-key="tw_up">Subir</span></button>
+                            <div id="tw-local-path" class="browser-path"></div>
+                        </div>
+                        <div id="tw-local-list" class="browser-list"></div>
+                    </div>
+                </div>
+
+                <!-- PASSO 3: PASTA CLOUD -->
+                <div class="wiz-step" data-tw-step="cloud">
+                    <label class="field-label" data-key="remote_folder">Pasta Cloud</label>
+                    <div id="tw-cloud-grid-wrap">
+                        <div id="tw-cloud-grid" class="tw-cloud-grid"></div>
+                    </div>
+                    <div id="tw-cloud-browser-wrap" class="hidden">
+                        <button type="button" onclick="twChangeCloud()" class="tw-change-cloud"><i class="fas fa-rotate-left"></i> <span data-key="tw_change_cloud">Trocar cloud</span></button>
+                        <div class="browser-box mt-2">
+                            <div class="browser-toolbar">
+                                <button type="button" onclick="twCloudNavUp()" class="browser-up-btn"><i class="fas fa-arrow-up"></i> <span data-key="tw_up">Subir</span></button>
+                                <div id="tw-cloud-path" class="browser-path"></div>
+                            </div>
+                            <div id="tw-cloud-list" class="browser-list"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PASSO 4: MODO DE SINCRONIZAÇÃO -->
+                <div class="wiz-step" data-tw-step="mode">
+                    <label class="field-label" data-key="sync_type">Modo</label>
+                    <div class="tw-mode-grid">
+                        <div class="tw-mode-card" data-mode="upload" onclick="twSelectMode('upload')">
+                            <i class="fas fa-cloud-arrow-up"></i>
+                            <span data-key="mode_upload_title">Local → Cloud</span>
+                        </div>
+                        <div class="tw-mode-card" data-mode="download" onclick="twSelectMode('download')">
+                            <i class="fas fa-cloud-arrow-down"></i>
+                            <span data-key="mode_download_title">Cloud → Local</span>
+                        </div>
+                        <div class="tw-mode-card" data-mode="bisync" onclick="twSelectMode('bisync')">
+                            <i class="fas fa-arrows-rotate"></i>
+                            <span data-key="mode_bisync_title">Bisync</span>
+                        </div>
+                    </div>
+                    <p id="tw-mode-desc" class="tw-desc-box"></p>
+                </div>
+
+                <!-- PASSO 5: TRIGGER -->
+                <div class="wiz-step" data-tw-step="trigger">
+                    <label class="field-label" data-key="trigger">Trigger</label>
+                    <div class="tw-trigger-grid">
+                        <div class="tw-trigger-card" data-trig="real" onclick="twSelectTrigger('real')">
+                            <i class="fas fa-bolt"></i>
+                            <span data-key="opt_real">Tempo Real</span>
+                        </div>
+                        <div class="tw-trigger-card" data-trig="sched" onclick="twSelectTrigger('sched')">
+                            <i class="fas fa-clock"></i>
+                            <span data-key="opt_sched">Agendado</span>
+                        </div>
+                    </div>
+                    <p id="tw-trigger-desc" class="tw-desc-box"></p>
+                </div>
+
+                <!-- PASSO 6: AGENDAMENTO -->
+                <div class="wiz-step" data-tw-step="schedule">
+                    <label class="field-label" data-key="interval">Intervalo</label>
+                    <select id="in-int" class="input-box text-sm" onchange="toggleTimeField(this.value)">
+                        <option value="1m" data-key="interval_1m">Every minute</option>
+                        <option value="5m" data-key="interval_5m">Every 5 minutes</option>
+                        <option value="15m" data-key="interval_15m">Every 15 minutes</option>
+                        <option value="30m" data-key="interval_30m">Every 30 minutes</option>
+                        <option value="1h" data-key="interval_1h">Every hour</option>
+                        <option value="daily" data-key="daily">Daily</option>
+                    </select>
+                    <!-- Contentor da Hora (Aparece se for Daily) -->
+                    <div id="time-wrap" class="hidden mt-4 space-y-2">
+                        <label class="block">
+                            <span data-key="start_time" class="text-slate-400 text-xs font-bold uppercase tracking-wider">Hora de Início (24h)</span>
+                            <input id="in-time" type="time" class="input-box mt-2" step="60" value="03:00">
+                        </label>
+                    </div>
+                </div>
+
             </div>
-            <div class="mt-8 flex justify-end gap-4">
-                <button onclick="toggleModal('mTask', false)" class="text-slate-400 font-bold uppercase text-xs" data-key="cancel">Cancelar</button>
-                <button onclick="saveTask()" class="bg-blue-600 px-8 py-2 rounded font-black text-white text-xs uppercase" data-key="save">Guardar</button>
+
+            <!-- NAVEGAÇÃO -->
+            <div class="flex items-center gap-4 pt-5 mt-2 border-t border-white/5 shrink-0">
+                <button id="tw-btn-back" type="button" onclick="twGoBack()" class="btn-ghost font-bold text-xs uppercase tracking-wide"><i class="fas fa-arrow-left mr-1.5 text-[10px]"></i><span data-key="wiz_back">Voltar</span></button>
+                <div class="flex-1"></div>
+                <button id="tw-btn-next" type="button" onclick="twHandleNext()" class="btn-wiz-next px-7 py-3 rounded-2xl text-white font-black text-xs uppercase tracking-widest"><span data-key="wiz_continue">Continuar</span></button>
             </div>
+
+            <!-- Inputs ocultos que guardam os valores escolhidos em cada passo -->
+            <input type="hidden" id="in-loc">
+            <input type="hidden" id="in-rem">
+            <input type="hidden" id="in-typ" value="upload">
+            <input type="hidden" id="in-trig" value="sched">
         </div>
     </div>
 
-    <!-- EXPLORADOR -->
-    <div id="expPop" class="explorer-popup">
-        <div class="explorer-content">
-            <div class="flex justify-between items-center mb-4"><h4 id="expTitle" class="text-white font-bold text-sm uppercase">Explorar</h4><button onclick="closeExp()" class="text-white text-xl">&times;</button></div>
-            <div class="flex gap-2 mb-4">
-                <select id="cloudSelect" class="input-box" style="display:none;" onchange="selRem(this.value)"></select>
-                <button onclick="navUp()" class="bg-slate-800 px-4 py-2 rounded text-[10px] text-white">RECUA</button>
-            </div>
-            <div id="expList" class="explorer-list"></div>
-            <div id="expPath" class="text-[10px] text-slate-500 font-mono mb-4 truncate"></div>
-            <button onclick="confExp()" class="w-full bg-blue-600 p-3 rounded font-bold text-white text-xs uppercase">Confirmar Seleção</button>
-        </div>
-    </div>
 
     <!-- GESTOR DE CLOUDS -->
     <div id="mCloud" class="modal-overlay hidden">
@@ -720,7 +852,6 @@
 			<div id="cloud-manager-list" class="grid grid-cols-1 md:grid-cols-2 gap-5">
 				<!-- JS injeta os cartões aqui -->
 			</div>
-
 			<!-- SECÇÃO TUTORIAL (FIXA) -->
 			<div class="tutorial-section mt-4">
 				<h4 class="text-blue-500 font-black text-[10px] uppercase mb-5 tracking-[3px] flex items-center gap-3">
@@ -765,7 +896,7 @@
 			<div id="mCloud-resizer" class="resizer-handle" title="Resize modal" aria-label="Resize modal" role="button"><i class="fas fa-up-right-and-down-left-from-center"></i></div>
 		</div>
 	</div>
-    
+
     <!-- MODAL HISTÓRICO -->
     <div id="mHistory" class="modal-overlay hidden">
         <div class="bg-slate-900 border border-slate-700 w-full max-w-3xl rounded-2xl p-8 shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
@@ -849,7 +980,7 @@
                 </div>
                 
                 <div class="text-center opacity-70 text-[11px] font-mono text-slate-500 pt-2">
-                    SyncPulse ZIMAOS EDITION<br>VERSION 1.2
+                    SyncPulse ZIMAOS EDITION<br>VERSION 1.4
                 </div>
             </div>
 
@@ -866,7 +997,7 @@
 			en: {
 				// Splash & Welcome
 				starting_app: "Starting SyncPulse...",
-				welcome_title: "SyncPulse V1.1",
+				welcome_title: "SyncPulse Version 1.4",
 				zima_edition: "ZimaOS Edition",
 				about_sync_title: "About the Project",
 				about_sync_text: "SyncPulse is a professional interface and automation engine designed to simplify hybrid storage management on ZimaOS. It acts as an intelligent bridge between your hardware and the leading Cloud services.",
@@ -896,7 +1027,7 @@
 				last_sync: "Last Sync",
 				btn_stop: "Stop",
 				btn_start: "Start",
-				btn_sim: "Simulate",
+				btn_simulate: "Simulate",
 				global_progress: "Global Progress",
 				files_queue: "Files Queue",
 				view_more: "view more",
@@ -937,13 +1068,13 @@
 				delete_cloud_confirm: "Are you sure you want to delete this connection?",
 				
 				// Clouds Tutorial
-				tut_title: "How to add a new Cloud?",
-				tut_step_1_title: "Run the configurator in your ZimaOS terminal:",
-				tut_step_2: "In the menu that opens, choose 'n' (New Remote), give it a name, and select the provider.",
-				tut_step_3_title: "Answer the critical questions as follows:",
-				tut_step_3_adv: "Edit advanced config?",
-				tut_step_3_web: "Use web browser auth?",
-				tut_step_3_footer: "Rclone will generate a link. Open it, authorize, and paste the code back into the terminal.",
+				// tut_title: "How to add a new Cloud?",
+				// tut_step_1_title: "Run the configurator in your ZimaOS terminal:",
+				// tut_step_2: "In the menu that opens, choose 'n' (New Remote), give it a name, and select the provider.",
+				// tut_step_3_title: "Answer the critical questions as follows:",
+				// tut_step_3_adv: "Edit advanced config?",
+				// tut_step_3_web: "Use web browser auth?",
+				// tut_step_3_footer: "Rclone will generate a link. Open it, authorize, and paste the code back into the terminal.",
 
 				// Preferences & License
 				license_title: "License Activation",
@@ -981,7 +1112,7 @@
 			},
 			pt: {
 				starting_app: "A iniciar SyncPulse...",
-				welcome_title: "SyncPulse V1.1",
+				welcome_title: "SyncPulse Versão 1.1",
 				zima_edition: "ZimaOS Edition",
 				about_sync_title: "Sobre o Projeto",
 				about_sync_text: "O SyncPulse é uma interface profissional e motor de automação desenvolvido para simplificar a gestão de storage híbrida no ZimaOS. Atua como uma ponte inteligente entre o seu hardware e os principais serviços de Cloud.",
@@ -993,7 +1124,7 @@
 				eula_step_3: "3. Licença vinculada a 1 dispositivo físico por slot.",
 				eula_step_4: "4. Proibida a engenharia reversa do sistema de ativação.",
 				privacy_title: "Privacidade",
-				privacy_text: "As suas credenciais são encriptadas e guardadas localmente. O SyncPulse não envia dados privados para servidores externos.",
+				privacy_text: "As suas credenciais são encriptadas e guardadas localmente no seu ZimaOS. O SyncPulse não envia dados privados para servidores externos.",
 				accept_btn: "Aceitar e Continuar",
 				close_btn: "Fechar",
 				new_task: "Nova Tarefa",
@@ -1007,7 +1138,7 @@
 				last_sync: "Última Sync",
 				btn_stop: "Parar",
 				btn_start: "Iniciar",
-				btn_sim: "Simular",
+				btn_simulate: "Simular",
 				global_progress: "Progresso Geral",
 				files_queue: "Fila de Ficheiros",
 				view_more: "ver mais",
@@ -1036,12 +1167,12 @@
 				no_clouds: "Nenhuma nuvem configurada",
 				delete_cloud_confirm: "Tens a certeza que queres apagar esta ligação?",
 				tut_title: "Como adicionar uma nova Cloud?",
-				tut_step_1_title: "Executa o configurador no terminal do teu ZimaOS:",
-				tut_step_2: "No menu, escolhe 'n' (New Remote), dá um nome e seleciona o fornecedor.",
-				tut_step_3_title: "Responde às perguntas desta forma:",
-				tut_step_3_adv: "Edit advanced config?",
-				tut_step_3_web: "Use web browser auth?",
-				tut_step_3_footer: "O Rclone gerará um link. Abre-o, autoriza e cola o código de volta no terminal.",
+				// tut_step_1_title: "Executa o configurador no terminal do teu ZimaOS:",
+				// tut_step_2: "No menu, escolhe 'n' (New Remote), dá um nome e seleciona o fornecedor.",
+				// tut_step_3_title: "Responde às perguntas desta forma:",
+				// tut_step_3_adv: "Edit advanced config?",
+				// tut_step_3_web: "Use web browser auth?",
+				// tut_step_3_footer: "O Rclone gerará um link. Abre-o, autoriza e cola o código de volta no terminal.",
 				license_title: "Ativação da Licença",
 				license_desc: "A licença desbloqueia sincronização e automatismos.",
 				license_active: "Ativa",
@@ -1073,7 +1204,7 @@
 			},
 			es: {
 				starting_app: "Iniciando SyncPulse...",
-				welcome_title: "SyncPulse V1.1",
+				welcome_title: "SyncPulse Versión 1.1",
 				zima_edition: "ZimaOS Edition",
 				about_sync_title: "Sobre el Proyecto",
 				about_sync_text: "SyncPulse es una interfaz profesional y un motor de automatización diseñado para simplificar la gestión del almacenamiento híbrido en ZimaOS.",
@@ -1083,7 +1214,7 @@
 				eula_step_1: "1. El software se proporciona 'TAL CUAL', sin garantías.",
 				eula_step_2: "2. El desarrollador no es responsable por la pérdida de datos.",
 				privacy_title: "Privacidad",
-				privacy_text: "Sus credenciales están cifradas y guardadas localmente. SyncPulse no envía datos privados a servidores externos.",
+				privacy_text: "Sus credenciales están cifradas y guardadas localmente en su ZimaOS. SyncPulse no envía datos privados a servidores externos.",
 				accept_btn: "Aceptar y Continuar",
 				close_btn: "Cerrar",
 				new_task: "Nueva Tarea",
@@ -1117,14 +1248,14 @@
 			},
 			fr: {
 				starting_app: "Démarrage de SyncPulse...",
-				welcome_title: "SyncPulse V1.1",
+				welcome_title: "SyncPulse Version 1.4",
 				zima_edition: "ZimaOS Edition",
 				about_sync_title: "À propos du projet",
 				about_sync_text: "SyncPulse est une interface professionnelle et un moteur d'automatisation conçu pour simplifier la gestion du stockage hybride sur ZimaOS.",
 				open_source_title: "Open Source & Crédits",
 				open_source_text: "SyncPulse utilise le moteur Rclone (rclone.org). Rclone est un logiciel libre sous licence MIT.",
 				privacy_title: "Confidentialité",
-				privacy_text: "Vos identifiants sont cryptés et stockés localement. SyncPulse n'envoie pas de données privées à des serveurs externes.",
+				privacy_text: "Vos identifiants sont cryptés et stockés localement sur votre ZimaOS. SyncPulse n'envoie pas de données privées à des serveurs externes.",
 				accept_btn: "Accepter et continuer",
 				close_btn: "Fermer",
 				new_task: "Nouvelle tâche",
@@ -1154,14 +1285,14 @@
 			},
 			de: {
 				starting_app: "SyncPulse wird gestartet...",
-				welcome_title: "SyncPulse V1.1",
+				welcome_title: "SyncPulse Version 1.4",
 				zima_edition: "ZimaOS Edition",
 				about_sync_title: "Über das Projekt",
 				about_sync_text: "SyncPulse ist eine professionelle Schnittstelle und Automatisierungs-Engine zur Vereinfachung der hybriden Speicherverwaltung auf ZimaOS.",
 				open_source_title: "Open Source & Danksagungen",
 				open_source_text: "SyncPulse verwendet die Rclone-Engine (rclone.org). Rclone ist Open-Source-Software unter der MIT-Lizenz.",
 				privacy_title: "Datenschutz",
-				privacy_text: "Ihre Zugangsdaten werden verschlüsselt und lokal gespeichert. SyncPulse sendet keine privaten Daten an externe Server.",
+				privacy_text: "Ihre Zugangsdaten werden verschlüsselt und lokal gespeichert auf Ihrem ZimaOS. SyncPulse sendet keine privaten Daten an externe Server.",
 				accept_btn: "Akzeptieren und Weiter",
 				close_btn: "Schließen",
 				new_task: "Neue Aufgabe",
@@ -1195,29 +1326,36 @@
         Object.assign(i18n.es, {
             open_source_title: 'Código abierto y créditos', open_source_text: 'SyncPulse utiliza el motor Rclone (rclone.org). Rclone es software de código abierto bajo la licencia MIT.',
             eula_title: 'Términos de uso (EULA)', eula_step_1: '1. El software se proporciona tal cual, sin garantías.', eula_step_2: '2. El desarrollador no se responsabiliza de pérdidas de datos.', eula_step_3: '3. La licencia está vinculada a un dispositivo físico por plaza.', eula_step_4: '4. Está prohibida la ingeniería inversa del sistema de activación.',
-            nav_about: 'Acerca de SyncPulse', btn_sim: 'Simular', view_more: 'ver más', no_tasks: 'No hay tareas configuradas', edit_task: 'Editar tarea', interval: 'Intervalo', start_time: 'Hora de inicio (24 h)',
+            nav_about: 'Acerca de SyncPulse', btn_simulate: 'Simular', view_more: 'ver más', no_tasks: 'No hay tareas configuradas', edit_task: 'Editar tarea', interval: 'Intervalo', start_time: 'Hora de inicio (24 h)',
             mode_bi: 'Bisync', mode_up: 'Local→Nube', mode_down: 'Nube→Local', opt_sched: 'Programado', opt_real: 'Tiempo real', clouds_subtitle: 'Gestión de almacenamiento remoto', total_capacity: 'Capacidad total', no_clouds: 'No hay nubes configuradas', delete_cloud_confirm: '¿Seguro que deseas eliminar esta conexión?',
-            tut_step_1_title: 'Ejecuta el configurador en el terminal de ZimaOS:', tut_step_2: 'En el menú, elige “n” (New Remote), asígnale un nombre y selecciona el proveedor.', tut_step_3_title: 'Responde a las preguntas críticas así:', tut_step_3_adv: '¿Editar configuración avanzada?', tut_step_3_web: '¿Usar autenticación en el navegador?', tut_step_3_footer: 'Rclone generará un enlace. Ábrelo, autoriza y pega el código en el terminal.',
+            // tut_step_1_title: 'Ejecuta el configurador en el terminal de ZimaOS:', tut_step_2: 'En el menú, elige “n” (New Remote), asígnale un nombre y selecciona el proveedor.', tut_step_3_title: 'Responde a las preguntas críticas así:', tut_step_3_adv: '¿Editar configuración avanzada?', tut_step_3_web: '¿Usar autenticación en el navegador?', tut_step_3_footer: 'Rclone generará un enlace. Ábrelo, autoriza y pega el código en el terminal.',
             license_desc: 'Una licencia desbloquea la sincronización y las automatizaciones.', license_active: 'Activa', license_inactive: 'Inactiva', license_email_placeholder: 'Correo de licencia', license_device_placeholder: 'Nombre del dispositivo', license_key_placeholder: 'Clave de licencia', license_activate_btn: 'Activar licencia', license_note: 'Sin licencia solo puedes simular tareas.',
             pref_sim_title: 'Simulación automática', pref_sim_desc: 'Ejecuta una simulación antes de iniciar la transferencia real.', pref_sim_note: 'Desactivar la simulación previa inicia la sincronización inmediatamente, sin vista previa.', useful_links: 'Enlaces útiles', status_inactive: 'Inactivo', status_active: 'Activo', status_sim: 'Simulando', hist_title: 'Historial de actividad', hist_empty: 'No hay registros.', hist_view_err: 'Ver error', hist_success: 'Correcto', hist_error: 'Error', hist_sim: 'Simulación', hist_sync: 'Sincronización', file_skipped: 'SIN CAMBIOS', file_error: 'ERROR'
         });
         Object.assign(i18n.fr, {
             eula_title: 'Conditions d’utilisation (CLUF)', eula_step_1: '1. Le logiciel est fourni tel quel, sans garantie.', eula_step_2: '2. Le développeur ne répond pas des pertes de données.', eula_step_3: '3. La licence est liée à un appareil physique par emplacement.', eula_step_4: '4. Toute ingénierie inverse du système d’activation est interdite.',
-            support_project: 'Soutenir le projet', official_site: 'Site officiel', nav_about: 'À propos de SyncPulse', btn_sim: 'Simuler', view_more: 'voir plus', no_tasks: 'Aucune tâche configurée', edit_task: 'Modifier la tâche', sync_type: 'Mode', trigger: 'Déclencheur', interval: 'Intervalle', start_time: 'Heure de début (24 h)', mode_bi: 'Bisync', mode_up: 'Local→Cloud', mode_down: 'Cloud→Local', opt_sched: 'Planifié', opt_real: 'Temps réel',
-            clouds_subtitle: 'Gestion du stockage distant', total_capacity: 'Capacité totale', no_clouds: 'Aucun cloud configuré', delete_cloud_confirm: 'Voulez-vous vraiment supprimer cette connexion ?', tut_step_1_title: 'Exécutez le configurateur dans le terminal ZimaOS :', tut_step_2: 'Dans le menu, choisissez « n » (New Remote), nommez-le puis sélectionnez le fournisseur.', tut_step_3_title: 'Répondez aux questions critiques ainsi :', tut_step_3_adv: 'Modifier la configuration avancée ?', tut_step_3_web: 'Utiliser l’authentification par navigateur ?', tut_step_3_footer: 'Rclone génère un lien. Ouvrez-le, autorisez, puis collez le code dans le terminal.',
+            support_project: 'Soutenir le projet', official_site: 'Site officiel', nav_about: 'À propos de SyncPulse', btn_simulate: 'Simuler', view_more: 'voir plus', no_tasks: 'Aucune tâche configurée', edit_task: 'Modifier la tâche', sync_type: 'Mode', trigger: 'Déclencheur', interval: 'Intervalle', start_time: 'Heure de début (24 h)', mode_bi: 'Bisync', mode_up: 'Local→Cloud', mode_down: 'Cloud→Local', opt_sched: 'Planifié', opt_real: 'Temps réel',
+            clouds_subtitle: 'Gestion du stockage distant', total_capacity: 'Capacité totale', no_clouds: 'Aucun cloud configuré', delete_cloud_confirm: 'Voulez-vous vraiment supprimer cette connexion ?', // tut_step_1_title: 'Exécutez le configurateur dans le terminal ZimaOS :', tut_step_2: 'Dans le menu, choisissez « n » (New Remote), nommez-le puis sélectionnez le fournisseur.', tut_step_3_title: 'Répondez aux questions critiques ainsi :', tut_step_3_adv: 'Modifier la configuration avancée ?', tut_step_3_web: 'Utiliser l’authentification par navigateur ?', tut_step_3_footer: 'Rclone génère un lien. Ouvrez-le, autorisez, puis collez le code dans le terminal.',
             license_desc: 'Une licence déverrouille la synchronisation et les automatisations.', license_active: 'Active', license_inactive: 'Inactive', license_email_placeholder: 'E-mail de la licence', license_device_placeholder: 'Nom de l’appareil', license_key_placeholder: 'Clé de licence', license_activate_btn: 'Activer la licence', license_note: 'Sans licence, vous pouvez uniquement simuler les tâches.', pref_sim_title: 'Simulation automatique', pref_sim_desc: 'Exécuter une simulation avant le transfert réel.', pref_sim_note: 'Désactiver la pré-simulation lance la synchronisation immédiatement, sans aperçu.', useful_links: 'Liens utiles', status_inactive: 'Inactive', status_active: 'Active', status_sim: 'Simulation', hist_title: 'Historique d’activité', hist_empty: 'Aucun enregistrement.', hist_view_err: 'Voir l’erreur', hist_success: 'Succès', hist_error: 'Erreur', hist_sim: 'Simulation', hist_sync: 'Synchronisation', file_skipped: 'AUCUN CHANGEMENT', file_error: 'ERREUR'
         });
         Object.assign(i18n.de, {
             eula_title: 'Nutzungsbedingungen (EULA)', eula_step_1: '1. Die Software wird ohne Gewährleistung bereitgestellt.', eula_step_2: '2. Der Entwickler haftet nicht für Datenverluste.', eula_step_3: '3. Die Lizenz ist pro Platz an ein physisches Gerät gebunden.', eula_step_4: '4. Reverse Engineering des Aktivierungssystems ist verboten.',
-            support_project: 'Projekt unterstützen', official_site: 'Offizielle Website', nav_about: 'Über SyncPulse', btn_sim: 'Simulieren', view_more: 'mehr anzeigen', no_tasks: 'Keine Aufgaben konfiguriert', edit_task: 'Aufgabe bearbeiten', sync_type: 'Modus', trigger: 'Auslöser', interval: 'Intervall', start_time: 'Startzeit (24 Std.)', mode_bi: 'Bisync', mode_up: 'Lokal→Cloud', mode_down: 'Cloud→Lokal', opt_sched: 'Geplant', opt_real: 'Echtzeit',
-            clouds_subtitle: 'Verwaltung des Remote-Speichers', total_capacity: 'Gesamtkapazität', no_clouds: 'Keine Clouds konfiguriert', delete_cloud_confirm: 'Möchten Sie diese Verbindung wirklich löschen?', tut_step_1_title: 'Starten Sie den Konfigurator im ZimaOS-Terminal:', tut_step_2: 'Wählen Sie im Menü „n“ (New Remote), vergeben Sie einen Namen und wählen Sie den Anbieter.', tut_step_3_title: 'Beantworten Sie die wichtigen Fragen wie folgt:', tut_step_3_adv: 'Erweiterte Konfiguration bearbeiten?', tut_step_3_web: 'Browser-Authentifizierung verwenden?', tut_step_3_footer: 'Rclone erzeugt einen Link. Öffnen Sie ihn, autorisieren Sie ihn und fügen Sie den Code im Terminal ein.',
+            support_project: 'Projekt unterstützen', official_site: 'Offizielle Website', nav_about: 'Über SyncPulse', btn_simulate: 'Simulieren', view_more: 'mehr anzeigen', no_tasks: 'Keine Aufgaben konfiguriert', edit_task: 'Aufgabe bearbeiten', sync_type: 'Modus', trigger: 'Auslöser', interval: 'Intervall', start_time: 'Startzeit (24 Std.)', mode_bi: 'Bisync', mode_up: 'Lokal→Cloud', mode_down: 'Cloud→Lokal', opt_sched: 'Geplant', opt_real: 'Echtzeit',
+            clouds_subtitle: 'Verwaltung des Remote-Speichers', total_capacity: 'Gesamtkapazität', no_clouds: 'Keine Clouds konfiguriert', delete_cloud_confirm: 'Möchten Sie diese Verbindung wirklich löschen?', // tut_step_1_title: 'Starten Sie den Konfigurator im ZimaOS-Terminal:', tut_step_2: 'Wählen Sie im Menü „n“ (New Remote), vergeben Sie einen Namen und wählen Sie den Anbieter.', tut_step_3_title: 'Beantworten Sie die wichtigen Fragen wie folgt:', tut_step_3_adv: 'Erweiterte Konfiguration bearbeiten?', tut_step_3_web: 'Browser-Authentifizierung verwenden?', tut_step_3_footer: 'Rclone erzeugt einen Link. Öffnen Sie ihn, autorisieren Sie ihn und fügen Sie den Code im Terminal ein.',
             license_desc: 'Eine Lizenz schaltet Synchronisierung und Automatisierung frei.', license_active: 'Aktiv', license_inactive: 'Inaktiv', license_email_placeholder: 'Lizenz-E-Mail', license_device_placeholder: 'Gerätename', license_key_placeholder: 'Lizenzschlüssel', license_activate_btn: 'Lizenz aktivieren', license_note: 'Ohne Lizenz können Sie Aufgaben nur simulieren.', pref_sim_title: 'Automatische Simulation', pref_sim_desc: 'Vor der echten Übertragung eine Simulation ausführen.', pref_sim_note: 'Ohne Vorschau startet die Synchronisierung sofort.', useful_links: 'Nützliche Links', status_inactive: 'Inaktiv', status_active: 'Aktiv', status_sim: 'Simulation läuft', hist_title: 'Aktivitätsverlauf', hist_empty: 'Keine Einträge gefunden.', hist_view_err: 'Fehler anzeigen', hist_success: 'Erfolgreich', hist_error: 'Fehler', hist_sim: 'Simulation', hist_sync: 'Synchronisierung', file_skipped: 'KEINE ÄNDERUNG', file_error: 'FEHLER'
         });
 
-        Object.assign(i18n.pt, { clouds_loading: 'A sincronizar quotas...', clouds_empty: 'Sem clouds configuradas', clouds_used: 'Usado', clouds_total: 'Total', clouds_connection_error: 'Não foi possível contactar o motor de sincronização.', clouds_remove_confirm: 'Tens a certeza que queres apagar a ligação "{name}"?', clouds_command_copied: 'Comando copiado para a área de transferência.' });
-        Object.assign(i18n.es, { clouds_loading: 'Sincronizando cuotas...', clouds_empty: 'No hay nubes configuradas', clouds_used: 'Usado', clouds_total: 'Total', clouds_connection_error: 'No se pudo contactar con el motor de sincronización.', clouds_remove_confirm: '¿Seguro que deseas eliminar la conexión "{name}"?', clouds_command_copied: 'Comando copiado al portapapeles.' });
-        Object.assign(i18n.fr, { clouds_loading: 'Synchronisation des quotas...', clouds_empty: 'Aucun cloud configuré', clouds_used: 'Utilisé', clouds_total: 'Total', clouds_connection_error: 'Impossible de contacter le moteur de synchronisation.', clouds_remove_confirm: 'Voulez-vous vraiment supprimer la connexion « {name} » ?', clouds_command_copied: 'Commande copiée dans le presse-papiers.' });
-        Object.assign(i18n.de, { clouds_loading: 'Kontingente werden synchronisiert...', clouds_empty: 'Keine Clouds konfiguriert', clouds_used: 'Belegt', clouds_total: 'Gesamt', clouds_connection_error: 'Die Synchronisierungs-Engine konnte nicht erreicht werden.', clouds_remove_confirm: 'Möchten Sie die Verbindung „{name}“ wirklich löschen?', clouds_command_copied: 'Befehl wurde in die Zwischenablage kopiert.' });
+        Object.assign(i18n.en, { cloud_add: 'Add cloud', cloud_manage: 'Add / manage clouds', cloud_configure: 'Configure a new remote', cloud_name: 'Name', cloud_service: 'Service', cloud_select_service: 'Select a service', cloud_change: 'Change', cloud_address: 'Server address', cloud_username: 'Username', cloud_password: 'Password', cloud_create: 'Create cloud' });
+        Object.assign(i18n.pt, { clouds_loading: 'A sincronizar quotas...', clouds_empty: 'Sem clouds configuradas', clouds_used: 'Usado', clouds_total: 'Total', clouds_connection_error: 'Não foi possível contactar o motor de sincronização.', clouds_remove_confirm: 'Tens a certeza que queres apagar a ligação "{name}"?', clouds_command_copied: 'Comando copiado para a área de transferência.', cloud_add: 'Adicionar cloud', cloud_manage: 'Adicionar / gerir clouds', cloud_configure: 'Configurar uma nova ligação', cloud_name: 'Nome', cloud_service: 'Serviço', cloud_select_service: 'Selecionar um serviço', cloud_change: 'Alterar', cloud_address: 'Endereço do servidor', cloud_username: 'Utilizador', cloud_password: 'Palavra-passe', cloud_create: 'Criar cloud' });
+        Object.assign(i18n.es, { clouds_loading: 'Sincronizando cuotas...', clouds_empty: 'No hay nubes configuradas', clouds_used: 'Usado', clouds_total: 'Total', clouds_connection_error: 'No se pudo contactar con el motor de sincronización.', clouds_remove_confirm: '¿Seguro que deseas eliminar la conexión "{name}"?', clouds_command_copied: 'Comando copiado al portapapeles.', cloud_add: 'Añadir nube', cloud_manage: 'Añadir / gestionar nubes', cloud_configure: 'Configurar una nueva conexión', cloud_name: 'Nombre', cloud_service: 'Servicio', cloud_select_service: 'Seleccionar un servicio', cloud_change: 'Cambiar', cloud_address: 'Dirección del servidor', cloud_username: 'Usuario', cloud_password: 'Contraseña', cloud_create: 'Crear nube' });
+        Object.assign(i18n.fr, { clouds_loading: 'Synchronisation des quotas...', clouds_empty: 'Aucun cloud configuré', clouds_used: 'Utilisé', clouds_total: 'Total', clouds_connection_error: 'Impossible de contacter le moteur de synchronisation.', clouds_remove_confirm: 'Voulez-vous vraiment supprimer la connexion « {name} » ?', clouds_command_copied: 'Commande copiée dans le presse-papiers.', cloud_add: 'Ajouter un cloud', cloud_manage: 'Ajouter / gérer les clouds', cloud_configure: 'Configurer une nouvelle connexion', cloud_name: 'Nom', cloud_service: 'Service', cloud_select_service: 'Sélectionner un service', cloud_change: 'Modifier', cloud_address: 'Adresse du serveur', cloud_username: 'Utilisateur', cloud_password: 'Mot de passe', cloud_create: 'Créer le cloud' });
+        Object.assign(i18n.de, { clouds_loading: 'Kontingente werden synchronisiert...', clouds_empty: 'Keine Clouds konfiguriert', clouds_used: 'Belegt', clouds_total: 'Gesamt', clouds_connection_error: 'Die Synchronisierungs-Engine konnte nicht erreicht werden.', clouds_remove_confirm: 'Möchten Sie die Verbindung „{name}“ wirklich löschen?', clouds_command_copied: 'Befehl wurde in die Zwischenablage kopiert.', cloud_add: 'Cloud hinzufügen', cloud_manage: 'Clouds hinzufügen / verwalten', cloud_configure: 'Neue Verbindung einrichten', cloud_name: 'Name', cloud_service: 'Dienst', cloud_select_service: 'Dienst auswählen', cloud_change: 'Ändern', cloud_address: 'Serveradresse', cloud_username: 'Benutzername', cloud_password: 'Passwort', cloud_create: 'Cloud erstellen' });
+
+        Object.assign(i18n.en, { wiz_step_name: 'Name', wiz_step_service: 'Service', wiz_step_params: 'Parameters', wiz_step_review: 'Review', wiz_sub_name: 'Give the connection a name to start.', wiz_sub_service: 'Choose the cloud service to connect.', wiz_sub_params: 'Fill in what this service needs.', wiz_sub_review: 'Review everything before creating the connection.', wiz_continue: 'Continue', wiz_back: 'Back', wiz_name_hint: 'No spaces — they will be replaced with underscores automatically.', wiz_search_service: 'Search services…', wiz_params_title: 'Connection parameters', wiz_review_title: 'Confirm the details', wiz_err_name: 'Please name the connection.', wiz_err_service: 'Select a cloud service.', wiz_err_required: 'Please fill in the required fields:', wiz_err_no_services: 'No services found.', wiz_no_results: 'No results found.', wiz_default: 'Default', wiz_oauth_title: 'Browser login', wiz_oauth_desc: 'This service requires official authorization. Your browser will open automatically to authorize access.', wiz_no_params: 'This service does not require extra parameters.', wiz_err_load_options: 'Error loading options.', wiz_authorize: 'Authorize in browser', wiz_connect: 'Connect', wiz_starting: 'Starting…', wiz_connecting: 'Connecting…', wiz_processing: 'Processing… (may involve the browser)', wiz_err_timeout: 'This took too long. Check whether you authorized in the browser and try again.', wiz_err_config: 'Error configuring the cloud:', wiz_err_unexpected: 'Unexpected response from the server.', wiz_question_title: 'Rclone needs one more piece of information', wiz_param_needed: 'Required parameter', wiz_yes: 'Yes', wiz_no: 'No', wiz_waiting_answer: 'Waiting for the answer above…', wiz_success: 'Cloud connected successfully!' });
+        Object.assign(i18n.pt, { wiz_step_name: 'Nome', wiz_step_service: 'Serviço', wiz_step_params: 'Parâmetros', wiz_step_review: 'Validar', wiz_sub_name: 'Dê um nome à conexão para começar.', wiz_sub_service: 'Escolha o serviço de cloud a ligar.', wiz_sub_params: 'Preencha os dados pedidos por este serviço.', wiz_sub_review: 'Reveja tudo antes de criar a conexão.', wiz_continue: 'Continuar', wiz_back: 'Voltar', wiz_name_hint: 'Sem espaços — serão trocados por underscore automaticamente.', wiz_search_service: 'Pesquisar serviço...', wiz_params_title: 'Parâmetros de ligação', wiz_review_title: 'Confirme os dados', wiz_err_name: 'Por favor, dê um nome à conexão.', wiz_err_service: 'Selecione um serviço cloud.', wiz_err_required: 'Preencha os campos obrigatórios:', wiz_err_no_services: 'Nenhum serviço encontrado.', wiz_no_results: 'Nenhum resultado para a pesquisa.', wiz_default: 'Predefinição', wiz_oauth_title: 'Login via Browser', wiz_oauth_desc: 'Este serviço requer autorização oficial. O navegador vai abrir automaticamente para autorizar o acesso.', wiz_no_params: 'Este serviço não requer parâmetros adicionais.', wiz_err_load_options: 'Erro ao carregar opções.', wiz_authorize: 'Autorizar no Browser', wiz_connect: 'Ligar', wiz_starting: 'A iniciar...', wiz_connecting: 'A ligar...', wiz_processing: 'A processar... (pode envolver o browser)', wiz_err_timeout: 'Demorou demasiado tempo a responder. Verifique se autorizou no browser e tente novamente.', wiz_err_config: 'Erro ao configurar a cloud:', wiz_err_unexpected: 'Resposta inesperada do servidor.', wiz_question_title: 'O rclone precisa de mais uma informação', wiz_param_needed: 'Parâmetro necessário', wiz_yes: 'Sim', wiz_no: 'Não', wiz_waiting_answer: 'A aguardar resposta acima...', wiz_success: 'Cloud ligada com sucesso!' });
+        Object.assign(i18n.es, { wiz_step_name: 'Nombre', wiz_step_service: 'Servicio', wiz_step_params: 'Parámetros', wiz_step_review: 'Validar', wiz_sub_name: 'Dale un nombre a la conexión para empezar.', wiz_sub_service: 'Elige el servicio de nube a conectar.', wiz_sub_params: 'Completa los datos que pide este servicio.', wiz_sub_review: 'Revisa todo antes de crear la conexión.', wiz_continue: 'Continuar', wiz_back: 'Volver', wiz_name_hint: 'Sin espacios — se sustituirán por guiones bajos automáticamente.', wiz_search_service: 'Buscar servicio...', wiz_params_title: 'Parámetros de conexión', wiz_review_title: 'Confirma los datos', wiz_err_name: 'Por favor, ponle un nombre a la conexión.', wiz_err_service: 'Selecciona un servicio en la nube.', wiz_err_required: 'Completa los campos obligatorios:', wiz_err_no_services: 'No se encontraron servicios.', wiz_no_results: 'Sin resultados para la búsqueda.', wiz_default: 'Predeterminado', wiz_oauth_title: 'Inicio de sesión en el navegador', wiz_oauth_desc: 'Este servicio requiere autorización oficial. El navegador se abrirá automáticamente para autorizar el acceso.', wiz_no_params: 'Este servicio no requiere parámetros adicionales.', wiz_err_load_options: 'Error al cargar las opciones.', wiz_authorize: 'Autorizar en el navegador', wiz_connect: 'Conectar', wiz_starting: 'Iniciando...', wiz_connecting: 'Conectando...', wiz_processing: 'Procesando... (puede implicar el navegador)', wiz_err_timeout: 'Tardó demasiado en responder. Comprueba si autorizaste en el navegador e inténtalo de nuevo.', wiz_err_config: 'Error al configurar la nube:', wiz_err_unexpected: 'Respuesta inesperada del servidor.', wiz_question_title: 'Rclone necesita un dato más', wiz_param_needed: 'Parámetro necesario', wiz_yes: 'Sí', wiz_no: 'No', wiz_waiting_answer: 'Esperando la respuesta de arriba...', wiz_success: '¡Nube conectada con éxito!' });
+        Object.assign(i18n.fr, { wiz_step_name: 'Nom', wiz_step_service: 'Service', wiz_step_params: 'Paramètres', wiz_step_review: 'Valider', wiz_sub_name: 'Donnez un nom à la connexion pour commencer.', wiz_sub_service: 'Choisissez le service cloud à connecter.', wiz_sub_params: 'Renseignez les informations demandées par ce service.', wiz_sub_review: 'Vérifiez tout avant de créer la connexion.', wiz_continue: 'Continuer', wiz_back: 'Retour', wiz_name_hint: 'Sans espaces — ils seront remplacés automatiquement par des underscores.', wiz_search_service: 'Rechercher un service...', wiz_params_title: 'Paramètres de connexion', wiz_review_title: 'Confirmez les données', wiz_err_name: 'Merci de nommer la connexion.', wiz_err_service: 'Sélectionnez un service cloud.', wiz_err_required: 'Merci de remplir les champs obligatoires :', wiz_err_no_services: 'Aucun service trouvé.', wiz_no_results: 'Aucun résultat pour cette recherche.', wiz_default: 'Par défaut', wiz_oauth_title: 'Connexion via le navigateur', wiz_oauth_desc: 'Ce service nécessite une autorisation officielle. Le navigateur s’ouvrira automatiquement pour autoriser l’accès.', wiz_no_params: 'Ce service ne nécessite pas de paramètres supplémentaires.', wiz_err_load_options: 'Erreur lors du chargement des options.', wiz_authorize: 'Autoriser dans le navigateur', wiz_connect: 'Connecter', wiz_starting: 'Démarrage...', wiz_connecting: 'Connexion...', wiz_processing: 'Traitement... (peut impliquer le navigateur)', wiz_err_timeout: 'Cela a pris trop de temps. Vérifiez que vous avez autorisé dans le navigateur et réessayez.', wiz_err_config: 'Erreur lors de la configuration du cloud :', wiz_err_unexpected: 'Réponse inattendue du serveur.', wiz_question_title: 'Rclone a besoin d’une information supplémentaire', wiz_param_needed: 'Paramètre requis', wiz_yes: 'Oui', wiz_no: 'Non', wiz_waiting_answer: 'En attente de la réponse ci-dessus...', wiz_success: 'Cloud connecté avec succès !' });
+        Object.assign(i18n.de, { wiz_step_name: 'Name', wiz_step_service: 'Dienst', wiz_step_params: 'Parameter', wiz_step_review: 'Prüfen', wiz_sub_name: 'Geben Sie der Verbindung einen Namen, um zu beginnen.', wiz_sub_service: 'Wählen Sie den zu verbindenden Cloud-Dienst.', wiz_sub_params: 'Füllen Sie die von diesem Dienst benötigten Angaben aus.', wiz_sub_review: 'Überprüfen Sie alles, bevor Sie die Verbindung erstellen.', wiz_continue: 'Weiter', wiz_back: 'Zurück', wiz_name_hint: 'Keine Leerzeichen — werden automatisch durch Unterstriche ersetzt.', wiz_search_service: 'Dienst suchen...', wiz_params_title: 'Verbindungsparameter', wiz_review_title: 'Angaben bestätigen', wiz_err_name: 'Bitte benennen Sie die Verbindung.', wiz_err_service: 'Wählen Sie einen Cloud-Dienst.', wiz_err_required: 'Bitte füllen Sie die Pflichtfelder aus:', wiz_err_no_services: 'Keine Dienste gefunden.', wiz_no_results: 'Keine Ergebnisse für die Suche.', wiz_default: 'Standard', wiz_oauth_title: 'Anmeldung über den Browser', wiz_oauth_desc: 'Dieser Dienst erfordert eine offizielle Autorisierung. Der Browser öffnet sich automatisch, um den Zugriff zu autorisieren.', wiz_no_params: 'Dieser Dienst benötigt keine zusätzlichen Parameter.', wiz_err_load_options: 'Fehler beim Laden der Optionen.', wiz_authorize: 'Im Browser autorisieren', wiz_connect: 'Verbinden', wiz_starting: 'Wird gestartet...', wiz_connecting: 'Verbindung wird hergestellt...', wiz_processing: 'Verarbeitung... (kann den Browser einbeziehen)', wiz_err_timeout: 'Das hat zu lange gedauert. Prüfen Sie, ob Sie im Browser autorisiert haben, und versuchen Sie es erneut.', wiz_err_config: 'Fehler bei der Cloud-Konfiguration:', wiz_err_unexpected: 'Unerwartete Antwort vom Server.', wiz_question_title: 'Rclone benötigt eine weitere Angabe', wiz_param_needed: 'Erforderlicher Parameter', wiz_yes: 'Ja', wiz_no: 'Nein', wiz_waiting_answer: 'Warten auf die Antwort oben...', wiz_success: 'Cloud erfolgreich verbunden!' });
 
         Object.assign(i18n.en, { interval_1m: 'Every minute', interval_5m: 'Every 5 minutes', interval_15m: 'Every 15 minutes', interval_30m: 'Every 30 minutes', interval_1h: 'Every hour' });
         Object.assign(i18n.pt, { interval_1m: 'A cada minuto', interval_5m: 'A cada 5 minutos', interval_15m: 'A cada 15 minutos', interval_30m: 'A cada 30 minutos', interval_1h: 'A cada hora' });
@@ -1225,12 +1363,16 @@
         Object.assign(i18n.fr, { interval_1m: 'Chaque minute', interval_5m: 'Toutes les 5 minutes', interval_15m: 'Toutes les 15 minutes', interval_30m: 'Toutes les 30 minutes', interval_1h: 'Toutes les heures' });
         Object.assign(i18n.de, { interval_1m: 'Jede Minute', interval_5m: 'Alle 5 Minuten', interval_15m: 'Alle 15 Minuten', interval_30m: 'Alle 30 Minuten', interval_1h: 'Jede Stunde' });
 
+        // --- Textos do wizard de tarefas (novo/editar tarefa em passos) ---
+        Object.assign(i18n.en, { tw_step_name: 'Name', tw_step_local: 'Local Folder', tw_step_cloud: 'Cloud Folder', tw_step_mode: 'Mode', tw_step_trigger: 'Trigger', tw_step_schedule: 'Schedule', tw_sub_name: 'Give this task an easy-to-recognize name.', tw_sub_local: 'Choose the local folder to sync.', tw_sub_cloud: 'Choose the cloud and destination folder.', tw_sub_mode: 'Choose the sync direction.', tw_sub_trigger: 'When should the task run?', tw_sub_schedule: 'Set the sync frequency.', tw_err_name: 'Give the task a name.', tw_err_local: 'Choose a local folder.', tw_err_cloud: 'Choose a cloud.', tw_up: 'Up', tw_change_cloud: 'Change cloud', tw_disks_label: 'Disks', browsing: 'Loading...', folder_empty: 'Empty folder', browse_error: 'Error loading folder.', mode_upload_title: 'Local → Cloud', mode_download_title: 'Cloud → Local', mode_bisync_title: 'Bisync', mode_upload_desc: 'Sends changes made in the local folder to the cloud. The cloud ends up mirroring what you have on this computer.', mode_download_desc: "Brings changes made in the cloud to the local folder. This computer ends up mirroring what's in the cloud.", mode_bisync_desc: 'Two-way sync: changes made on either side (local or cloud) are replicated to the other.', trigger_real_desc: 'Continuously watches the local folder and syncs as soon as it detects a change.', trigger_sched_desc: 'Runs automatically on a fixed interval or time, set in the next step.' });
+        Object.assign(i18n.pt, { tw_step_name: 'Nome', tw_step_local: 'Pasta Local', tw_step_cloud: 'Pasta Cloud', tw_step_mode: 'Modo', tw_step_trigger: 'Trigger', tw_step_schedule: 'Agendamento', tw_sub_name: 'Dá um nome fácil de reconhecer a esta tarefa.', tw_sub_local: 'Escolhe a pasta local a sincronizar.', tw_sub_cloud: 'Escolhe a cloud e a pasta de destino.', tw_sub_mode: 'Escolhe a direção da sincronização.', tw_sub_trigger: 'Quando deve a tarefa ser executada?', tw_sub_schedule: 'Define a frequência da sincronização.', tw_err_name: 'Dá um nome à tarefa.', tw_err_local: 'Escolhe uma pasta local.', tw_err_cloud: 'Escolhe uma cloud.', tw_up: 'Subir', tw_change_cloud: 'Trocar cloud', tw_disks_label: 'Discos', browsing: 'A carregar...', folder_empty: 'Pasta vazia', browse_error: 'Erro ao carregar a pasta.', mode_upload_title: 'Local → Cloud', mode_download_title: 'Cloud → Local', mode_bisync_title: 'Bisync', mode_upload_desc: 'Envia as alterações feitas na pasta local para a cloud. A cloud passa a espelhar o que tens neste computador.', mode_download_desc: 'Traz as alterações feitas na cloud para a pasta local. Este computador passa a espelhar o que está na cloud.', mode_bisync_desc: 'Sincronização nos dois sentidos: alterações feitas em qualquer um dos lados (local ou cloud) são replicadas no outro.', trigger_real_desc: 'Vigia a pasta local continuamente e sincroniza assim que deteta uma alteração.', trigger_sched_desc: 'Corre automaticamente num intervalo ou hora fixa, definidos no passo seguinte.' });
+
         const licenseI18n = {
-            pt: { title: 'Ativação da licença', desc: 'A licença desbloqueia sincronização e automatismos.', active: 'Ativa', inactive: 'Inativa', email: 'Email da licença', device: 'Nome do dispositivo (ex.: NAS da Sala)', key: 'Chave de licença', activate: 'Ativar licença', note: 'Sem licença, pode simular, mas não iniciar/parar sincronizações nem usar processos automáticos.', success: 'Licença ativada. Todos os recursos estão disponíveis.', invalid: 'Licença inválida ou inativa. A simulação continua disponível.', unavailable: 'Não foi possível validar a licença.', maxDevices: 'Número máximo de dispositivos atingido. Efetue a gestão dos dispositivos no portal.', blocked: 'Ative a licença para sincronizar.' },
-            en: { title: 'License activation', desc: 'The license unlocks synchronization and automation.', active: 'Active', inactive: 'Inactive', email: 'License email', device: 'Device name (e.g. Living Room NAS)', key: 'License key', activate: 'Activate license', note: 'Without a license, you can simulate, but cannot start/stop synchronizations or use automated processes.', success: 'License activated. All features are available.', invalid: 'License is invalid or inactive. Simulation remains available.', unavailable: 'The license could not be validated.', maxDevices: 'Maximum number of devices reached. Manage your devices in the portal.', blocked: 'Activate the license to synchronize.' },
-            fr: { title: 'Activation de la licence', desc: 'La licence déverrouille la synchronisation et les automatisations.', active: 'Active', inactive: 'Inactive', email: 'E-mail de la licence', device: 'Nom de l’appareil (ex. NAS du salon)', key: 'Clé de licence', activate: 'Activer la licence', note: 'Sans licence, vous pouvez simuler, mais pas démarrer/arrêter les synchronisations ni utiliser les processus automatiques.', success: 'Licence activée. Toutes les fonctionnalités sont disponibles.', invalid: 'La licence est invalide ou inactive. La simulation reste disponible.', unavailable: 'Impossible de valider la licence.', maxDevices: 'Nombre maximal d’appareils atteint. Gérez vos appareils dans le portail.', blocked: 'Activez la licence pour synchroniser.' },
-            es: { title: 'Activación de licencia', desc: 'La licencia desbloquea la sincronización y las automatizaciones.', active: 'Activa', inactive: 'Inactiva', email: 'Correo de la licencia', device: 'Nombre del dispositivo (p. ej. NAS del salón)', key: 'Clave de licencia', activate: 'Activar licencia', note: 'Sin licencia puede simular, pero no iniciar/detener sincronizaciones ni usar procesos automáticos.', success: 'Licencia activada. Todas las funciones están disponibles.', invalid: 'La licencia no es válida o está inactiva. La simulación sigue disponible.', unavailable: 'No se pudo validar la licencia.', maxDevices: 'Se alcanzó el número máximo de dispositivos. Gestione sus dispositivos en el portal.', blocked: 'Active la licencia para sincronizar.' },
-            de: { title: 'Lizenzaktivierung', desc: 'Die Lizenz schaltet Synchronisierung und Automatisierungen frei.', active: 'Aktiv', inactive: 'Inaktiv', email: 'Lizenz-E-Mail', device: 'Gerätename (z. B. NAS im Wohnzimmer)', key: 'Lizenzschlüssel', activate: 'Lizenz aktivieren', note: 'Ohne Lizenz können Sie simulieren, aber keine Synchronisierungen starten/stoppen oder automatische Prozesse verwenden.', success: 'Lizenz aktiviert. Alle Funktionen sind verfügbar.', invalid: 'Die Lizenz ist ungültig oder inaktiv. Die Simulation bleibt verfügbar.', unavailable: 'Die Lizenz konnte nicht überprüft werden.', maxDevices: 'Die maximale Anzahl von Geräten wurde erreicht. Verwalten Sie Ihre Geräte im Portal.', blocked: 'Aktivieren Sie die Lizenz zum Synchronisieren.' }
+            pt: { title: 'Ativação da licença', desc: 'A licença desbloqueia sincronização e automatismos.', active: 'Ativa', inactive: 'Inativa', expired: 'Expirada', email: 'Email da licença', device: 'Nome do dispositivo (ex.: NAS da Sala)', key: 'Chave de licença', activate: 'Ativar licença', note: 'Sem licença, pode simular, mas não iniciar/parar sincronizações nem usar processos automáticos.', success: 'Licença ativada. Todos os recursos estão disponíveis.', invalid: 'Licença inválida ou inativa. A simulação continua disponível.', unavailable: 'Não foi possível validar a licença.', maxDevices: 'Número máximo de dispositivos atingido. Efetue a gestão dos dispositivos no portal.', blocked: 'Ative a licença para sincronizar.' },
+            en: { title: 'License activation', desc: 'The license unlocks synchronization and automation.', active: 'Active', inactive: 'Inactive', expired: 'Expired', email: 'License email', device: 'Device name (e.g. Living Room NAS)', key: 'License key', activate: 'Activate license', note: 'Without a license, you can simulate, but cannot start/stop synchronizations or use automated processes.', success: 'License activated. All features are available.', invalid: 'License is invalid or inactive. Simulation remains available.', unavailable: 'The license could not be validated.', maxDevices: 'Maximum number of devices reached. Manage your devices in the portal.', blocked: 'Activate the license to synchronize.' },
+            fr: { title: 'Activation de la licence', desc: 'La licence déverrouille la synchronisation et les automatisations.', active: 'Active', inactive: 'Inactive', expired: 'Expirée', email: 'E-mail de la licence', device: 'Nom de l’appareil (ex. NAS du salon)', key: 'Clé de licence', activate: 'Activer la licence', note: 'Sans licence, vous pouvez simuler, mais pas démarrer/arrêter les synchronisations ni utiliser les processus automatiques.', success: 'Licence activée. Toutes les fonctionnalités sont disponibles.', invalid: 'La licence est invalide ou inactive. La simulation reste disponible.', unavailable: 'Impossible de valider la licence.', maxDevices: 'Nombre maximal d’appareils atteint. Gérez vos appareils dans le portail.', blocked: 'Activez la licence pour synchroniser.' },
+            es: { title: 'Activación de licencia', desc: 'La licencia desbloquea la sincronización y las automatizaciones.', active: 'Activa', inactive: 'Inactiva', expired: 'Caducada', email: 'Correo de la licencia', device: 'Nombre del dispositivo (p. ej. NAS del salón)', key: 'Clave de licencia', activate: 'Activar licencia', note: 'Sin licencia puede simular, pero no iniciar/detener sincronizaciones ni usar procesos automáticos.', success: 'Licencia activada. Todas las funciones están disponibles.', invalid: 'La licencia no es válida o está inactiva. La simulación sigue disponible.', unavailable: 'No se pudo validar la licencia.', maxDevices: 'Se alcanzó el número máximo de dispositivos. Gestione sus dispositivos en el portal.', blocked: 'Active la licencia para sincronizar.' },
+            de: { title: 'Lizenzaktivierung', desc: 'Die Lizenz schaltet Synchronisierung und Automatisierungen frei.', active: 'Aktiv', inactive: 'Inaktiv', expired: 'Abgelaufen', email: 'Lizenz-E-Mail', device: 'Gerätename (z. B. NAS im Wohnzimmer)', key: 'Lizenzschlüssel', activate: 'Lizenz aktivieren', note: 'Ohne Lizenz können Sie simulieren, aber keine Synchronisierungen starten/stoppen oder automatische Prozesse verwenden.', success: 'Lizenz aktiviert. Alle Funktionen sind verfügbar.', invalid: 'Die Lizenz ist ungültig oder inaktiv. Die Simulation bleibt verfügbar.', unavailable: 'Die Lizenz konnte nicht überprüft werden.', maxDevices: 'Die maximale Anzahl von Geräten wurde erreicht. Verwalten Sie Ihre Geräte im Portal.', blocked: 'Aktivieren Sie die Lizenz zum Synchronisieren.' }
         };
 
         function applyLicenseTranslations() {
@@ -1249,12 +1391,11 @@
                 if (text[key] !== undefined) element.placeholder = text[key];
             });
             const status = document.getElementById('license-status');
-            if (status) status.textContent = STATE?.license_active ? text.active : text.inactive;
+            if (status) status.textContent = STATE?.license_active ? text.active : (STATE?.license_expired ? text.expired : text.inactive);
         }
 
         let lang = 'en', tasks = [], selectedTaskId = null, socket, editingTaskId = null;
         let STATE = { running: {}, logs: {}, active_files: {}, finished_files: {}, all_files: {}, skipped_files: {}, failed_files: {}, stats: {}, file_sizes: {} };
-        let expPath = '/', expMode = 'local', expRemote = '';
 
         function setLang(nextLang) {
             lang = i18n[nextLang] ? nextLang : 'en';
@@ -1415,6 +1556,12 @@
             const lo = i18n[lang] || i18n.en;
             const licenseText = licenseI18n[lang] || licenseI18n.en;
             const licenseActive = STATE.license_active === true;
+            const licenseExpired = STATE.license_expired === true;
+            const licenseStatus = document.getElementById('license-status');
+            if (licenseStatus) {
+                licenseStatus.textContent = licenseActive ? licenseText.active : (licenseExpired ? licenseText.expired : licenseText.inactive);
+                licenseStatus.className = `text-[10px] font-black uppercase tracking-wide ${licenseActive ? 'text-emerald-400' : (licenseExpired ? 'text-red-400' : 'text-amber-400')}`;
+            }
             const tidStr = selectedTaskId ? selectedTaskId.toString() : null;
     
             grid.innerHTML = tasks.map(t => {
@@ -1450,7 +1597,7 @@
                     <div class="last-sync italic text-[10px] text-slate-500 mb-3">${lo.last_sync}: ${t.last_sync || '---'}</div>
                     <div class="card-footer">
                         <div class="flex gap-5">
-                            <div class="btn-action btn-sim" onclick="event.stopPropagation(); selectTask('${t.id}'); startSync('${t.id}', true)"><i class="fas fa-flask"></i> ${lo.btn_sim.toUpperCase()}</div>
+                            <div class="btn-action btn-sim" onclick="event.stopPropagation(); selectTask('${t.id}'); startSync('${t.id}', true)"><i class="fas fa-flask"></i> ${lo.btn_simulate}</div>
                             <div class="btn-action ${isRunning ? 'text-red-500' : 'btn-play'} ${!licenseActive ? 'opacity-40 cursor-not-allowed' : ''}" title="${!licenseActive ? licenseText.blocked : ''}" onclick="event.stopPropagation(); selectTask('${t.id}'); ${licenseActive ? (isRunning ? `stopSync('${t.id}')` : `startSync('${t.id}', false)`) : ''}"><i class="fas ${isRunning ? 'fa-stop' : 'fa-play'}"></i> ${isRunning ? lo.btn_stop : lo.btn_start}</div>
                         </div>
                         <div class="card-icons-right">
@@ -1654,10 +1801,12 @@
                 if (deviceName) deviceName.value = settings.license_info?.device_name || '';
                 if (status) {
                     const licenseText = licenseI18n[lang] || licenseI18n.en;
-                    status.textContent = settings.license_active ? licenseText.active : licenseText.inactive;
-                    status.className = `text-[10px] font-black uppercase tracking-wide ${settings.license_active ? 'text-emerald-400' : 'text-amber-400'}`;
+                    const expired = settings.license_expired === true;
+                    status.textContent = settings.license_active ? licenseText.active : (expired ? licenseText.expired : licenseText.inactive);
+                    status.className = `text-[10px] font-black uppercase tracking-wide ${settings.license_active ? 'text-emerald-400' : (expired ? 'text-red-400' : 'text-amber-400')}`;
                 }
                 STATE.license_active = settings.license_active === true;
+                STATE.license_expired = settings.license_expired === true;
                 refreshUI();
             } catch (e) {
                 console.error("Erro ao carregar settings:", e);
@@ -1730,17 +1879,48 @@
         async function deleteTask(id) { if(confirm("Apagar?")) { tasks = tasks.filter(t => t.id.toString() !== id.toString()); await fetch('/api/tasks', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(tasks)}); } }
         function toggleModal(id, s) { document.getElementById(id).classList.toggle('hidden', !s); if(id==='mCloud' && s) renderCloudManager(); }
         
-        function openNewTaskModal() { 
-            editingTaskId = null; 
-            document.getElementById('modalTitle').innerText = i18n[lang].config_task; 
-            ['in-name','in-loc','in-rem'].forEach(id=>document.getElementById(id).value=''); 
-            toggleTriggerFields("sched"); 
-            toggleModal('mTask', true); 
+        // ============================================================
+        // WIZARD DE TAREFA (novo/editar tarefa) — Nome -> Pasta Local ->
+        // Pasta Cloud -> Modo -> Trigger -> (Agendamento, se aplicável)
+        // ============================================================
+        const TW_STEP_DEFS = [
+            { key: 'name',     labelKey: 'tw_step_name' },
+            { key: 'local',    labelKey: 'tw_step_local' },
+            { key: 'cloud',    labelKey: 'tw_step_cloud' },
+            { key: 'mode',     labelKey: 'tw_step_mode' },
+            { key: 'trigger',  labelKey: 'tw_step_trigger' },
+            { key: 'schedule', labelKey: 'tw_step_schedule' },
+        ];
+        let twStepIndex = 0;
+        let twLocalPath = '';
+        let twCloudRemote = '';
+        let twCloudPath = '';
+        let twRemotesTyped = null;
+
+        function twText() { return i18n[lang] || i18n.en; }
+        function twActiveSteps() { return TW_STEP_DEFS.filter(s => s.key !== 'schedule' || document.getElementById('in-trig').value === 'sched'); }
+
+        function openNewTaskModal() {
+            editingTaskId = null;
+            document.getElementById('modalTitle').innerText = i18n[lang].config_task;
+            document.getElementById('in-name').value = '';
+            document.getElementById('in-loc').value = '';
+            document.getElementById('in-rem').value = '';
+            document.getElementById('in-typ').value = 'upload';
+            document.getElementById('in-trig').value = 'sched';
+            document.getElementById('in-int').value = '1h';
+            document.getElementById('in-time').value = '03:00';
+            twLocalPath = '';
+            twCloudRemote = '';
+            twCloudPath = '';
+            twRemotesTyped = null;
+            toggleModal('mTask', true);
+            twGoToStep(0);
         }
-    
-        function editTask(id) { 
+
+        function editTask(id) {
             const t = tasks.find(x => x.id.toString() === id.toString());
-            if(!t) return;
+            if (!t) return;
             editingTaskId = t.id;
             document.getElementById('modalTitle').innerText = i18n[lang].edit_task;
             document.getElementById('in-name').value = t.name;
@@ -1750,10 +1930,17 @@
             document.getElementById('in-trig').value = t.trigger;
             document.getElementById('in-int').value = t.interval;
             document.getElementById('in-time').value = t.daily_time || "03:00";
-            toggleTriggerFields(t.trigger);
+
+            twLocalPath = t.local || '';
+            const idx = (t.remote || '').indexOf(':');
+            twCloudRemote = idx >= 0 ? t.remote.slice(0, idx) : '';
+            twCloudPath = idx >= 0 ? t.remote.slice(idx + 1) : '';
+            twRemotesTyped = null;
+
             toggleModal('mTask', true);
+            twGoToStep(0);
         }
-    
+
         async function saveTask() {
             const existingTask = editingTaskId ? tasks.find(t => t.id.toString() === editingTaskId.toString()) : {};
             const nt = { ...existingTask, id: editingTaskId || Date.now(), name: document.getElementById('in-name').value, local: document.getElementById('in-loc').value, remote: document.getElementById('in-rem').value, type: document.getElementById('in-typ').value, trigger: document.getElementById('in-trig').value, interval: document.getElementById('in-int').value, daily_time: document.getElementById('in-time').value };
@@ -1769,61 +1956,212 @@
                 alert('Não foi possível gravar a tarefa. Tenta novamente.');
             }
         }
-    
-        async function openExp(mode) { 
-            expMode = mode; expPath = mode === 'local' ? '/mnt' : ''; expRemote = ''; 
-            const list = document.getElementById('expList');
-            if (list) list.innerHTML = '<div class="p-10 text-center text-slate-600 text-xs italic">A carregar...</div>';
-            document.getElementById('expPop').style.display = 'flex'; 
-            if(mode === 'cloud') {
-                const r = await fetch('/api/browse/remotes');
-                const rems = await r.json();
-                const sel = document.getElementById('cloudSelect');
-                sel.style.display = 'block';
-                sel.innerHTML = '<option value="">-- Selecione --</option>' + rems.map(r => `<option value="${r}">${r}</option>`).join('');
-            } else { document.getElementById('cloudSelect').style.display = 'none'; renderExp(); }
+
+        // --- Motor do wizard (passos) ---
+        function twGoToStep(index) {
+            const steps = twActiveSteps();
+            twStepIndex = Math.max(0, Math.min(index, steps.length - 1));
+            const key = steps[twStepIndex].key;
+
+            document.querySelectorAll('#mTask .wiz-step').forEach(el => el.classList.remove('active'));
+            document.querySelector(`#mTask .wiz-step[data-tw-step="${key}"]`).classList.add('active');
+
+            twRenderRail();
+            twUpdateFooter(key);
+
+            const t = twText();
+            const subtitles = { name: t.tw_sub_name, local: t.tw_sub_local, cloud: t.tw_sub_cloud, mode: t.tw_sub_mode, trigger: t.tw_sub_trigger, schedule: t.tw_sub_schedule };
+            document.getElementById('tw-subtitle').innerText = subtitles[key] || '';
+
+            if (key === 'name') setTimeout(() => document.getElementById('in-name').focus(), 50);
+            if (key === 'local') { twLocalPath ? twRenderLocalBrowser() : twInitLocalHome(); }
+            if (key === 'cloud') { twCloudRemote ? twShowCloudBrowser() : twShowCloudGrid(); }
+            if (key === 'mode') twRefreshModeUI();
+            if (key === 'trigger') twRefreshTriggerUI();
+            if (key === 'schedule') toggleTimeField(document.getElementById('in-int').value);
         }
-    
-        async function renderExp() { 
-			if (expMode === 'cloud' && !expRemote) return;
-			
-			const list = document.getElementById('expList');
-			list.innerHTML = '<div class="p-8 text-center text-blue-500 animate-pulse text-xs italic">A ler pastas...</div>';
-			
-			let url = expMode === 'local' 
-				? `/api/browse/local?path=${encodeURIComponent(expPath)}` 
-				: `/api/browse/cloud?remote=${encodeURIComponent(expRemote)}&path=${encodeURIComponent(expPath)}`;
-			
-			try {
-				const r = await fetch(url);
-				const data = await r.json();
-				
-				if (data.length === 0) {
-					list.innerHTML = '<div class="p-10 text-center text-slate-600 text-xs italic">Pasta vazia ou sem permissão</div>';
-				} else {
-					// Mapeia os itens garantindo que clicamos no nome correto
-					list.innerHTML = data.map(i => {
-						const name = typeof i === 'string' ? i : i.name;
-						return `
-							<div class="exp-item" onclick="goExp('${name.replace(/'/g, "\\'")}')">
-								<i class="fas fa-folder text-yellow-500 mr-2"></i>
-								<span>${name}</span>
-							</div>`;
-					}).join('');
-				}
-			} catch (e) {
-				list.innerHTML = '<div class="p-10 text-center text-red-500 text-xs">Erro ao carregar pasta.</div>';
-			}
-			
-			document.getElementById('expPath').innerText = expPath;
-		}
-    
-        function goExp(f) { expPath = expPath.endsWith('/') ? expPath + f : expPath + (expPath===''?'':'/') + f; renderExp(); }
-        function selRem(r) { expRemote = r; expPath = ''; renderExp(); }
-        function navUp() { if(expPath==='/' || expPath==='/mnt' || expPath==='') return; let p = expPath.split('/').filter(x=>x); p.pop(); expPath = (expMode==='local'?'/':'') + p.join('/'); renderExp(); }
-        function confExp() { let val = expMode === 'local' ? expPath : expRemote + ":" + expPath.replace(/^\//, ''); document.getElementById(expMode === 'local' ? 'in-loc' : 'in-rem').value = val; closeExp(); }
-        function closeExp() { document.getElementById('expPop').style.display = 'none'; }
-        
+
+        function twRenderRail() {
+            const steps = twActiveSteps();
+            const t = twText();
+            const rail = document.getElementById('tw-rail');
+            rail.innerHTML = steps.map((s, i) => {
+                const state = i < twStepIndex ? 'done' : (i === twStepIndex ? 'active' : '');
+                const dotContent = i < twStepIndex ? '' : `<span>${i + 1}</span>`;
+                const lineDone = i < twStepIndex ? 'done' : '';
+                const line = i < steps.length - 1 ? `<div class="rail-line ${lineDone}"><i></i></div>` : '';
+                return `<div class="rail-step ${state}"><div class="rail-dot">${dotContent}</div><div class="rail-label">${t[s.labelKey] || s.key}</div></div>${line}`;
+            }).join('');
+        }
+
+        function twUpdateFooter(key) {
+            const steps = twActiveSteps();
+            const backBtn = document.getElementById('tw-btn-back');
+            const nextBtn = document.getElementById('tw-btn-next');
+            backBtn.style.visibility = twStepIndex === 0 ? 'hidden' : 'visible';
+            const isLast = twStepIndex === steps.length - 1;
+            const t = twText();
+            nextBtn.innerHTML = isLast ? (t.save || 'Guardar') : (t.wiz_continue || 'Continuar');
+        }
+
+        function twGoBack() { if (twStepIndex === 0) return; twGoToStep(twStepIndex - 1); }
+
+        async function twHandleNext() {
+            const steps = twActiveSteps();
+            const key = steps[twStepIndex].key;
+            const t = twText();
+
+            if (key === 'name' && !document.getElementById('in-name').value.trim()) { alert(t.tw_err_name); return; }
+            if (key === 'local') {
+                if (!twLocalPath) { alert(t.tw_err_local); return; }
+                document.getElementById('in-loc').value = twLocalPath;
+            }
+            if (key === 'cloud') {
+                if (!twCloudRemote) { alert(t.tw_err_cloud); return; }
+                document.getElementById('in-rem').value = twCloudRemote + ':' + (twCloudPath || '').replace(/^\/+/, '');
+            }
+
+            const isLast = twStepIndex === steps.length - 1;
+            if (isLast) { await saveTask(); return; }
+            twGoToStep(twStepIndex + 1);
+        }
+
+        // --- Passo: Modo de sincronização ---
+        function twSelectMode(mode) {
+            document.getElementById('in-typ').value = mode;
+            twRefreshModeUI();
+        }
+        function twRefreshModeUI() {
+            const val = document.getElementById('in-typ').value;
+            document.querySelectorAll('#mTask .tw-mode-card').forEach(el => el.classList.toggle('selected', el.dataset.mode === val));
+            const t = twText();
+            const descs = { upload: t.mode_upload_desc, download: t.mode_download_desc, bisync: t.mode_bisync_desc };
+            document.getElementById('tw-mode-desc').innerText = descs[val] || '';
+        }
+
+        // --- Passo: Trigger ---
+        function twSelectTrigger(trig) {
+            document.getElementById('in-trig').value = trig;
+            twRefreshTriggerUI();
+            twRenderRail();
+            twUpdateFooter('trigger');
+        }
+        function twRefreshTriggerUI() {
+            const val = document.getElementById('in-trig').value;
+            document.querySelectorAll('#mTask .tw-trigger-card').forEach(el => el.classList.toggle('selected', el.dataset.trig === val));
+            const t = twText();
+            const descs = { real: t.trigger_real_desc, sched: t.trigger_sched_desc };
+            document.getElementById('tw-trigger-desc').innerText = descs[val] || '';
+        }
+
+        // --- Passo: Pasta Local ---
+        async function twInitLocalHome() {
+            document.getElementById('tw-local-list').innerHTML = `<div class="browser-loading">${twText().browsing}</div>`;
+            try {
+                const r = await fetch('/api/system/home');
+                const data = await r.json();
+                twLocalPath = data.path || '/mnt';
+            } catch (e) { twLocalPath = '/mnt'; }
+            twRenderLocalBrowser();
+        }
+
+        async function twRenderLocalBrowser() {
+            const list = document.getElementById('tw-local-list');
+            const t = twText();
+            list.innerHTML = `<div class="browser-loading">${t.browsing}</div>`;
+            try {
+                const r = await fetch(`/api/browse/local?path=${encodeURIComponent(twLocalPath)}`);
+                const data = await r.json();
+                if (data.length === 0) {
+                    list.innerHTML = `<div class="browser-empty">${t.folder_empty}</div>`;
+                } else {
+                    list.innerHTML = data.map(item => {
+                        const name = item.name;
+                        const targetPath = item.path || name;
+                        const icon = item.is_drive ? 'fa-hard-drive' : 'fa-folder';
+                        return `<div class="browser-item" onclick="twLocalNavInto('${targetPath.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')"><i class="fas ${icon}"></i><span>${name}</span></div>`;
+                    }).join('');
+                }
+            } catch (e) {
+                list.innerHTML = `<div class="browser-error">${t.browse_error}</div>`;
+            }
+            document.getElementById('tw-local-path').innerText = twLocalPath || t.tw_disks_label;
+        }
+
+        function twLocalNavInto(target) {
+            twLocalPath = /^[A-Za-z]:\\/.test(target) ? target : (twLocalPath.endsWith('/') ? twLocalPath + target : twLocalPath + (twLocalPath === '' ? '' : '/') + target);
+            twRenderLocalBrowser();
+        }
+
+        function twLocalNavUp() {
+            if (twLocalPath === '/' || twLocalPath === '/mnt' || twLocalPath === '') return;
+            if (/^[A-Za-z]:\\$/.test(twLocalPath)) { twLocalPath = ''; twRenderLocalBrowser(); return; }
+            twLocalPath = twLocalPath.includes('\\') ? twLocalPath.replace(/\\[^\\]*\\?$/, '') : ((twLocalPath.split('/').filter(x => x).slice(0, -1).join('/')) || '/');
+            twRenderLocalBrowser();
+        }
+
+        // --- Passo: Pasta Cloud ---
+        async function twLoadCloudGrid() {
+            const grid = document.getElementById('tw-cloud-grid');
+            const t = twText();
+            if (twRemotesTyped === null) {
+                grid.innerHTML = `<div class="browser-loading">${t.clouds_loading}</div>`;
+                try {
+                    const r = await fetch('/api/browse/remotes_typed');
+                    twRemotesTyped = await r.json();
+                } catch (e) { twRemotesTyped = []; }
+            }
+            if (!twRemotesTyped.length) {
+                grid.innerHTML = `<div class="browser-empty">${t.clouds_empty}</div>`;
+                return;
+            }
+            grid.innerHTML = twRemotesTyped.map(r => `
+                <div class="tw-cloud-tile" onclick="twSelectCloudTile('${r.name.replace(/'/g, "\\'")}')">
+                    <i class="fab fa-${getIcon(r.type)}"></i>
+                    <span>${r.name}</span>
+                </div>`).join('');
+        }
+
+        function twShowCloudGrid() {
+            document.getElementById('tw-cloud-grid-wrap').classList.remove('hidden');
+            document.getElementById('tw-cloud-browser-wrap').classList.add('hidden');
+            twLoadCloudGrid();
+        }
+        function twShowCloudBrowser() {
+            document.getElementById('tw-cloud-grid-wrap').classList.add('hidden');
+            document.getElementById('tw-cloud-browser-wrap').classList.remove('hidden');
+            twRenderCloudBrowser();
+        }
+        function twSelectCloudTile(name) { twCloudRemote = name; twCloudPath = ''; twShowCloudBrowser(); }
+        function twChangeCloud() { twCloudRemote = ''; twCloudPath = ''; twShowCloudGrid(); }
+
+        async function twRenderCloudBrowser() {
+            const list = document.getElementById('tw-cloud-list');
+            const t = twText();
+            list.innerHTML = `<div class="browser-loading">${t.browsing}</div>`;
+            try {
+                const r = await fetch(`/api/browse/cloud?remote=${encodeURIComponent(twCloudRemote)}&path=${encodeURIComponent(twCloudPath)}`);
+                const data = await r.json();
+                if (data.length === 0) {
+                    list.innerHTML = `<div class="browser-empty">${t.folder_empty}</div>`;
+                } else {
+                    list.innerHTML = data.map(name => `<div class="browser-item" onclick="twCloudNavInto('${name.replace(/'/g, "\\'")}')"><i class="fas fa-folder"></i><span>${name}</span></div>`).join('');
+                }
+            } catch (e) {
+                list.innerHTML = `<div class="browser-error">${t.browse_error}</div>`;
+            }
+            document.getElementById('tw-cloud-path').innerText = twCloudRemote + ':' + (twCloudPath ? '/' + twCloudPath : '');
+        }
+
+        function twCloudNavInto(name) { twCloudPath = twCloudPath ? twCloudPath + '/' + name : name; twRenderCloudBrowser(); }
+        function twCloudNavUp() {
+            if (!twCloudPath) { twChangeCloud(); return; }
+            const parts = twCloudPath.split('/').filter(x => x);
+            parts.pop();
+            twCloudPath = parts.join('/');
+            twRenderCloudBrowser();
+        }
+
 		function getIcon(type) {
 			if (!type) return 'cloud';
 			type = type.toLowerCase();
@@ -1837,7 +2175,7 @@
 			return 'cloud';
 		}
 		
-        async function renderCloudManager() {
+		async function renderCloudManager() {
 			const list = document.getElementById('cloud-manager-list');
 			const text = i18n[lang] || i18n.en;
 			list.innerHTML = `<div class="col-span-full py-10 text-center animate-pulse text-slate-500 text-xs font-bold uppercase tracking-widest">${text.clouds_loading}</div>`;
@@ -1968,7 +2306,6 @@
             }).join(''); 
         }
         
-        function toggleTriggerFields(val) { document.getElementById('interval-wrap').classList.toggle('hidden', val==='real'); document.getElementById('time-wrap').classList.toggle('hidden', val==='real'||document.getElementById('in-int').value!=='daily'); }
         function toggleTimeField(val) { document.getElementById('time-wrap').classList.toggle('hidden', val!=='daily'||document.getElementById('in-trig').value==='real'); }
         
 		async function showHistory(id) {
