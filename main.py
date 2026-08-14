@@ -1,4 +1,4 @@
-import os, json, asyncio, subprocess, re, typing, time, signal, shutil, hashlib, uuid, platform, httpx, socket, sys, base64
+import os, json, asyncio, subprocess, re, typing, time, signal, shutil, hashlib, uuid, platform, httpx, socket, sys, base64, threading
 from urllib.request import Request as UrlRequest, urlopen
 from urllib.error import URLError, HTTPError
 from fastapi import FastAPI, BackgroundTasks, Request, WebSocket, WebSocketDisconnect
@@ -875,7 +875,8 @@ async def get_remote_snapshot(remote):
         proc = await asyncio.create_subprocess_exec(
             RCLONE_EXE, "--config", RCLONE_CONFIG, "lsjson", "--recursive", "--files-only", remote,
             stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
+            stderr=asyncio.subprocess.PIPE,
+            **_hidden_subprocess_kwargs()
         )
         try:
             stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=60)
@@ -1104,7 +1105,8 @@ async def list_rclone_files(path):
     proc = await asyncio.create_subprocess_exec(
         RCLONE_EXE, "--config", RCLONE_CONFIG, "lsf", "-R", "--files-only", path,
         stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE
+        stderr=asyncio.subprocess.PIPE,
+        **_hidden_subprocess_kwargs()
     )
     stdout, stderr = await proc.communicate()
     if proc.returncode != 0:
@@ -1123,6 +1125,17 @@ async def list_bisync_files(local_path, remote_path):
         list_rclone_files(remote_path)
     )
     return remove_root_ghosts(local_files | remote_files)
+
+def record_task_error(task, task_id, error):
+    """Regista erros sem ficheiro (token, cloud inacessível, listagem) como
+    erro da tarefa, para a UI os mostrar como qualquer erro de cópia."""
+    message = str(error).strip() or "Erro desconhecido ao aceder à cloud."
+    source = task.get("remote") if task.get("type") == "download" else task.get("local")
+    failed_entry = f"[Erro de acesso] {source or task.get('name', 'Tarefa')}"
+    STATE["logs"].setdefault(task_id, []).insert(0, f"ERROR: {message}")
+    STATE["task_error"][task_id] = True
+    STATE["failed_files"][task_id] = [failed_entry]
+    STATE["all_files"][task_id] = [failed_entry]
 
 def build_bisync_command(task, tid, remote_type, dry_run=False):
     """Prepara um bisync persistente e recuperável; o resync ocorre apenas na primeira vez."""
@@ -1154,7 +1167,7 @@ async def dryrun_step(src, dst, tid, sorted_files):
     STATE["file_sizes"][tid] = {}
 
     cmd = [RCLONE_EXE, "--config", RCLONE_CONFIG, "copy", src, dst, "-v", "--dry-run", "--update", "--modify-window", "2s", "--stats", "1s"]
-    proc = await asyncio.create_subprocess_exec(*cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT)
+    proc = await asyncio.create_subprocess_exec(*cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT, **_hidden_subprocess_kwargs())
     
     while True:
         line_bytes = await proc.stdout.readline()
@@ -1217,7 +1230,8 @@ async def bisync_dryrun_step(task, tid, sorted_files, remote_type):
     proc = await asyncio.create_subprocess_exec(
         *build_bisync_command(task, tid, remote_type, dry_run=True),
         stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.STDOUT
+        stderr=asyncio.subprocess.STDOUT,
+        **_hidden_subprocess_kwargs()
     )
     buffer, last_ws_update = "", 0
     while True:
@@ -1281,7 +1295,8 @@ async def native_bisync_step(task, tid, sorted_files, remote_type, planned_files
             proc = await asyncio.create_subprocess_exec(
                 *cmd,
                 stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.STDOUT
+                stderr=asyncio.subprocess.STDOUT,
+                **_hidden_subprocess_kwargs()
             )
             PROCESSES[tid] = proc
 
@@ -1413,7 +1428,7 @@ async def real_copy_step_sim(src, dst, tid, sorted_files, r_type, phase_label):
     cmd = [RCLONE_EXE, "--config", RCLONE_CONFIG, "copy", src, dst, "-P", "-v", "--update", "--modify-window", "2s", "--stats", "1s", "--stats-file-name-length", "0", "--transfers", "1", "--checkers", "1", "--multi-thread-streams", "0"]
     if r_type == "onedrive": cmd += ["--onedrive-chunk-size", "10M"]
 
-    proc = await asyncio.create_subprocess_exec(*cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT)
+    proc = await asyncio.create_subprocess_exec(*cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT, **_hidden_subprocess_kwargs())
     PROCESSES[tid] = proc
     last_ws_update, buffer, current_fn, current_p = 0, "", None, 0
 
@@ -1533,7 +1548,7 @@ async def real_copy_step(src, dst, tid, sorted_files, r_type, phase_label, offse
     return_code = 1
 
     try:
-        proc = await asyncio.create_subprocess_exec(*cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT)
+        proc = await asyncio.create_subprocess_exec(*cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT, **_hidden_subprocess_kwargs())
         PROCESSES[tid] = proc
 
         while True:
@@ -1719,13 +1734,7 @@ async def rclone_worker(task, manual_simulate=False):
             src, dst = (task['remote'], task['local']) if task.get('type') == 'download' else (task['local'], task['remote'])
             
             # Listagem (Única fonte de verdade para a lista visual)
-            all_detected = set()
-            lsf = await asyncio.create_subprocess_exec(RCLONE_EXE, "--config", RCLONE_CONFIG, "lsf", "-R", "--files-only", src, stdout=asyncio.subprocess.PIPE)
-            out, _ = await lsf.communicate()
-            for f in out.decode('utf-8', errors='ignore').split("\n"):
-                clean_f = f.strip().strip('/')
-                if clean_f: all_detected.add(clean_f)
-            STATE["all_files"][tid] = remove_root_ghosts(all_detected)
+            STATE["all_files"][tid] = remove_root_ghosts(await list_rclone_files(src))
             
             # O botão "Simular" nunca transfere ficheiros.
             if manual_simulate:
@@ -1744,7 +1753,7 @@ async def rclone_worker(task, manual_simulate=False):
                     "Sincronização", offset_bytes=0, grand_total_bytes=0
                 )
         except Exception as e:
-            STATE["logs"][tid].insert(0, f"ERROR: {e}")
+            record_task_error(task, tid, e)
         finally:
             completed_at = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
             # Determina se houve erro real
@@ -2031,8 +2040,8 @@ async def push_test(request: Request):
 def browse_local_endpoint(path: str = "/mnt"):
     """Lista apenas pastas do sistema local."""
     if not path or path == "undefined":
-        path = "/mnt"
-    if IS_WINDOWS and path in {"/", "/mnt"}:
+        path = "/mnt" if not IS_WINDOWS else ""
+    if IS_WINDOWS and path in {"/", "/mnt", ""}:
         import string
         return [
             {"name": f"{letter}:\\", "path": f"{letter}:\\", "is_dir": True, "is_drive": True}
@@ -2074,16 +2083,300 @@ def start_rclone_config_terminal():
     except OSError as error:
         return JSONResponse(status_code=500, content={"message": str(error)})
 
+# --- ASSISTENTE DE CRIAÇÃO DE REMOTES (WIZARD INTERATIVO) ---
+#
+# Em vez de abrir uma consola externa com "rclone config" (start_rclone_config_terminal,
+# acima), o wizard conduz o mesmo diálogo interativo do rclone dentro da própria app,
+# pergunta a pergunta, usando "rclone config create ... --non-interactive". Esse modo
+# devolve sempre JSON a descrever o próximo passo: {"State":..., "Option":{...}, "Error":...}.
+
+def _hidden_subprocess_kwargs():
+    """No Windows evita que apareça (a piscar) uma janela de consola ao correr o rclone."""
+    return {"creationflags": 0x08000000} if IS_WINDOWS else {}
+
+def run_rclone_raw(args, timeout=30):
+    """Executa o rclone e devolve stdout, stderr e código de saída."""
+    cmd = [RCLONE_EXE, "--config", RCLONE_CONFIG] + args
+    try:
+        process = subprocess.run(
+            cmd, capture_output=True, text=True, encoding="utf-8", errors="ignore",
+            timeout=timeout, **_hidden_subprocess_kwargs()
+        )
+        return process.stdout, process.stderr, process.returncode
+    except subprocess.TimeoutExpired:
+        return "", "timeout", 1
+    except Exception as e:
+        return "", str(e), 1
+
+def run_rclone_json(args, timeout=300):
+    """Executa o rclone e tenta interpretar o stdout como JSON (fluxo --non-interactive)."""
+    cmd = [RCLONE_EXE, "--config", RCLONE_CONFIG] + args
+    try:
+        process = subprocess.run(
+            cmd, capture_output=True, text=True, encoding="utf-8", errors="ignore",
+            timeout=timeout, **_hidden_subprocess_kwargs()
+        )
+        try:
+            data = json.loads(process.stdout.strip())
+        except Exception:
+            data = None
+        return data, process.stdout, process.stderr, process.returncode
+    except subprocess.TimeoutExpired:
+        return None, "", "timeout", 1
+    except Exception as e:
+        return None, "", str(e), 1
+
+# Cache de "rclone config providers" (lista TODOS os backends já com a sua
+# lista "Options" completa - é o único comando que devolve mesmo os campos
+# de cada serviço; "config options <tipo>" não existe no rclone). Corremos
+# isto uma única vez por arranque e guardamos em cache.
+_PROVIDERS_RAW_CACHE = None
+_PROVIDERS_RAW_LOCK = threading.Lock()
+
+def _get_all_providers_raw():
+    global _PROVIDERS_RAW_CACHE
+    with _PROVIDERS_RAW_LOCK:
+        if _PROVIDERS_RAW_CACHE is not None:
+            return _PROVIDERS_RAW_CACHE
+        stdout, _, _ = run_rclone_raw(["config", "providers"])
+        data = []
+        try:
+            start = stdout.find('[')
+            end = stdout.rfind(']') + 1
+            if start != -1 and end > start:
+                data = json.loads(stdout[start:end])
+        except Exception:
+            data = []
+        _PROVIDERS_RAW_CACHE = data
+        return data
+
+@app.get("/api/providers")
+def get_providers():
+    """Lista os serviços cloud suportados pelo rclone (id + descrição)."""
+    providers = _get_all_providers_raw()
+    if providers:
+        return sorted([
+            {"name": p.get("Name"), "desc": p.get("Description") or p.get("Name")}
+            for p in providers if p.get("Name") not in ["alias", "crypt", "union"]
+        ], key=lambda x: x["desc"])
+
+    # Fallback em texto, caso esta versão do rclone não devolva JSON válido.
+    stdout, _, _ = run_rclone_raw(["config", "providers"])
+    providers_list = []
+    current_id = None
+    for line in [l for l in stdout.splitlines() if l.strip()]:
+        if not line.startswith(" ") and not line.startswith("\t"):
+            if line.strip() in ["[", "]", "{", "}"]:
+                continue
+            current_id = line.strip()
+        elif current_id:
+            if current_id not in ["alias", "crypt", "union"]:
+                providers_list.append({"name": current_id, "desc": line.strip()})
+            current_id = None
+    return sorted(providers_list, key=lambda x: x["desc"])
+
+# Nomes de opções que pertencem à "maquinaria" OAuth (client_id, client_secret,
+# token, etc.) - nunca são mostrados como campo editável, são geridos
+# automaticamente pelo rclone.
+OAUTH_INTERNAL_FIELDS = {
+    "token", "client_id", "client_secret", "auth_url", "token_url",
+    "service_account_credentials", "service_account_file", "client_credentials",
+}
+
+@app.get("/api/providers/{p_type}/options")
+def get_provider_options(p_type: str):
+    """
+    Analisa as opções de configuração de um backend rclone e classifica-o em:
+      - "oauth"    -> autenticação via browser (Google, OneDrive, Dropbox, Box, ...)
+      - "userpass" -> autenticação por utilizador/password (FTP, SFTP, SMB, WebDAV, ...)
+      - "other"    -> qualquer outro caso (S3 com access keys, backends locais, etc.)
+    A classificação vem da própria metadata do rclone (sem listas fixas por
+    serviço): backends OAuth expõem sempre "token"; backends user/pass
+    expõem "user" e "pass".
+    """
+    providers = _get_all_providers_raw()
+    provider = next((p for p in providers if p.get("Name") == p_type), None)
+    data = (provider.get("Options") or []) if provider else []
+
+    all_names = {opt.get("Name") for opt in data}
+    is_oauth = "token" in all_names
+    is_userpass = ("user" in all_names and "pass" in all_names) and not is_oauth
+    auth_type = "oauth" if is_oauth else ("userpass" if is_userpass else "other")
+
+    fields = []
+    for opt in data:
+        name = opt.get("Name")
+        # "Hide" é um bitmask do próprio rclone: bit 2 (OptionHideConfigurator)
+        # marca campos que não devem ser mostrados numa UI de configuração.
+        hide = opt.get("Hide", 0)
+        if hide is True or (isinstance(hide, int) and hide & 2):
+            continue
+        if is_oauth and name in OAUTH_INTERNAL_FIELDS:
+            continue
+        # Em backends userpass, "user"/"pass" são a credencial em si - têm de
+        # aparecer sempre, mesmo que o rclone os marque como "Advanced".
+        is_userpass_credential = is_userpass and name in ("user", "pass")
+        # Mostra campos normais e ainda avançados MAS obrigatórios (ex: "scope"
+        # no Google Drive ou "drive_type" no OneDrive, essenciais para o wizard).
+        if opt.get("Advanced") and not opt.get("Required") and not is_userpass_credential:
+            continue
+
+        examples = [
+            {"value": ex.get("Value"), "help": ex.get("Help")}
+            for ex in (opt.get("Examples") or [])
+        ]
+        fields.append({
+            "name": name,
+            "help": opt.get("Help", ""),
+            "default": opt.get("Default", ""),
+            "required": bool(opt.get("Required", False)) or is_userpass_credential,
+            "is_password": bool(opt.get("IsPassword", False)),
+            "examples": examples,
+        })
+
+    return {"auth_type": auth_type, "fields": fields}
+
+# Sessões de criação de remotes em curso. Alguns backends (OneDrive, Drive, ...)
+# fazem mais perguntas depois da autorização no browser - tipo de ligação, qual
+# das drives disponíveis usar, etc. Em vez de responder por eles com valores
+# por omissão, guardamos aqui cada sessão e devolvemos ao frontend EXATAMENTE
+# a pergunta que o rclone faria no terminal, para o utilizador decidir.
+PENDING_REMOTE_SESSIONS = {}
+_REMOTE_SESSIONS_LOCK = threading.Lock()
+
+def _advance_remote_session(session_id: str, args: list, timeout: int = 300):
+    """Corre um passo do assistente do rclone em background (pode demorar,
+    ex: à espera do browser) e guarda o resultado na sessão."""
+    def worker():
+        data, out, err, code = run_rclone_json(args, timeout=timeout)
+        with _REMOTE_SESSIONS_LOCK:
+            session = PENDING_REMOTE_SESSIONS.get(session_id)
+            if session is None:
+                return
+            if data is None:
+                session["status"] = "error"
+                session["error"] = err or out or "Resposta inesperada do rclone."
+                return
+            if data.get("Error"):
+                session["status"] = "error"
+                session["error"] = data["Error"]
+                return
+            new_state = data.get("State") or ""
+            if not new_state:
+                session["status"] = "done"
+                session["state"] = None
+                session["option"] = None
+                return
+            session["state"] = new_state
+            session["option"] = data.get("Option") or {}
+            session["status"] = "input_required"
+    threading.Thread(target=worker, daemon=True).start()
+
+@app.post("/api/remotes/create")
+async def create_remote_wizard(req: Request):
+    """Inicia a criação de um remote a partir do wizard (1º passo do fluxo
+    --non-interactive do rclone)."""
+    body = await req.json()
+    name = (body.get("name") or "").strip().replace(" ", "_")
+    p_type = body.get("type")
+    options = body.get("options") or {}
+    if not name or not p_type:
+        return JSONResponse(status_code=400, content={"message": "Nome e serviço são obrigatórios."})
+
+    session_id = uuid.uuid4().hex
+    args = ["config", "create", name, p_type]
+    for k, v in options.items():
+        if v:
+            args.append(f"{k}={v}")
+    args.append("--non-interactive")
+
+    with _REMOTE_SESSIONS_LOCK:
+        PENDING_REMOTE_SESSIONS[session_id] = {
+            "name": name, "type": p_type,
+            "state": None, "status": "working",
+            "option": None, "error": None,
+        }
+    _advance_remote_session(session_id, args)
+    return {"session_id": session_id, "status": "working"}
+
+@app.get("/api/remotes/create/{session_id}/status")
+def get_remote_create_status(session_id: str):
+    """O frontend faz polling a este endpoint para saber se há uma pergunta
+    pendente, se terminou com sucesso, ou se falhou (ex: por permissões)."""
+    with _REMOTE_SESSIONS_LOCK:
+        session = PENDING_REMOTE_SESSIONS.get(session_id)
+        if session is None:
+            return JSONResponse(status_code=404, content={"message": "Sessão inválida ou expirada."})
+        return {
+            "status": session["status"],
+            "option": session.get("option"),
+            "error": session.get("error"),
+        }
+
+@app.post("/api/remotes/create/{session_id}/answer")
+async def answer_remote_create(session_id: str, req: Request):
+    """Recebe a resposta do utilizador a UMA pergunta pendente e avança o
+    assistente do rclone com ela (equivalente a escrever no terminal)."""
+    body = await req.json()
+    value = body.get("value", "")
+
+    with _REMOTE_SESSIONS_LOCK:
+        session = PENDING_REMOTE_SESSIONS.get(session_id)
+        if session is None:
+            return JSONResponse(status_code=404, content={"message": "Sessão inválida ou expirada."})
+        if session["status"] != "input_required":
+            return JSONResponse(status_code=409, content={"message": "Não há nenhuma pergunta pendente nesta sessão."})
+        state = session["state"]
+        name, p_type = session["name"], session["type"]
+        session["status"] = "working"
+
+    args = ["config", "create", name, p_type, "--non-interactive",
+            "--continue", "--state", state, "--result", str(value)]
+    _advance_remote_session(session_id, args)
+    return {"status": "working"}
+
+@app.delete("/api/remotes/create/{session_id}")
+def cancel_remote_create(session_id: str):
+    """Cancela/limpa uma sessão de criação (ex: o utilizador fechou o modal)."""
+    with _REMOTE_SESSIONS_LOCK:
+        PENDING_REMOTE_SESSIONS.pop(session_id, None)
+    return {"status": "cancelled"}
+
+
 @app.get("/api/browse/remotes")
 def list_remotes_endpoint():
     """Lista os nomes das clouds configuradas no rclone.conf"""
     try:
         # Adicionado o --config RCLONE_CONFIG para ele encontrar os teus remotes
-        out = subprocess.check_output([RCLONE_EXE, "--config", RCLONE_CONFIG, "listremotes"]).decode("utf-8")
+        out = subprocess.check_output([RCLONE_EXE, "--config", RCLONE_CONFIG, "listremotes"], **_hidden_subprocess_kwargs()).decode("utf-8")
         return [l.strip().replace(":", "") for l in out.split("\n") if l.strip()]
     except Exception as e:
         print(f"Erro ao listar remotes: {e}")
         return []
+
+@app.get("/api/browse/remotes_typed")
+def list_remotes_typed_endpoint():
+    """Lista nome + tipo de cada cloud configurada, sem consultar quota (rápido, para grelhas de seleção)."""
+    try:
+        out = subprocess.check_output([RCLONE_EXE, "--config", RCLONE_CONFIG, "listremotes", "--long"], **_hidden_subprocess_kwargs()).decode("utf-8")
+        result = []
+        for line in out.split("\n"):
+            if ":" in line:
+                name, _, type_part = line.partition(":")
+                if name.strip():
+                    result.append({"name": name.strip(), "type": type_part.strip().lower()})
+        return result
+    except Exception as e:
+        print(f"Erro ao listar remotes com tipo: {e}")
+        return []
+
+@app.get("/api/system/home")
+def system_home_endpoint():
+    """Devolve a pasta pessoal do utilizador com sessão iniciada, para arrancar o explorador local."""
+    home = os.path.expanduser("~")
+    if IS_WINDOWS and not home.endswith("\\"):
+        home += "\\"
+    return {"path": home}
 
 @app.get("/api/browse/cloud")
 def browse_cloud_endpoint(remote: str, path: str = ""):
@@ -2094,7 +2387,7 @@ def browse_cloud_endpoint(remote: str, path: str = ""):
         res = subprocess.check_output([
             RCLONE_EXE, "--config", RCLONE_CONFIG, "lsd", 
             f"{remote_name}{path.lstrip('/')}"
-        ]).decode("utf-8")
+        ], **_hidden_subprocess_kwargs()).decode("utf-8")
         # Extrai o nome da pasta (o rclone lsd tem um formato fixo)
         return [line.split(None, 4)[4] for line in res.split("\n") if line.strip() and len(line.split(None, 4)) >= 5]
     except Exception as e:
@@ -2103,7 +2396,7 @@ def browse_cloud_endpoint(remote: str, path: str = ""):
 
 def get_remote_type(remote_name):
     try:
-        res = subprocess.check_output([RCLONE_EXE, "--config", RCLONE_CONFIG, "listremotes", "--long"]).decode()
+        res = subprocess.check_output([RCLONE_EXE, "--config", RCLONE_CONFIG, "listremotes", "--long"], **_hidden_subprocess_kwargs()).decode()
         for line in res.split("\n"):
             if line.startswith(remote_name.replace(":", "") + ":"): return line.split(":")[1].strip().lower()
     except: pass
@@ -2111,7 +2404,7 @@ def get_remote_type(remote_name):
 
 async def check_single_remote(remote_name):
     try:
-        proc = await asyncio.create_subprocess_exec(RCLONE_EXE, "--config", RCLONE_CONFIG, "lsd", f"{remote_name}:", "--max-depth", "1", stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+        proc = await asyncio.create_subprocess_exec(RCLONE_EXE, "--config", RCLONE_CONFIG, "lsd", f"{remote_name}:", "--max-depth", "1", stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, **_hidden_subprocess_kwargs())
         stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=7.0)
         if proc.returncode == 0: return {"name": remote_name, "status": "online", "message": "OK"}
         return {"name": remote_name, "status": "offline", "message": "Erro de Token/Acesso"}
@@ -2121,7 +2414,7 @@ async def update_health_cache():
     global HEALTH_CACHE, LAST_BOX_CHECK_TIME
     try:
         # 1. Obtemos a lista longa para saber o tipo de cada cloud (drive, box, onedrive...)
-        out = subprocess.check_output([RCLONE_EXE, "--config", RCLONE_CONFIG, "listremotes", "--long"]).decode("utf-8")
+        out = subprocess.check_output([RCLONE_EXE, "--config", RCLONE_CONFIG, "listremotes", "--long"], **_hidden_subprocess_kwargs()).decode("utf-8")
         
         remotes_to_check = []
         now = time.time()
@@ -2314,7 +2607,7 @@ async def delete_cloud_config(name: str):
         # Executamos o comando e capturamos a saída
         result = subprocess.run([
             RCLONE_EXE, "--config", RCLONE_CONFIG, "config", "delete", clean_name
-        ], capture_output=True, text=True)
+        ], capture_output=True, text=True, **_hidden_subprocess_kwargs())
 
         if result.returncode != 0:
             print(f">>> [RCLONE] Erro ao apagar: {result.stderr}")
@@ -2339,7 +2632,7 @@ async def list_remotes_with_quota():
     try:
         # 1. Lista remotes
         res_list = subprocess.run([RCLONE_EXE, "--config", RCLONE_CONFIG, "listremotes", "--long"], 
-                                  capture_output=True, text=True, timeout=5)
+                                  capture_output=True, text=True, timeout=5, **_hidden_subprocess_kwargs())
         if res_list.returncode != 0: return []
         
         remotes = []
@@ -2353,7 +2646,7 @@ async def list_remotes_with_quota():
                 status, error_detail = "ok", None
                 try:
                     res_about = subprocess.run([RCLONE_EXE, "--config", RCLONE_CONFIG, "about", f"{name}:", "--json"], 
-                                             capture_output=True, text=True, timeout=8)
+                                             capture_output=True, text=True, timeout=8, **_hidden_subprocess_kwargs())
                     if res_about.returncode == 0:
                         data = json.loads(res_about.stdout)
                         quota = { "total": data.get("total", 0), "used": data.get("used", 0), "supported": True }
