@@ -330,6 +330,26 @@
 		.btn-wiz-next:hover:not(:disabled) { filter: brightness(1.08); }
 		.btn-wiz-next:disabled { opacity: .35; cursor: not-allowed; box-shadow: none; }
 
+		/* ===== WIZARD DE CRIAÇÃO DE REMOTES (novo Cloud) ===== */
+		#mCloudCreate .wizard-card { width: min(560px, calc(100vw - 32px)); max-height: min(680px, calc(100vh - 32px)); display: flex; flex-direction: column; overflow: hidden; }
+
+		/* Grid de seleção de serviço */
+		.svc-card { background: #0f172a; border: 1px solid #1e293b; border-radius: 14px; padding: 12px; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; cursor: pointer; transition: .15s; text-align: left; }
+		.svc-card:hover { border-color: rgba(59,130,246,.4); transform: translateY(-1px); background: #16202c; }
+		.svc-card.selected { border-color: #3b82f6; background: rgba(59,130,246,.08); box-shadow: 0 0 0 1px #3b82f6; }
+		.svc-icon { width: 30px; height: 30px; border-radius: 9px; background: rgba(59,130,246,.1); display: flex; align-items: center; justify-content: center; color: #00d4ff; font-size: 13px; flex-shrink: 0; overflow: hidden; }
+		.svc-card.selected .svc-icon { background: linear-gradient(135deg,#3b82f6,#00d4ff); color: #04101f; }
+		/* Quando existe logo real da marca, fundo claro (os logos vêm com a cor
+		   oficial da marca, que muitas vezes não se vê bem sobre azul) */
+		.svc-icon.has-logo { background: #f4f6fb; }
+		.svc-icon.has-logo img { width: 100%; height: 100%; object-fit: contain; padding: 5px; display: block; }
+		.svc-icon.has-logo .svc-icon-fallback { display: none; width: 100%; height: 100%; align-items: center; justify-content: center; color: #3b82f6; }
+		.svc-card.selected .svc-icon.has-logo { background: #fff; box-shadow: 0 0 0 2px #3b82f6; }
+		.svc-icon-sm { width: 20px; height: 20px; border-radius: 6px; background: rgba(59,130,246,.1); display: flex; align-items: center; justify-content: center; color: #00d4ff; flex-shrink: 0; overflow: hidden; }
+		.svc-icon-sm.has-logo { background: #f4f6fb; }
+		.svc-icon-sm.has-logo img { width: 100%; height: 100%; object-fit: contain; padding: 3px; display: block; }
+		.svc-icon-sm.has-logo .svc-icon-fallback { display: none; width: 100%; height: 100%; align-items: center; justify-content: center; color: #3b82f6; }
+
 		/* ===== WIZARD DE TAREFA (novo/editar tarefa) ===== */
 		#mTask .wizard-card { width: min(640px, calc(100vw - 32px)); max-height: min(720px, calc(100vh - 32px)); display: flex; flex-direction: column; overflow: hidden; }
 
@@ -852,13 +872,17 @@
 			<div id="cloud-manager-list" class="grid grid-cols-1 md:grid-cols-2 gap-5">
 				<!-- JS injeta os cartões aqui -->
 			</div>
-			<!-- SECÇÃO TUTORIAL (FIXA) -->
-			<div class="tutorial-section mt-4">
-				<h4 class="text-blue-500 font-black text-[10px] uppercase mb-5 tracking-[3px] flex items-center gap-3">
-					<i class="fas fa-terminal"></i> <span data-key="tut_title">How to add a new Cloud?</span>
-				</h4>
-				
-				<div class="space-y-4">
+
+			<button id="cloud-add-button" type="button" onclick="openCloudWizard()" class="bg-blue-600 hover:bg-blue-500 px-5 py-3 rounded-lg text-xs font-black uppercase text-white"><i class="fas fa-plus mr-2"></i><span data-key="cloud_add">Add cloud</span></button>
+
+			<!-- CONFIGURAÇÃO MANUAL (ALTERNATIVA, RECOLHIDA) -->
+			<details class="tutorial-section mt-4 group">
+				<summary class="text-blue-500 font-black text-[10px] uppercase tracking-[3px] flex items-center gap-3 cursor-pointer select-none list-none">
+					<i class="fas fa-terminal"></i> <span data-key="tut_title">Prefer the terminal?</span>
+					<i class="fas fa-chevron-down ml-auto text-[9px] transition-transform group-open:rotate-180"></i>
+				</summary>
+
+				<div class="space-y-4 mt-5">
 					<div class="step-item">
 						<div class="step-number">1</div>
 						<div class="flex-1">
@@ -890,10 +914,70 @@
 						</div>
 					</div>
 				</div>
-			</div>
+			</details>
 
 			<!-- PUXADOR DE RESIZE -->
 			<div id="mCloud-resizer" class="resizer-handle" title="Resize modal" aria-label="Resize modal" role="button"><i class="fas fa-up-right-and-down-left-from-center"></i></div>
+		</div>
+	</div>
+
+	<!-- CRIAR CLOUD (WIZARD INTERATIVO) -->
+	<div id="mCloudCreate" class="modal-overlay hidden">
+		<div class="wizard-card bg-slate-900 border border-slate-700 rounded-[26px] p-7 shadow-2xl">
+
+			<!-- CABEÇALHO + RAIL -->
+			<div class="shrink-0 mb-5">
+				<div class="flex justify-between items-start mb-5">
+					<div><h3 class="text-xl font-black text-white uppercase" data-key="cloud_add">Add cloud</h3><p id="wiz-subtitle" class="text-slate-500 text-[10px] font-bold uppercase tracking-[2px] mt-1">Give the connection a name to start.</p></div>
+					<button type="button" onclick="cancelAndCloseWizard()" class="text-slate-500 hover:text-white text-3xl leading-none">&times;</button>
+				</div>
+				<div id="wiz-rail" class="rail"></div>
+			</div>
+
+			<!-- CORPO / PASSOS -->
+			<div class="wiz-body">
+
+				<!-- PASSO 1: NOME -->
+				<div class="wiz-step" data-step="name">
+					<label class="field-label"><span data-key="cloud_name">Name</span> *</label>
+					<input type="text" id="cloud-new-name" class="input-box text-sm" placeholder="Ex: Google_Trabalho" autocomplete="off" maxlength="80">
+					<p class="text-[11px] text-slate-600 mt-2"><i class="fas fa-circle-info mr-1"></i><span data-key="wiz_name_hint">Sem espaços — serão trocados por underscore automaticamente.</span></p>
+				</div>
+
+				<!-- PASSO 2: SERVIÇO -->
+				<div class="wiz-step" data-step="service">
+					<label class="field-label" data-key="cloud_select_service">Select a service</label>
+					<div class="relative mb-3 mt-1">
+						<i class="fas fa-search absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+						<input type="text" id="wiz-provider-search" oninput="filterWizardProviders(this.value)"
+						       class="input-box text-xs pl-9" placeholder="Search services…">
+					</div>
+					<div id="wiz-providers-grid" class="grid grid-cols-3 gap-3 max-h-72 overflow-y-auto custom-scrollbar pr-1"></div>
+				</div>
+
+				<!-- PASSO 3: PARÂMETROS -->
+				<div class="wiz-step" data-step="params">
+					<label class="field-label" data-key="wiz_params_title">Connection parameters</label>
+					<div id="wiz-params-content" class="space-y-4"></div>
+				</div>
+
+				<!-- PASSO 4: VALIDAR -->
+				<div class="wiz-step" data-step="review">
+					<div id="wiz-review-summary">
+						<label class="field-label" data-key="wiz_review_title">Confirm the details</label>
+						<div id="wiz-review-list" class="space-y-2 mb-2"></div>
+					</div>
+					<div id="wiz-review-dynamic" class="hidden"></div>
+				</div>
+
+			</div>
+
+			<!-- NAVEGAÇÃO -->
+			<div class="flex items-center gap-4 pt-5 mt-2 border-t border-white/5 shrink-0">
+				<button id="wiz-btn-back" type="button" onclick="wizGoBack()" class="btn-ghost font-bold text-xs uppercase tracking-wide"><i class="fas fa-arrow-left mr-1.5 text-[10px]"></i><span data-key="wiz_back">Back</span></button>
+				<div class="flex-1"></div>
+				<button id="wiz-btn-next" type="button" onclick="wizHandleNext()" class="btn-wiz-next px-7 py-3 rounded-2xl text-white font-black text-xs uppercase tracking-widest" data-key="wiz_continue">Continue</button>
+			</div>
 		</div>
 	</div>
 
@@ -1166,7 +1250,7 @@
 				total_capacity: "Capacidade",
 				no_clouds: "Nenhuma nuvem configurada",
 				delete_cloud_confirm: "Tens a certeza que queres apagar esta ligação?",
-				tut_title: "Como adicionar uma nova Cloud?",
+				tut_title: "Prefere usar o terminal?",
 				// tut_step_1_title: "Executa o configurador no terminal do teu ZimaOS:",
 				// tut_step_2: "No menu, escolhe 'n' (New Remote), dá um nome e seleciona o fornecedor.",
 				// tut_step_3_title: "Responde às perguntas desta forma:",
@@ -1240,7 +1324,7 @@
 				save: "Guardar",
 				clouds_title: "Nubes Conectadas",
 				used_space: "Espacio Usado",
-				tut_title: "¿Cómo añadir una nueva Nube?",
+				tut_title: "¿Prefieres la terminal?",
 				license_title: "Activación de Licencia",
 				status_done: "Completado",
 				file_pending: "PENDIENTE",
@@ -1277,7 +1361,7 @@
 				save: "Enregistrer",
 				clouds_title: "Nuages connectés",
 				used_space: "Espace utilisé",
-				tut_title: "Comment ajouter un nouveau Cloud ?",
+				tut_title: "Vous préférez le terminal ?",
 				license_title: "Activation de la licence",
 				status_done: "Terminé",
 				file_pending: "EN ATTENTE",
@@ -1314,7 +1398,7 @@
 				save: "Speichern",
 				clouds_title: "Verbundene Clouds",
 				used_space: "Belegter Speicher",
-				tut_title: "Wie füge ich eine neue Cloud hinzu?",
+				tut_title: "Lieber das Terminal nutzen?",
 				license_title: "Lizenzaktivierung",
 				status_done: "Abgeschlossen",
 				file_pending: "AUSSTEHEND",
@@ -1345,11 +1429,11 @@
             license_desc: 'Eine Lizenz schaltet Synchronisierung und Automatisierung frei.', license_active: 'Aktiv', license_inactive: 'Inaktiv', license_email_placeholder: 'Lizenz-E-Mail', license_device_placeholder: 'Gerätename', license_key_placeholder: 'Lizenzschlüssel', license_activate_btn: 'Lizenz aktivieren', license_note: 'Ohne Lizenz können Sie Aufgaben nur simulieren.', pref_sim_title: 'Automatische Simulation', pref_sim_desc: 'Vor der echten Übertragung eine Simulation ausführen.', pref_sim_note: 'Ohne Vorschau startet die Synchronisierung sofort.', useful_links: 'Nützliche Links', status_inactive: 'Inaktiv', status_active: 'Aktiv', status_sim: 'Simulation läuft', hist_title: 'Aktivitätsverlauf', hist_empty: 'Keine Einträge gefunden.', hist_view_err: 'Fehler anzeigen', hist_success: 'Erfolgreich', hist_error: 'Fehler', hist_sim: 'Simulation', hist_sync: 'Synchronisierung', file_skipped: 'KEINE ÄNDERUNG', file_error: 'FEHLER'
         });
 
-        Object.assign(i18n.en, { cloud_add: 'Add cloud', cloud_manage: 'Add / manage clouds', cloud_configure: 'Configure a new remote', cloud_name: 'Name', cloud_service: 'Service', cloud_select_service: 'Select a service', cloud_change: 'Change', cloud_address: 'Server address', cloud_username: 'Username', cloud_password: 'Password', cloud_create: 'Create cloud' });
-        Object.assign(i18n.pt, { clouds_loading: 'A sincronizar quotas...', clouds_empty: 'Sem clouds configuradas', clouds_used: 'Usado', clouds_total: 'Total', clouds_connection_error: 'Não foi possível contactar o motor de sincronização.', clouds_remove_confirm: 'Tens a certeza que queres apagar a ligação "{name}"?', clouds_command_copied: 'Comando copiado para a área de transferência.', cloud_add: 'Adicionar cloud', cloud_manage: 'Adicionar / gerir clouds', cloud_configure: 'Configurar uma nova ligação', cloud_name: 'Nome', cloud_service: 'Serviço', cloud_select_service: 'Selecionar um serviço', cloud_change: 'Alterar', cloud_address: 'Endereço do servidor', cloud_username: 'Utilizador', cloud_password: 'Palavra-passe', cloud_create: 'Criar cloud' });
-        Object.assign(i18n.es, { clouds_loading: 'Sincronizando cuotas...', clouds_empty: 'No hay nubes configuradas', clouds_used: 'Usado', clouds_total: 'Total', clouds_connection_error: 'No se pudo contactar con el motor de sincronización.', clouds_remove_confirm: '¿Seguro que deseas eliminar la conexión "{name}"?', clouds_command_copied: 'Comando copiado al portapapeles.', cloud_add: 'Añadir nube', cloud_manage: 'Añadir / gestionar nubes', cloud_configure: 'Configurar una nueva conexión', cloud_name: 'Nombre', cloud_service: 'Servicio', cloud_select_service: 'Seleccionar un servicio', cloud_change: 'Cambiar', cloud_address: 'Dirección del servidor', cloud_username: 'Usuario', cloud_password: 'Contraseña', cloud_create: 'Crear nube' });
-        Object.assign(i18n.fr, { clouds_loading: 'Synchronisation des quotas...', clouds_empty: 'Aucun cloud configuré', clouds_used: 'Utilisé', clouds_total: 'Total', clouds_connection_error: 'Impossible de contacter le moteur de synchronisation.', clouds_remove_confirm: 'Voulez-vous vraiment supprimer la connexion « {name} » ?', clouds_command_copied: 'Commande copiée dans le presse-papiers.', cloud_add: 'Ajouter un cloud', cloud_manage: 'Ajouter / gérer les clouds', cloud_configure: 'Configurer une nouvelle connexion', cloud_name: 'Nom', cloud_service: 'Service', cloud_select_service: 'Sélectionner un service', cloud_change: 'Modifier', cloud_address: 'Adresse du serveur', cloud_username: 'Utilisateur', cloud_password: 'Mot de passe', cloud_create: 'Créer le cloud' });
-        Object.assign(i18n.de, { clouds_loading: 'Kontingente werden synchronisiert...', clouds_empty: 'Keine Clouds konfiguriert', clouds_used: 'Belegt', clouds_total: 'Gesamt', clouds_connection_error: 'Die Synchronisierungs-Engine konnte nicht erreicht werden.', clouds_remove_confirm: 'Möchten Sie die Verbindung „{name}“ wirklich löschen?', clouds_command_copied: 'Befehl wurde in die Zwischenablage kopiert.', cloud_add: 'Cloud hinzufügen', cloud_manage: 'Clouds hinzufügen / verwalten', cloud_configure: 'Neue Verbindung einrichten', cloud_name: 'Name', cloud_service: 'Dienst', cloud_select_service: 'Dienst auswählen', cloud_change: 'Ändern', cloud_address: 'Serveradresse', cloud_username: 'Benutzername', cloud_password: 'Passwort', cloud_create: 'Cloud erstellen' });
+        Object.assign(i18n.en, { cloud_add: 'Add cloud', cloud_manage: 'Add / manage clouds', cloud_configure: 'Configure a new remote', cloud_name: 'Name', cloud_service: 'Service', cloud_select_service: 'Select a service', cloud_change: 'Change', cloud_address: 'Server address', cloud_username: 'Username', cloud_password: 'Password', cloud_create: 'Create cloud', wiz_oauth_remote_title: 'Authorize from another device', wiz_oauth_remote_desc: 'This service needs browser authorization, which can’t happen inside the container. Run this on a computer with rclone installed and a web browser (e.g. your own PC or Mac):', wiz_oauth_remote_command_label: 'Command to run there', wiz_oauth_remote_paste_label: 'Paste the result here', wiz_oauth_remote_paste_placeholder: 'Paste the full output rclone authorize gave you…', wiz_oauth_remote_download: "Don't have rclone there yet? Download it" });
+        Object.assign(i18n.pt, { clouds_loading: 'A sincronizar quotas...', clouds_empty: 'Sem clouds configuradas', clouds_used: 'Usado', clouds_total: 'Total', clouds_connection_error: 'Não foi possível contactar o motor de sincronização.', clouds_remove_confirm: 'Tens a certeza que queres apagar a ligação "{name}"?', clouds_command_copied: 'Comando copiado para a área de transferência.', cloud_add: 'Adicionar cloud', cloud_manage: 'Adicionar / gerir clouds', cloud_configure: 'Configurar uma nova ligação', cloud_name: 'Nome', cloud_service: 'Serviço', cloud_select_service: 'Selecionar um serviço', cloud_change: 'Alterar', cloud_address: 'Endereço do servidor', cloud_username: 'Utilizador', cloud_password: 'Palavra-passe', cloud_create: 'Criar cloud', wiz_oauth_remote_title: 'Autorizar noutro dispositivo', wiz_oauth_remote_desc: 'Este serviço exige autorização por browser, o que não é possível dentro do container. Corra isto num computador com o rclone instalado e um browser (ex: o seu PC ou Mac):', wiz_oauth_remote_command_label: 'Comando a correr lá', wiz_oauth_remote_paste_label: 'Cole aqui o resultado', wiz_oauth_remote_paste_placeholder: 'Cole aqui tudo o que o rclone authorize devolveu…', wiz_oauth_remote_download: 'Ainda não tem o rclone lá? Descarregue-o' });
+        Object.assign(i18n.es, { clouds_loading: 'Sincronizando cuotas...', clouds_empty: 'No hay nubes configuradas', clouds_used: 'Usado', clouds_total: 'Total', clouds_connection_error: 'No se pudo contactar con el motor de sincronización.', clouds_remove_confirm: '¿Seguro que deseas eliminar la conexión "{name}"?', clouds_command_copied: 'Comando copiado al portapapeles.', cloud_add: 'Añadir nube', cloud_manage: 'Añadir / gestionar nubes', cloud_configure: 'Configurar una nueva conexión', cloud_name: 'Nombre', cloud_service: 'Servicio', cloud_select_service: 'Seleccionar un servicio', cloud_change: 'Cambiar', cloud_address: 'Dirección del servidor', cloud_username: 'Usuario', cloud_password: 'Contraseña', cloud_create: 'Crear nube', wiz_oauth_remote_title: 'Autorizar desde otro dispositivo', wiz_oauth_remote_desc: 'Este servicio requiere autorización por navegador, algo que no es posible dentro del contenedor. Ejecuta esto en un ordenador con rclone instalado y un navegador (p. ej. tu PC o Mac):', wiz_oauth_remote_command_label: 'Comando a ejecutar allí', wiz_oauth_remote_paste_label: 'Pega aquí el resultado', wiz_oauth_remote_paste_placeholder: 'Pega todo lo que rclone authorize haya devuelto…', wiz_oauth_remote_download: '¿Aún no tienes rclone allí? Descárgalo' });
+        Object.assign(i18n.fr, { clouds_loading: 'Synchronisation des quotas...', clouds_empty: 'Aucun cloud configuré', clouds_used: 'Utilisé', clouds_total: 'Total', clouds_connection_error: 'Impossible de contacter le moteur de synchronisation.', clouds_remove_confirm: 'Voulez-vous vraiment supprimer la connexion « {name} » ?', clouds_command_copied: 'Commande copiée dans le presse-papiers.', cloud_add: 'Ajouter un cloud', cloud_manage: 'Ajouter / gérer les clouds', cloud_configure: 'Configurer une nouvelle connexion', cloud_name: 'Nom', cloud_service: 'Service', cloud_select_service: 'Sélectionner un service', cloud_change: 'Modifier', cloud_address: 'Adresse du serveur', cloud_username: 'Utilisateur', cloud_password: 'Mot de passe', cloud_create: 'Créer le cloud', wiz_oauth_remote_title: 'Autoriser depuis un autre appareil', wiz_oauth_remote_desc: 'Ce service nécessite une autorisation par navigateur, impossible depuis le container. Exécutez ceci sur un ordinateur avec rclone installé et un navigateur (ex. votre PC ou Mac) :', wiz_oauth_remote_command_label: 'Commande à exécuter là-bas', wiz_oauth_remote_paste_label: 'Collez le résultat ici', wiz_oauth_remote_paste_placeholder: 'Collez tout ce que rclone authorize a renvoyé…', wiz_oauth_remote_download: "Vous n'avez pas encore rclone là-bas ? Téléchargez-le" });
+        Object.assign(i18n.de, { clouds_loading: 'Kontingente werden synchronisiert...', clouds_empty: 'Keine Clouds konfiguriert', clouds_used: 'Belegt', clouds_total: 'Gesamt', clouds_connection_error: 'Die Synchronisierungs-Engine konnte nicht erreicht werden.', clouds_remove_confirm: 'Möchten Sie die Verbindung „{name}“ wirklich löschen?', clouds_command_copied: 'Befehl wurde in die Zwischenablage kopiert.', cloud_add: 'Cloud hinzufügen', cloud_manage: 'Clouds hinzufügen / verwalten', cloud_configure: 'Neue Verbindung einrichten', cloud_name: 'Name', cloud_service: 'Dienst', cloud_select_service: 'Dienst auswählen', cloud_change: 'Ändern', cloud_address: 'Serveradresse', cloud_username: 'Benutzername', cloud_password: 'Passwort', cloud_create: 'Cloud erstellen', wiz_oauth_remote_title: 'Von einem anderen Gerät autorisieren', wiz_oauth_remote_desc: 'Dieser Dienst benötigt eine Browser-Autorisierung, die im Container nicht möglich ist. Führen Sie dies auf einem Computer mit installiertem rclone und einem Browser aus (z. B. Ihrem PC oder Mac):', wiz_oauth_remote_command_label: 'Dort auszuführender Befehl', wiz_oauth_remote_paste_label: 'Ergebnis hier einfügen', wiz_oauth_remote_paste_placeholder: 'Fügen Sie hier die vollständige Ausgabe von rclone authorize ein…', wiz_oauth_remote_download: 'Noch kein rclone dort? Herunterladen' });
 
         Object.assign(i18n.en, { wiz_step_name: 'Name', wiz_step_service: 'Service', wiz_step_params: 'Parameters', wiz_step_review: 'Review', wiz_sub_name: 'Give the connection a name to start.', wiz_sub_service: 'Choose the cloud service to connect.', wiz_sub_params: 'Fill in what this service needs.', wiz_sub_review: 'Review everything before creating the connection.', wiz_continue: 'Continue', wiz_back: 'Back', wiz_name_hint: 'No spaces — they will be replaced with underscores automatically.', wiz_search_service: 'Search services…', wiz_params_title: 'Connection parameters', wiz_review_title: 'Confirm the details', wiz_err_name: 'Please name the connection.', wiz_err_service: 'Select a cloud service.', wiz_err_required: 'Please fill in the required fields:', wiz_err_no_services: 'No services found.', wiz_no_results: 'No results found.', wiz_default: 'Default', wiz_oauth_title: 'Browser login', wiz_oauth_desc: 'This service requires official authorization. Your browser will open automatically to authorize access.', wiz_no_params: 'This service does not require extra parameters.', wiz_err_load_options: 'Error loading options.', wiz_authorize: 'Authorize in browser', wiz_connect: 'Connect', wiz_starting: 'Starting…', wiz_connecting: 'Connecting…', wiz_processing: 'Processing… (may involve the browser)', wiz_err_timeout: 'This took too long. Check whether you authorized in the browser and try again.', wiz_err_config: 'Error configuring the cloud:', wiz_err_unexpected: 'Unexpected response from the server.', wiz_question_title: 'Rclone needs one more piece of information', wiz_param_needed: 'Required parameter', wiz_yes: 'Yes', wiz_no: 'No', wiz_waiting_answer: 'Waiting for the answer above…', wiz_success: 'Cloud connected successfully!' });
         Object.assign(i18n.pt, { wiz_step_name: 'Nome', wiz_step_service: 'Serviço', wiz_step_params: 'Parâmetros', wiz_step_review: 'Validar', wiz_sub_name: 'Dê um nome à conexão para começar.', wiz_sub_service: 'Escolha o serviço de cloud a ligar.', wiz_sub_params: 'Preencha os dados pedidos por este serviço.', wiz_sub_review: 'Reveja tudo antes de criar a conexão.', wiz_continue: 'Continuar', wiz_back: 'Voltar', wiz_name_hint: 'Sem espaços — serão trocados por underscore automaticamente.', wiz_search_service: 'Pesquisar serviço...', wiz_params_title: 'Parâmetros de ligação', wiz_review_title: 'Confirme os dados', wiz_err_name: 'Por favor, dê um nome à conexão.', wiz_err_service: 'Selecione um serviço cloud.', wiz_err_required: 'Preencha os campos obrigatórios:', wiz_err_no_services: 'Nenhum serviço encontrado.', wiz_no_results: 'Nenhum resultado para a pesquisa.', wiz_default: 'Predefinição', wiz_oauth_title: 'Login via Browser', wiz_oauth_desc: 'Este serviço requer autorização oficial. O navegador vai abrir automaticamente para autorizar o acesso.', wiz_no_params: 'Este serviço não requer parâmetros adicionais.', wiz_err_load_options: 'Erro ao carregar opções.', wiz_authorize: 'Autorizar no Browser', wiz_connect: 'Ligar', wiz_starting: 'A iniciar...', wiz_connecting: 'A ligar...', wiz_processing: 'A processar... (pode envolver o browser)', wiz_err_timeout: 'Demorou demasiado tempo a responder. Verifique se autorizou no browser e tente novamente.', wiz_err_config: 'Erro ao configurar a cloud:', wiz_err_unexpected: 'Resposta inesperada do servidor.', wiz_question_title: 'O rclone precisa de mais uma informação', wiz_param_needed: 'Parâmetro necessário', wiz_yes: 'Sim', wiz_no: 'Não', wiz_waiting_answer: 'A aguardar resposta acima...', wiz_success: 'Cloud ligada com sucesso!' });
@@ -2175,6 +2259,526 @@
 			return 'cloud';
 		}
 		
+		// ============================================================
+		// WIZARD DE CRIAÇÃO DE REMOTES (substitui o antigo fluxo por terminal)
+		// Conduz o mesmo diálogo interativo do rclone dentro da app, passo a
+		// passo: Nome -> Serviço -> Parâmetros -> Validar -> (perguntas
+		// dinâmicas do rclone, se as houver, ex. OAuth) -> concluído.
+		// ============================================================
+		const WIZ_STEP_DEFS = [
+			{ key: 'name',    labelKey: 'wiz_step_name' },
+			{ key: 'service', labelKey: 'wiz_step_service' },
+			{ key: 'params',  labelKey: 'wiz_step_params' },
+			{ key: 'review',  labelKey: 'wiz_step_review' },
+		];
+		let wizAllProviders = [];
+		let wizSelectedProvider = null;
+		let wizProviderFields = [];
+		let wizAuthType = 'other';
+		let wizParamsStepNeeded = true;
+		let wizStepIndex = 0;
+		let wizActiveSession = null;
+		let wizPollTimer = null;
+		let wizPollStartedAt = null;
+		const WIZ_POLL_MAX_MS = 5 * 60 * 1000; // 5 minutos - tempo generoso para autorizar no browser
+
+		function wizText() { return i18n[lang] || i18n.en; }
+		function wizActiveSteps() { return WIZ_STEP_DEFS.filter(s => s.key !== 'params' || wizParamsStepNeeded); }
+
+		// --- Ícones por serviço (fallback FontAwesome quando não há logo real) ---
+		function wizProviderIconClass(name) {
+			const n = (name || '').toLowerCase();
+			const map = [
+				[['drive', 'google'], 'fa-brands fa-google-drive'],
+				[['dropbox'], 'fa-brands fa-dropbox'],
+				[['onedrive', 'sharepoint', 'azureblob', 'azure', 'microsoft'], 'fa-brands fa-microsoft'],
+				[['s3', 'b2', 'wasabi', 'digitalocean', 'backblaze', 'storj', 'qingstor', 'oos'], 'fa-solid fa-database'],
+				[['box'], 'fa-solid fa-box-archive'],
+				[['sftp'], 'fa-solid fa-lock'],
+				[['ftp'], 'fa-solid fa-server'],
+				[['webdav', 'nextcloud', 'owncloud'], 'fa-solid fa-cloud'],
+				[['mega'], 'fa-solid fa-hard-drive'],
+				[['yandex'], 'fa-brands fa-yandex-international'],
+				[['pcloud', 'opendrive', 'koofr', 'premiumize', 'put.io', 'seafile'], 'fa-solid fa-cloud'],
+				[['local', 'alias'], 'fa-solid fa-desktop'],
+				[['sharefile', 'citrix'], 'fa-solid fa-share-nodes'],
+				[['ssh'], 'fa-solid fa-terminal'],
+				[['smb'], 'fa-solid fa-network-wired'],
+				[['hdfs', 'hidrive'], 'fa-solid fa-database'],
+			];
+			for (const [keys, icon] of map) if (keys.some(k => n.includes(k))) return icon;
+			return 'fa-solid fa-cloud';
+		}
+
+		// --- Logos reais das marcas via Simple Icons (com fallback automático) ---
+		function wizProviderLogoSlug(name) {
+			const n = (name || '').toLowerCase();
+			const map = [
+				[['drive', 'google'], 'googledrive'], [['dropbox'], 'dropbox'], [['onedrive'], 'microsoftonedrive'],
+				[['azureblob', 'azurefiles', 'azure'], 'microsoftazure'], [['sharepoint'], 'microsoftsharepoint'],
+				[['s3'], 'amazons3'], [['b2', 'backblaze'], 'backblaze'], [['box'], 'box'], [['mega'], 'mega'],
+				[['pcloud'], 'pcloud'], [['yandex'], 'yandex'], [['nextcloud'], 'nextcloud'], [['owncloud'], 'owncloud'],
+				[['googlecloudstorage'], 'googlecloud'], [['googlephotos'], 'googlephotos'], [['putio'], 'putio'],
+				[['protondrive', 'proton'], 'proton'], [['storj'], 'storj'], [['digitalocean'], 'digitalocean'],
+				[['citrix', 'sharefile'], 'citrix'], [['internetarchive'], 'internetarchive'], [['zoho'], 'zoho'],
+				[['hdfs', 'hadoop'], 'apachehadoop'], [['swift', 'openstack'], 'openstack'],
+				[['oracleobjectstorage', 'oracle'], 'oracle'], [['huaweidrive', 'huawei'], 'huawei'],
+				[['imagekit'], 'imagekit'], [['cloudinary'], 'cloudinary'], [['iclouddrive', 'icloud'], 'icloud'],
+				[['seafile'], 'seafile'], [['mailru'], 'maildotru'], [['koofr'], 'koofr'], [['pikpak'], 'pikpak'],
+			];
+			for (const [keys, slug] of map) if (keys.some(k => n.includes(k))) return slug;
+			return null;
+		}
+
+		function wizSvcIconMarkup(name, sizeClass, iconSizeClass) {
+			const slug = wizProviderLogoSlug(name);
+			const fallbackClass = wizProviderIconClass(name);
+			sizeClass = sizeClass || 'svc-icon'; iconSizeClass = iconSizeClass || '';
+			if (!slug) return `<div class="${sizeClass}"><i class="${fallbackClass} ${iconSizeClass}"></i></div>`;
+			return `<div class="${sizeClass} has-logo">
+				<img src="https://cdn.simpleicons.org/${slug}" alt="" loading="lazy" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+				<div class="svc-icon-fallback"><i class="${fallbackClass} ${iconSizeClass}"></i></div>
+			</div>`;
+		}
+
+		// --- Abertura / fecho do modal ---
+		async function openCloudWizard() {
+			document.getElementById('mCloudCreate').classList.remove('hidden');
+			wizResetWizard();
+			wizGoToStep(0);
+			if (wizAllProviders.length === 0) {
+				document.getElementById('wiz-providers-grid').innerHTML = `<div class="col-span-3 py-10 text-center text-slate-500 text-xs"><i class="fas fa-spinner fa-spin mr-2"></i>${wizText().clouds_loading || 'A carregar...'}</div>`;
+				await wizFetchProviders();
+			}
+		}
+
+		function wizResetWizard() {
+			if (wizPollTimer) { clearTimeout(wizPollTimer); wizPollTimer = null; }
+			document.getElementById('cloud-new-name').value = '';
+			document.getElementById('wiz-provider-search').value = '';
+			document.getElementById('wiz-params-content').innerHTML = '';
+			document.getElementById('wiz-review-list').innerHTML = '';
+			document.getElementById('wiz-review-dynamic').innerHTML = '';
+			document.getElementById('wiz-review-dynamic').classList.add('hidden');
+			document.getElementById('wiz-review-summary').classList.remove('hidden');
+			wizSelectedProvider = null;
+			wizProviderFields = [];
+			wizAuthType = 'other';
+			wizParamsStepNeeded = true;
+			wizActiveSession = null;
+			wizStepIndex = 0;
+			if (wizAllProviders.length > 0) wizRenderProviders(wizAllProviders);
+		}
+
+		function closeCloudWizard() {
+			if (wizPollTimer) { clearTimeout(wizPollTimer); wizPollTimer = null; }
+			document.getElementById('mCloudCreate').classList.add('hidden');
+		}
+
+		async function cancelAndCloseWizard() {
+			if (wizPollTimer) clearTimeout(wizPollTimer);
+			if (wizActiveSession) {
+				try { await fetch(`/api/remotes/create/${wizActiveSession}`, { method: 'DELETE' }); } catch (e) {}
+			}
+			wizActiveSession = null;
+			closeCloudWizard();
+		}
+
+		function wizSubmitLabel() {
+			const t = wizText();
+			if (wizAuthType === 'oauth') return t.wiz_authorize || 'Authorize in browser';
+			if (wizAuthType === 'userpass') return t.wiz_connect || 'Connect';
+			return t.cloud_create || 'Create cloud';
+		}
+
+		// --- Motor do wizard (passos) ---
+		function wizGoToStep(index) {
+			const steps = wizActiveSteps();
+			wizStepIndex = Math.max(0, Math.min(index, steps.length - 1));
+			const key = steps[wizStepIndex].key;
+
+			document.querySelectorAll('#mCloudCreate .wiz-step').forEach(el => el.classList.remove('active'));
+			document.querySelector(`#mCloudCreate .wiz-step[data-step="${key}"]`).classList.add('active');
+
+			wizRenderRail();
+			wizUpdateFooter(key);
+
+			const t = wizText();
+			const subtitles = {
+				name: t.wiz_sub_name || 'Give the connection a name to start.',
+				service: t.wiz_sub_service || 'Choose the cloud service to connect.',
+				params: t.wiz_sub_params || 'Fill in what this service needs.',
+				review: t.wiz_sub_review || 'Review everything before creating the connection.',
+			};
+			document.getElementById('wiz-subtitle').innerText = subtitles[key] || '';
+			if (key === 'name') setTimeout(() => document.getElementById('cloud-new-name').focus(), 50);
+		}
+
+		function wizRenderRail() {
+			const steps = wizActiveSteps();
+			const t = wizText();
+			const rail = document.getElementById('wiz-rail');
+			rail.innerHTML = steps.map((s, i) => {
+				const state = i < wizStepIndex ? 'done' : (i === wizStepIndex ? 'active' : '');
+				const dotContent = i < wizStepIndex ? '' : `<span>${i + 1}</span>`;
+				const lineDone = i < wizStepIndex ? 'done' : '';
+				const line = i < steps.length - 1 ? `<div class="rail-line ${lineDone}"><i></i></div>` : '';
+				return `<div class="rail-step ${state}"><div class="rail-dot">${dotContent}</div><div class="rail-label">${t[s.labelKey] || s.key}</div></div>${line}`;
+			}).join('');
+		}
+
+		function wizUpdateFooter(key) {
+			const backBtn = document.getElementById('wiz-btn-back');
+			const nextBtn = document.getElementById('wiz-btn-next');
+			backBtn.style.visibility = wizStepIndex === 0 ? 'hidden' : 'visible';
+			backBtn.disabled = false;
+			nextBtn.disabled = false;
+			nextBtn.innerHTML = key === 'review' ? wizSubmitLabel() : (wizText().wiz_continue || 'Continue');
+		}
+
+		function wizGoBack() { if (wizStepIndex === 0) return; wizGoToStep(wizStepIndex - 1); }
+
+		async function wizHandleNext() {
+			const steps = wizActiveSteps();
+			const key = steps[wizStepIndex].key;
+			const t = wizText();
+
+			if (key === 'name') {
+				const name = document.getElementById('cloud-new-name').value.trim();
+				if (!name) return alert(t.wiz_err_name || 'Please name the connection.');
+				wizGoToStep(wizStepIndex + 1);
+			} else if (key === 'service') {
+				if (!wizSelectedProvider) return alert(t.wiz_err_service || 'Select a cloud service.');
+				await wizLoadProviderOptions(wizSelectedProvider);
+				wizGoToStep(wizStepIndex + 1);
+			} else if (key === 'params') {
+				const missing = [];
+				document.querySelectorAll('#wiz-params-content [id^="wiz-opt-"][data-required="1"]').forEach(el => {
+					if (!el.value) missing.push(el.dataset.label || el.id);
+				});
+				if (missing.length > 0) return alert((t.wiz_err_required || 'Please fill in the required fields:') + ' ' + missing.join(', '));
+				wizRenderReviewSummary();
+				wizGoToStep(wizStepIndex + 1);
+			} else if (key === 'review') {
+				wizStartFinalSubmit();
+			}
+		}
+
+		// --- Lista/pesquisa de serviços ---
+		async function wizFetchProviders() {
+			try {
+				const resp = await fetch('/api/providers');
+				const data = await resp.json();
+				if (data && data.length > 0) {
+					wizAllProviders = data;
+					wizRenderProviders(wizAllProviders);
+				} else {
+					document.getElementById('wiz-providers-grid').innerHTML = `<div class="col-span-3 p-4 text-red-400 text-xs">${wizText().wiz_err_no_services || 'No services found.'}</div>`;
+				}
+			} catch (e) {
+				document.getElementById('wiz-providers-grid').innerHTML = `<div class="col-span-3 p-4 text-red-400 text-xs">${wizText().clouds_connection_error || 'Connection error.'}</div>`;
+			}
+		}
+
+		function wizRenderProviders(list) {
+			const grid = document.getElementById('wiz-providers-grid');
+			if (list.length === 0) {
+				grid.innerHTML = `<div class="col-span-3 py-8 text-center text-slate-500 text-xs italic">${wizText().wiz_no_results || 'No results.'}</div>`;
+				return;
+			}
+			grid.innerHTML = list.map(p => `
+				<button type="button" onclick='wizSelectProviderCard(${JSON.stringify(p.name)})' data-name="${p.name}"
+				        class="svc-card ${wizSelectedProvider && wizSelectedProvider.name === p.name ? 'selected' : ''}">
+					${wizSvcIconMarkup(p.name, 'svc-icon')}
+					<div class="min-w-0 w-full">
+						<div class="text-white font-bold text-[12px] leading-tight truncate">${p.desc}</div>
+						<div class="text-[9px] text-slate-500 uppercase font-black tracking-widest mt-0.5">${p.name}</div>
+					</div>
+				</button>
+			`).join('');
+		}
+
+		function filterWizardProviders(term) {
+			const filtered = wizAllProviders.filter(p => p.desc.toLowerCase().includes(term.toLowerCase()) || p.name.toLowerCase().includes(term.toLowerCase()));
+			wizRenderProviders(filtered);
+		}
+
+		function wizSelectProviderCard(name) {
+			const p = wizAllProviders.find(x => x.name === name);
+			if (!p) return;
+			wizSelectedProvider = p;
+			document.querySelectorAll('#wiz-providers-grid .svc-card').forEach(el => el.classList.toggle('selected', el.dataset.name === name));
+		}
+
+		// --- Campos dinâmicos de parâmetros ---
+		function wizRenderField(opt) {
+			const label = `${opt.help || opt.name}${opt.required ? ' *' : ''}`;
+			const requiredAttr = opt.required ? 'data-required="1"' : '';
+
+			if (opt.examples && opt.examples.length > 0) {
+				const optionsHtml = opt.examples.map(ex => `<option value="${ex.value}" ${ex.value === opt.default ? 'selected' : ''}>${ex.help || ex.value}</option>`).join('');
+				return `<div><label class="field-label">${label}</label>
+					<select id="wiz-opt-${opt.name}" data-label="${label}" ${requiredAttr} class="input-box text-xs">
+						${!opt.required ? `<option value="">${wizText().wiz_default || 'Default'} (${opt.default || 'auto'})</option>` : ''}
+						${optionsHtml}
+					</select></div>`;
+			}
+
+			return `<div><label class="field-label">${label}</label>
+				<input type="${opt.is_password ? 'password' : 'text'}" id="wiz-opt-${opt.name}" data-label="${label}" ${requiredAttr}
+				       class="input-box text-xs" placeholder="${opt.default || ''}"></div>`;
+		}
+
+		async function wizLoadProviderOptions(p) {
+			const content = document.getElementById('wiz-params-content');
+			content.innerHTML = `<div class="text-center py-6"><i class="fas fa-circle-notch fa-spin text-blue-500"></i></div>`;
+			try {
+				const resp = await fetch(`/api/providers/${encodeURIComponent(p.name)}/options`);
+				const data = await resp.json();
+				wizAuthType = data.auth_type || 'other';
+				wizProviderFields = data.fields || [];
+
+				let html = '';
+				if (wizAuthType === 'oauth') {
+					html += `<div class="p-4 bg-blue-500/10 border border-blue-500/20 rounded-2xl mb-2">
+						<p class="text-blue-400 text-[11px] font-bold uppercase mb-1"><i class="fas fa-globe mr-1"></i>${wizText().wiz_oauth_title || 'Browser login'}</p>
+						<p class="text-slate-400 text-[11px]">${wizText().wiz_oauth_desc || 'This service requires official authorization. Your browser will open automatically to authorize access.'}</p>
+					</div>`;
+					if (wizProviderFields.length > 0) {
+						html += `<p class="text-[9px] text-slate-600 uppercase font-black tracking-widest mb-1">${wizText().wiz_params_title || 'Connection parameters'}</p>`;
+						html += `<div class="space-y-4">${wizProviderFields.map(wizRenderField).join('')}</div>`;
+					}
+				} else {
+					html += `<div class="space-y-4">${wizProviderFields.map(wizRenderField).join('')}</div>`;
+				}
+
+				content.innerHTML = html || `<p class="text-slate-600 text-[11px] italic">${wizText().wiz_no_params || 'This service does not require extra parameters.'}</p>`;
+				wizParamsStepNeeded = wizProviderFields.length > 0 || wizAuthType !== 'other';
+			} catch (e) {
+				content.innerHTML = `<p class="text-red-400 text-[11px]">${wizText().wiz_err_load_options || 'Error loading options.'}</p>`;
+				wizParamsStepNeeded = false;
+			}
+		}
+
+		function wizCollectOptions() {
+			const options = {};
+			document.querySelectorAll('#wiz-params-content [id^="wiz-opt-"]').forEach(el => {
+				const key = el.id.replace('wiz-opt-', '');
+				if (el.value) options[key] = el.value;
+			});
+			return options;
+		}
+
+		function wizRenderReviewSummary() {
+			const name = document.getElementById('cloud-new-name').value.trim();
+			const options = wizCollectOptions();
+			const list = document.getElementById('wiz-review-list');
+			const t = wizText();
+
+			const rows = [
+				`<div class="flex items-center justify-between py-2.5 border-b border-white/5">
+					<span class="text-[11px] text-slate-500 font-bold uppercase tracking-wide">${t.cloud_name || 'Name'}</span>
+					<span class="text-white text-sm font-bold">${name}</span>
+				 </div>`,
+				`<div class="flex items-center justify-between py-2.5 border-b border-white/5">
+					<span class="text-[11px] text-slate-500 font-bold uppercase tracking-wide">${t.cloud_service || 'Service'}</span>
+					<span class="text-white text-sm font-bold flex items-center gap-2">${wizSvcIconMarkup(wizSelectedProvider.name, 'svc-icon-sm', 'text-blue-400 text-[10px]')}${wizSelectedProvider.desc}</span>
+				 </div>`,
+			];
+
+			wizProviderFields.forEach(f => {
+				const el = document.getElementById(`wiz-opt-${f.name}`);
+				const val = el ? el.value : '';
+				if (!val) return;
+				const display = f.is_password ? '••••••••' : val;
+				rows.push(`<div class="flex items-center justify-between py-2.5 border-b border-white/5">
+					<span class="text-[11px] text-slate-500 font-bold uppercase tracking-wide">${f.help || f.name}</span>
+					<span class="text-white text-sm font-bold truncate max-w-[220px]">${display}</span>
+				 </div>`);
+			});
+			list.innerHTML = rows.join('');
+		}
+
+		// --- Submissão final + sessão interativa (perguntas dinâmicas do rclone) ---
+		function wizLockNav(locked) {
+			document.getElementById('wiz-btn-back').disabled = locked;
+			document.getElementById('wiz-btn-back').style.visibility = locked ? 'hidden' : (wizStepIndex === 0 ? 'hidden' : 'visible');
+		}
+		function wizSetStatusMessage(msg) {
+			const btn = document.getElementById('wiz-btn-next');
+			btn.disabled = true;
+			btn.innerHTML = `<i class="fas fa-circle-notch fa-spin mr-2"></i>${msg}`;
+		}
+		function wizResetSubmitButton() {
+			const btn = document.getElementById('wiz-btn-next');
+			btn.disabled = false;
+			btn.innerHTML = wizSubmitLabel();
+			wizLockNav(false);
+		}
+
+		async function wizStartFinalSubmit() {
+			const t = wizText();
+			const name = document.getElementById('cloud-new-name').value.trim();
+			if (!name) return alert(t.wiz_err_name || 'Please name the connection.');
+			if (!wizSelectedProvider) return alert(t.wiz_err_service || 'Select a cloud service.');
+
+			wizLockNav(true);
+			wizSetStatusMessage(wizAuthType === 'oauth' ? (t.wiz_starting || 'Starting…') : (t.wiz_connecting || 'Connecting…'));
+
+			const options = wizCollectOptions();
+			try {
+				const resp = await fetch('/api/remotes/create', {
+					method: 'POST', headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ name, type: wizSelectedProvider.name, options })
+				});
+				const result = await resp.json();
+				if (!resp.ok) { alert(result.message || 'Unknown error.'); wizResetSubmitButton(); return; }
+				if (!result.session_id) { alert(t.wiz_err_unexpected || 'Unexpected response from the server.'); wizResetSubmitButton(); return; }
+				wizActiveSession = result.session_id;
+				wizPollStartedAt = Date.now();
+				wizPollSession();
+			} catch (e) {
+				alert(t.clouds_connection_error || 'Connection error.');
+				wizResetSubmitButton();
+			}
+		}
+
+		async function wizPollSession() {
+			if (!wizActiveSession) return;
+			const t = wizText();
+			if (wizPollStartedAt && (Date.now() - wizPollStartedAt) > WIZ_POLL_MAX_MS) {
+				alert(t.wiz_err_timeout || 'This took too long. Check whether you authorized in the browser and try again.');
+				wizActiveSession = null; wizResetSubmitButton(); return;
+			}
+			try {
+				const resp = await fetch(`/api/remotes/create/${wizActiveSession}/status`);
+				if (!resp.ok) {
+					const err = await resp.json().catch(() => ({}));
+					alert('Error: ' + (err.message || 'session lost.'));
+					wizActiveSession = null; wizResetSubmitButton(); return;
+				}
+				const data = await resp.json();
+				if (data.status === 'working') {
+					wizSetStatusMessage(t.wiz_processing || 'Processing… (may involve the browser)');
+					wizPollTimer = setTimeout(wizPollSession, 1000);
+				} else if (data.status === 'input_required') {
+					wizRenderQuestionStep(data.option);
+				} else if (data.status === 'done') {
+					wizActiveSession = null;
+					wizShowSuccessAndClose();
+				} else if (data.status === 'error') {
+					alert((t.wiz_err_config || 'Error configuring the cloud:') + ' ' + (data.error || 'unknown failure.'));
+					wizActiveSession = null; wizResetSubmitButton();
+				}
+			} catch (e) {
+				wizPollTimer = setTimeout(wizPollSession, 1500);
+			}
+		}
+
+		// Mostra, dentro do passo "Validar", EXATAMENTE a pergunta que o rclone
+		// faria no terminal neste ponto (ex: "Tipo de ligação?", "Qual drive usar?").
+		function wizRenderQuestionStep(option) {
+			document.getElementById('wiz-review-summary').classList.add('hidden');
+			const dyn = document.getElementById('wiz-review-dynamic');
+			dyn.classList.remove('hidden');
+			const t = wizText();
+
+			// Passo especial "config_token": no Docker/ZimaOS o browser nunca
+			// corre na mesma máquina que o rclone, por isso o servidor já
+			// respondeu "não" à pergunta "Use auto config?" automaticamente e
+			// o rclone devolveu o comando exato "rclone authorize ..." para
+			// correr noutro dispositivo com browser (o computador do
+			// utilizador, por exemplo). Mostra esse comando de forma
+			// destacada e copiável, com um campo para colar o resultado.
+			if (option.Name === 'config_token') {
+				const cmdMatch = (option.Help || '').match(/rclone authorize [^\n]+/);
+				const cmd = cmdMatch ? cmdMatch[0].trim() : (option.Help || '').trim();
+				dyn.innerHTML = `<div class="p-4 bg-blue-500/10 border border-blue-500/20 rounded-2xl mb-3">
+					<p class="text-blue-400 text-[11px] font-bold uppercase mb-1"><i class="fas fa-laptop-mobile mr-1"></i>${t.wiz_oauth_remote_title || 'Authorize from another device'}</p>
+					<p class="text-slate-300 text-[12px] leading-relaxed">${t.wiz_oauth_remote_desc || 'This service needs browser authorization, which cannot happen inside the container. Run this on a computer with rclone installed and a web browser (e.g. your own PC or Mac):'}</p>
+				</div>
+				<label class="field-label">${t.wiz_oauth_remote_command_label || 'Command to run there'}</label>
+				<div class="cmd-box !text-blue-400 !bg-black/50 border border-blue-500/20 py-2 px-4 rounded-lg font-mono text-[11px] cursor-copy break-all mb-4" onclick="copyToClipboard(this.innerText)">${cmd}</div>
+				<label class="field-label">${t.wiz_oauth_remote_paste_label || 'Paste the result here'}</label>
+				<textarea id="wiz-step-answer" rows="4" class="input-box text-xs mb-1 font-mono" placeholder="${t.wiz_oauth_remote_paste_placeholder || 'Paste the full output rclone authorize gave you…'}"></textarea>
+				<p class="text-[10px] text-slate-600 mb-3"><i class="fas fa-circle-info mr-1"></i><a href="https://rclone.org/downloads/" target="_blank" rel="noopener" class="text-blue-500 hover:underline">${t.wiz_oauth_remote_download || "Don't have rclone there yet? Download it"}</a></p>
+				<button type="button" onclick="wizSubmitAnswerFromInput()" class="w-full py-3 bg-blue-600 hover:bg-blue-500 rounded-2xl font-black text-xs uppercase">${t.wiz_continue || 'Continue'}</button>`;
+
+				const btn = document.getElementById('wiz-btn-next');
+				btn.disabled = true;
+				btn.innerText = t.wiz_waiting_answer || 'Waiting for the answer above…';
+				return;
+			}
+
+			const label = option.Help || option.Name || (t.wiz_param_needed || 'Required parameter');
+			let controlHtml = '';
+
+			if (option.Type === 'bool') {
+				const def = String(option.Default).toLowerCase() === 'true';
+				controlHtml = `<div class="flex gap-3">
+					<button type="button" onclick="wizSubmitAnswer('true')" class="flex-1 py-3 rounded-2xl font-black text-xs uppercase ${def ? 'bg-blue-600' : 'bg-slate-800'} text-white">${t.wiz_yes || 'Yes'}</button>
+					<button type="button" onclick="wizSubmitAnswer('false')" class="flex-1 py-3 rounded-2xl font-black text-xs uppercase ${!def ? 'bg-blue-600' : 'bg-slate-800'} text-white">${t.wiz_no || 'No'}</button>
+				</div>`;
+			} else if (option.Examples && option.Examples.length > 0) {
+				const optionsHtml = option.Examples.map(ex => `<option value="${ex.Value}" ${ex.Value === option.Default ? 'selected' : ''}>${ex.Help || ex.Value}</option>`).join('');
+				controlHtml = `<select id="wiz-step-answer" class="input-box text-xs mb-3">${optionsHtml}</select>
+					<button type="button" onclick="wizSubmitAnswerFromInput()" class="w-full py-3 bg-blue-600 hover:bg-blue-500 rounded-2xl font-black text-xs uppercase">${t.wiz_continue || 'Continue'}</button>`;
+			} else {
+				controlHtml = `<input type="${option.IsPassword ? 'password' : 'text'}" id="wiz-step-answer" class="input-box text-xs mb-3" placeholder="${option.Default || ''}">
+					<button type="button" onclick="wizSubmitAnswerFromInput()" class="w-full py-3 bg-blue-600 hover:bg-blue-500 rounded-2xl font-black text-xs uppercase">${t.wiz_continue || 'Continue'}</button>`;
+			}
+
+			dyn.innerHTML = `<div class="p-4 bg-blue-500/10 border border-blue-500/20 rounded-2xl mb-3">
+				<p class="text-blue-400 text-[11px] font-bold uppercase mb-1"><i class="fas fa-circle-question mr-1"></i>${t.wiz_question_title || 'Rclone needs one more piece of information'}</p>
+				<p class="text-slate-300 text-[12px]">${label}</p>
+			</div>${controlHtml}`;
+
+			const btn = document.getElementById('wiz-btn-next');
+			btn.disabled = true;
+			btn.innerText = t.wiz_waiting_answer || 'Waiting for the answer above…';
+		}
+
+		function wizSubmitAnswerFromInput() {
+			const el = document.getElementById('wiz-step-answer');
+			wizSubmitAnswer(el ? el.value : '');
+		}
+
+		async function wizSubmitAnswer(value) {
+			if (!wizActiveSession) return;
+			const dyn = document.getElementById('wiz-review-dynamic');
+			dyn.innerHTML = `<div class="text-center py-4"><i class="fas fa-circle-notch fa-spin text-blue-500"></i></div>`;
+			try {
+				const resp = await fetch(`/api/remotes/create/${wizActiveSession}/answer`, {
+					method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ value })
+				});
+				if (!resp.ok) {
+					const err = await resp.json().catch(() => ({}));
+					alert('Error: ' + (err.message || 'could not answer.'));
+					return;
+				}
+				wizSetStatusMessage(wizText().wiz_processing || 'Processing…');
+				wizPollSession();
+			} catch (e) {
+				alert(wizText().clouds_connection_error || 'Connection error.');
+			}
+		}
+
+		async function wizShowSuccessAndClose() {
+			const dyn = document.getElementById('wiz-review-dynamic');
+			dyn.classList.remove('hidden');
+			dyn.innerHTML = `<div class="text-center py-6">
+				<div class="w-14 h-14 mx-auto rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mb-3">
+					<i class="fas fa-check text-emerald-400 text-lg"></i>
+				</div>
+				<p class="text-white font-bold text-sm">${wizText().wiz_success || 'Cloud connected successfully!'}</p>
+			</div>`;
+			setTimeout(async () => {
+				closeCloudWizard();
+				await renderCloudManager();
+				await updateHealth();
+			}, 900);
+		}
+
 		async function renderCloudManager() {
 			const list = document.getElementById('cloud-manager-list');
 			const text = i18n[lang] || i18n.en;

@@ -2246,30 +2246,63 @@ _REMOTE_SESSIONS_LOCK = threading.Lock()
 
 def _advance_remote_session(session_id: str, args: list, timeout: int = 300):
     """Corre um passo do assistente do rclone em background (pode demorar,
-    ex: à espera do browser) e guarda o resultado na sessão."""
+    ex: à espera do browser) e guarda o resultado na sessão.
+
+    No Docker/ZimaOS o browser de quem está a usar a app corre sempre numa
+    máquina diferente do container, por isso o fluxo "auto config" do
+    rclone -- que tenta abrir um browser local e espera a resposta num
+    mini-webserver em 127.0.0.1:53682 dentro do próprio container -- nunca
+    consegue funcionar (o container não tem browser, e mesmo que tivesse,
+    esse endereço 127.0.0.1 é local ao container, inacessível de fora).
+    Assim que o rclone pergunta "Use auto config?" (Option "config_is_local"),
+    respondemos "não" automaticamente em nome do utilizador. O rclone avança
+    então para o modo "remote setup": devolve o comando exato
+    "rclone authorize ..." para correr noutra máquina com browser, e fica à
+    espera que o resultado seja colado de volta -- é esse passo (Option
+    "config_token") que o wizard mostra ao utilizador com uma caixa de
+    comando copiável e um campo para colar a resposta.
+    Nas outras plataformas (Windows, macOS, Linux nativo), onde a app e o
+    browser correm na mesma máquina, o comportamento mantém-se inalterado:
+    a pergunta "Use auto config?" continua a ser feita normalmente.
+    """
     def worker():
-        data, out, err, code = run_rclone_json(args, timeout=timeout)
-        with _REMOTE_SESSIONS_LOCK:
-            session = PENDING_REMOTE_SESSIONS.get(session_id)
-            if session is None:
-                return
-            if data is None:
-                session["status"] = "error"
-                session["error"] = err or out or "Resposta inesperada do rclone."
-                return
-            if data.get("Error"):
-                session["status"] = "error"
-                session["error"] = data["Error"]
-                return
-            new_state = data.get("State") or ""
-            if not new_state:
-                session["status"] = "done"
-                session["state"] = None
-                session["option"] = None
-                return
-            session["state"] = new_state
-            session["option"] = data.get("Option") or {}
-            session["status"] = "input_required"
+        current_args = args
+        for _ in range(5):  # guarda contra loops infinitos; normalmente resolve-se numa única iteração
+            data, out, err, code = run_rclone_json(current_args, timeout=timeout)
+            with _REMOTE_SESSIONS_LOCK:
+                session = PENDING_REMOTE_SESSIONS.get(session_id)
+                if session is None:
+                    return
+                if data is None:
+                    session["status"] = "error"
+                    session["error"] = err or out or "Resposta inesperada do rclone."
+                    return
+                if data.get("Error"):
+                    session["status"] = "error"
+                    session["error"] = data["Error"]
+                    return
+                new_state = data.get("State") or ""
+                if not new_state:
+                    session["status"] = "done"
+                    session["state"] = None
+                    session["option"] = None
+                    return
+                option = data.get("Option") or {}
+                name, p_type = session["name"], session["type"]
+
+            if IS_CONTAINER and option.get("Name") == "config_is_local":
+                current_args = ["config", "create", name, p_type, "--non-interactive",
+                                 "--continue", "--state", new_state, "--result", "false"]
+                continue
+
+            with _REMOTE_SESSIONS_LOCK:
+                session = PENDING_REMOTE_SESSIONS.get(session_id)
+                if session is None:
+                    return
+                session["state"] = new_state
+                session["option"] = option
+                session["status"] = "input_required"
+            return
     threading.Thread(target=worker, daemon=True).start()
 
 @app.post("/api/remotes/create")
