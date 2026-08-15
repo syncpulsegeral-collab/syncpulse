@@ -273,7 +273,7 @@ def license_is_expired(license_data):
 def load_tasks():
     if os.path.exists(CONFIG_FILE):
         try:
-            with open(CONFIG_FILE, "r") as f: return json.load(f)
+            with open(CONFIG_FILE, "r", encoding="utf-8") as f: return json.load(f)
         except: return []
     return []
 
@@ -2372,7 +2372,18 @@ def list_remotes_typed_endpoint():
 
 @app.get("/api/system/home")
 def system_home_endpoint():
-    """Devolve a pasta pessoal do utilizador com sessão iniciada, para arrancar o explorador local."""
+    """Devolve a pasta inicial para arrancar o explorador local.
+
+    No ZimaOS/Docker o storage do utilizador vive em /mnt/storage (a home
+    do processo dentro do container, ex. /root, não interessa a ninguém).
+    Nas outras plataformas (Windows, macOS, Linux nativo, mobile/PWA)
+    mantém-se o comportamento anterior: a home do utilizador com sessão
+    iniciada.
+    """
+    if IS_CONTAINER:
+        container_storage = "/mnt/storage"
+        if os.path.isdir(container_storage):
+            return {"path": container_storage}
     home = os.path.expanduser("~")
     if IS_WINDOWS and not home.endswith("\\"):
         home += "\\"
@@ -2557,7 +2568,7 @@ async def accept_terms():
 @app.get("/api/history/{task_id}")
 async def get_history(task_id: str):
     if os.path.exists(HISTORY_FILE):
-        with open(HISTORY_FILE, "r") as f: return json.load(f).get(task_id, [])
+        with open(HISTORY_FILE, "r", encoding="utf-8") as f: return json.load(f).get(task_id, [])
     return []
 
 @app.post("/api/sync/{task_id}")
