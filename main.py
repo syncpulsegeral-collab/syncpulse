@@ -44,6 +44,25 @@ IS_CONTAINER = os.path.exists("/app_dist") and os.path.exists("/www_dist")
 IS_WINDOWS = platform.system() == "Windows"
 IS_MACOS = platform.system() == "Darwin"
 
+# --- Auto-atualização (só na versão Windows) -------------------------------
+# Publicas uma nova versão fazendo commit do instalador compilado para
+# Downloads/Windows/ no repositório, com o nome "SyncPulse vX.Y_Setup.exe".
+# Não há Releases/tags -- comparamos sempre com o ficheiro mais recente
+# dessa pasta. IMPORTANTE: sempre que compilares e publicares um novo
+# instalador, atualiza também este número para bater certo com o nome do
+# ficheiro (ex: "SyncPulse v2.1_Setup.exe" -> APP_VERSION = "2.1"), já que
+# main.py viaja dentro do próprio instalador e é ele que diz à app "em que
+# versão estou eu, a correr agora".
+APP_VERSION = "2.3"
+UPDATE_REPO = "syncpulsegeral-collab/syncpulse"
+UPDATE_DIR = "Downloads/Windows"
+UPDATE_FILENAME_RE = re.compile(r"^SyncPulse v([0-9]+(?:\.[0-9]+)*)_Setup\.exe$", re.IGNORECASE)
+UPDATE_CHECK_INTERVAL = 6 * 3600  # segundos entre verificações ao GitHub (poupa o rate-limit da API pública)
+UPDATE_STATE = {
+    "checked_at": 0, "available": False, "current_version": APP_VERSION,
+    "latest_version": None, "download_url": None, "size": None, "sha": None, "filename": None,
+}
+
 # Pasta onde a app está instalada -- usada para encontrar a pasta "www"
 # (frontend) fora do Docker. Se for um .exe empacotado (PyInstaller +
 # Inno Setup), usamos a pasta onde o .exe está instalado (sys.executable),
@@ -2733,6 +2752,173 @@ async def restart_server():
     asyncio.create_task(_do_restart())
     return {"status": "restarting"}
 
+
+# --- Auto-atualização (só Windows) ------------------------------------------
+def _version_tuple(v: str):
+    """Converte "2.10" em (2, 10) para comparar versões numericamente
+    (evita o erro clássico de comparar strings, onde "2.10" < "2.9")."""
+    parts = []
+    for p in str(v).split("."):
+        try:
+            parts.append(int(p))
+        except ValueError:
+            parts.append(0)
+    return tuple(parts)
+
+
+async def _fetch_latest_windows_release():
+    """Lista Downloads/Windows no GitHub (repo público, sem precisar de
+    token) e devolve o instalador com o número de versão mais alto, a
+    partir do próprio nome do ficheiro (ex: "SyncPulse v2.1_Setup.exe")."""
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(
+            f"https://api.github.com/repos/{UPDATE_REPO}/contents/{UPDATE_DIR}",
+            headers={"Accept": "application/vnd.github+json"},
+            timeout=15.0,
+        )
+        resp.raise_for_status()
+        items = resp.json()
+
+    best = None
+    for item in items:
+        if item.get("type") != "file":
+            continue
+        m = UPDATE_FILENAME_RE.match(item.get("name", ""))
+        if not m:
+            continue
+        version = m.group(1)
+        if best is None or _version_tuple(version) > _version_tuple(best["version"]):
+            best = {
+                "version": version,
+                "name": item["name"],
+                "download_url": item["download_url"],
+                "size": item["size"],
+                "sha": item["sha"],
+            }
+    return best
+
+
+@app.get("/api/update/check")
+async def check_update_endpoint(force: bool = False):
+    """Verifica se há um instalador Windows mais recente do que o que está a
+    correr. Nas outras plataformas devolve sempre "sem atualização", sem
+    gastar pedidos à API pública do GitHub (que tem limite de 60/hora)."""
+    if not IS_WINDOWS:
+        return {"available": False}
+
+    now = time.time()
+    if not force and (now - UPDATE_STATE["checked_at"]) < UPDATE_CHECK_INTERVAL:
+        return {k: v for k, v in UPDATE_STATE.items() if k != "checked_at"}
+
+    UPDATE_STATE["checked_at"] = now
+    try:
+        latest = await _fetch_latest_windows_release()
+    except Exception:
+        # Falha de rede ou GitHub em baixo -- não incomoda o utilizador,
+        # simplesmente reporta "sem atualização" e tenta de novo mais tarde.
+        UPDATE_STATE.update({"available": False, "latest_version": None,
+                              "download_url": None, "size": None, "sha": None, "filename": None})
+        return {k: v for k, v in UPDATE_STATE.items() if k != "checked_at"}
+
+    if latest and _version_tuple(latest["version"]) > _version_tuple(APP_VERSION):
+        UPDATE_STATE.update({
+            "available": True, "latest_version": latest["version"],
+            "download_url": latest["download_url"], "size": latest["size"],
+            "sha": latest["sha"], "filename": latest["name"],
+        })
+    else:
+        UPDATE_STATE.update({"available": False, "latest_version": latest["version"] if latest else None,
+                              "download_url": None, "size": None, "sha": None, "filename": None})
+
+    return {k: v for k, v in UPDATE_STATE.items() if k != "checked_at"}
+
+
+@app.post("/api/update/apply")
+async def apply_update_endpoint():
+    """Descarrega o instalador mais recente, confirma a integridade (tamanho
+    + hash, ambos vindos diretamente da API do GitHub) e arranca-o em modo
+    silencioso. O próprio instalador (Inno Setup) fecha a app a correr e
+    relança-a no fim; por segurança relançamo-la nós também a partir de um
+    pequeno script auxiliar, para não depender só da configuração do
+    instalador."""
+    if not IS_WINDOWS:
+        return JSONResponse(status_code=400, content={"message": "A atualização automática só está disponível na versão Windows."})
+    if not getattr(sys, "frozen", False):
+        return JSONResponse(status_code=400, content={"message": "Isto só funciona na versão instalada (.exe), não em modo de desenvolvimento."})
+    if not UPDATE_STATE.get("available") or not UPDATE_STATE.get("download_url"):
+        return JSONResponse(status_code=400, content={"message": "Não há nenhuma atualização disponível de momento."})
+
+    download_url = UPDATE_STATE["download_url"]
+    expected_size = UPDATE_STATE.get("size")
+    expected_sha = UPDATE_STATE.get("sha")
+    filename = UPDATE_STATE.get("filename") or "SyncPulseSetup.exe"
+
+    update_dir = os.path.join(os.environ.get("TEMP", os.path.expanduser("~")), "SyncPulseUpdate")
+    os.makedirs(update_dir, exist_ok=True)
+    installer_path = os.path.join(update_dir, filename)
+
+    hasher = hashlib.sha1()
+    if expected_size:
+        hasher.update(f"blob {expected_size}\0".encode())
+    total = 0
+    try:
+        async with httpx.AsyncClient(follow_redirects=True, timeout=120.0) as client:
+            async with client.stream("GET", download_url) as resp:
+                resp.raise_for_status()
+                with open(installer_path, "wb") as f:
+                    async for chunk in resp.aiter_bytes(65536):
+                        f.write(chunk)
+                        total += len(chunk)
+                        hasher.update(chunk)
+    except Exception as e:
+        try: os.remove(installer_path)
+        except OSError: pass
+        return JSONResponse(status_code=502, content={"message": f"Falha ao descarregar a atualização: {e}"})
+
+    if expected_size and total != expected_size:
+        try: os.remove(installer_path)
+        except OSError: pass
+        return JSONResponse(status_code=502, content={"message": "O ficheiro descarregado está incompleto. Tenta novamente."})
+
+    if expected_size and expected_sha and hasher.hexdigest() != expected_sha:
+        try: os.remove(installer_path)
+        except OSError: pass
+        return JSONResponse(status_code=502, content={"message": "A verificação de integridade da atualização falhou. Tenta novamente."})
+
+    # Script auxiliar: dá tempo à nossa app fechar-se (liberta os ficheiros),
+    # corre o instalador em silêncio (/CLOSEAPPLICATIONS garante que fecha
+    # a app se por algum motivo ainda estiver a correr, /RESTARTAPPLICATIONS
+    # pede-lhe para relançar sozinho no fim), e relança-a também nós próprios
+    # como rede de segurança, apontando exatamente para o .exe atual
+    # (sys.executable -- funciona seja qual for a pasta onde está instalado).
+    current_exe = sys.executable
+    helper_path = os.path.join(update_dir, "run_update.bat")
+    with open(helper_path, "w", encoding="utf-8") as f:
+        f.write(
+            "@echo off\r\n"
+            "timeout /t 2 /nobreak >nul\r\n"
+            f'"{installer_path}" /VERYSILENT /SUPPRESSMSGBOX /NORESTART /CLOSEAPPLICATIONS /RESTARTAPPLICATIONS\r\n'
+            "timeout /t 3 /nobreak >nul\r\n"
+            f'start "" "{current_exe}"\r\n'
+            'del "%~f0"\r\n'
+        )
+
+    DETACHED_PROCESS = 0x00000008
+    CREATE_NEW_PROCESS_GROUP = 0x00000200
+    subprocess.Popen(
+        ["cmd", "/c", helper_path],
+        creationflags=DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP,
+        close_fds=True,
+    )
+
+    def _exit_soon():
+        time.sleep(1.0)
+        os._exit(0)
+    threading.Thread(target=_exit_soon, daemon=True).start()
+
+    return {"status": "ok", "message": "A atualização vai começar. A aplicação vai fechar e reabrir sozinha."}
+
+
 @app.get("/api/discover")
 async def discover_ping():
     """Endpoint leve e sem autenticação usado pela app mobile para confirmar
@@ -2741,7 +2927,7 @@ async def discover_ping():
     return {
         "app": "syncpulse",
         "edition": "zimaos" if IS_CONTAINER else ("windows" if IS_WINDOWS else ("macos" if IS_MACOS else "linux")),
-        "version": "1.1",
+        "version": APP_VERSION if IS_WINDOWS else "1.1",
         "device_name": (platform.node() or "syncpulse").split(".")[0],
         "hwid_short": get_secure_hwid()[:12],
     }
