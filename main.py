@@ -53,7 +53,7 @@ IS_MACOS = platform.system() == "Darwin"
 # ficheiro (ex: "SyncPulse v2.1_Setup.exe" -> APP_VERSION = "2.1"), já que
 # main.py viaja dentro do próprio instalador e é ele que diz à app "em que
 # versão estou eu, a correr agora".
-APP_VERSION = "2.3"
+APP_VERSION = "2.4"
 UPDATE_REPO = "syncpulsegeral-collab/syncpulse"
 UPDATE_DIR = "Downloads/Windows"
 UPDATE_FILENAME_RE = re.compile(r"^SyncPulse v([0-9]+(?:\.[0-9]+)*)_Setup\.exe$", re.IGNORECASE)
@@ -138,7 +138,7 @@ DEFAULT_PUSH_PREFS = {
 # Porto onde o servidor está exposto na rede local. Se mapeares o container
 # para outro porto no ZimaOS, ajusta via variável de ambiente SYNCPULSE_PORT.
 MDNS_SERVICE_TYPE = "_syncpulse._tcp.local."
-MDNS_PORT = int(os.getenv("SYNCPULSE_PORT", "8000"))
+MDNS_PORT = int(os.getenv("SYNCPULSE_PORT", "8181"))
 ZC_INSTANCE = None
 ZC_SERVICE_INFO = None
 
@@ -2917,6 +2917,176 @@ async def apply_update_endpoint():
     threading.Thread(target=_exit_soon, daemon=True).start()
 
     return {"status": "ok", "message": "A atualização vai começar. A aplicação vai fechar e reabrir sozinha."}
+
+
+# --- Acesso remoto via Tailscale (só Windows) -------------------------------
+def _find_tailscale_exe():
+    """Localiza o executável do Tailscale de forma robusta.
+
+    Não confiamos só no PATH do processo (os.environ["PATH"] fica gravado
+    no arranque do SyncPulse -- se o Tailscale for instalado DEPOIS, só um
+    reinício da app veria o PATH atualizado) nem numa única pasta fixa (o
+    Tailscale já instalou historicamente em "Tailscale IPN", "Tailscale",
+    e em "Program Files (x86)" consoante a versão/arquitetura). Por isso
+    tentamos, por ordem, várias fontes independentes:
+      1. PATH do processo atual (caso já esteja lá).
+      2. PATH lido em direto do registo do Windows (sempre atual, mesmo
+         sem reiniciar o SyncPulse).
+      3. O registo do serviço "Tailscale" do Windows, que aponta sempre
+         para a pasta real de instalação, seja qual for a versão.
+      4. Uma lista de pastas conhecidas, como último recurso.
+    """
+    found = shutil.which("tailscale")
+    if found:
+        return found
+
+    if IS_WINDOWS:
+        try:
+            import winreg
+        except ImportError:
+            winreg = None
+
+        if winreg:
+            # 2. PATH atual do registo (Máquina + Utilizador), sem depender
+            # do que este processo tinha em memória no arranque.
+            for hive, subkey in (
+                (winreg.HKEY_LOCAL_MACHINE, r"SYSTEM\CurrentControlSet\Control\Session Manager\Environment"),
+                (winreg.HKEY_CURRENT_USER, r"Environment"),
+            ):
+                try:
+                    with winreg.OpenKey(hive, subkey) as key:
+                        path_value, _ = winreg.QueryValueEx(key, "Path")
+                    for folder in path_value.split(os.pathsep):
+                        candidate = os.path.join(folder.strip('"'), "tailscale.exe")
+                        if os.path.exists(candidate):
+                            return candidate
+                except OSError:
+                    pass
+
+            # 3. Pasta real de instalação, via registo do serviço do Windows
+            # (tailscaled.exe corre como serviço "Tailscale"; tailscale.exe
+            # vive sempre ao lado dele, seja qual for a pasta escolhida).
+            try:
+                with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SYSTEM\CurrentControlSet\Services\Tailscale") as key:
+                    image_path, _ = winreg.QueryValueEx(key, "ImagePath")
+                # O ImagePath vem tipicamente como '"C:\caminho\tailscaled.exe" /subproc'
+                # -- as aspas fecham logo a seguir ao .exe, com argumentos depois.
+                # Um simples .strip('"') não apanha isto (só limpa as pontas da
+                # string toda), por isso isolamos o executável explicitamente.
+                image_path = image_path.strip()
+                if image_path.startswith('"'):
+                    end_quote = image_path.find('"', 1)
+                    exe_path = image_path[1:end_quote] if end_quote != -1 else image_path[1:]
+                else:
+                    exe_path = image_path.split(" ")[0]
+                candidate = os.path.join(os.path.dirname(exe_path), "tailscale.exe")
+                if os.path.exists(candidate):
+                    return candidate
+            except OSError:
+                pass
+
+    # 4. Últimos recursos: pastas conhecidas de instalações históricas.
+    for default_path in (
+        r"C:\Program Files\Tailscale\tailscale.exe",
+        r"C:\Program Files\Tailscale IPN\tailscale.exe",
+        r"C:\Program Files (x86)\Tailscale IPN\tailscale.exe",
+    ):
+        if os.path.exists(default_path):
+            return default_path
+
+    return None
+
+
+def _run_tailscale(args, timeout=20):
+    """Corre um comando do Tailscale CLI. Devolve (resultado, motivo_erro)."""
+    exe = _find_tailscale_exe()
+    if not exe:
+        return None, "not_installed"
+    try:
+        result = subprocess.run([exe] + list(args), capture_output=True, text=True,
+                                 timeout=timeout, **_hidden_subprocess_kwargs())
+        return result, None
+    except subprocess.TimeoutExpired:
+        return None, "timeout"
+    except Exception as e:
+        return None, str(e)
+
+
+@app.get("/api/remote-access/status")
+async def remote_access_status():
+    """Estado do acesso remoto via Tailscale, para as Preferências saberem
+    que passo mostrar: instalado? sessão iniciada? HTTPS (Serve) já ativo?"""
+    if not IS_WINDOWS:
+        return {"supported": False}
+
+    exe = _find_tailscale_exe()
+    if not exe:
+        return {"supported": True, "installed": False, "logged_in": False, "https_active": False, "url": None, "port": MDNS_PORT}
+
+    result, err = _run_tailscale(["status", "--json"], timeout=10)
+    if err or result is None or result.returncode != 0:
+        # Instalado mas o serviço pode ainda não ter arrancado -- não é um erro fatal.
+        return {"supported": True, "installed": True, "logged_in": False, "https_active": False, "url": None, "port": MDNS_PORT}
+
+    try:
+        data = json.loads(result.stdout)
+    except Exception:
+        return {"supported": True, "installed": True, "logged_in": False, "https_active": False, "url": None, "port": MDNS_PORT}
+
+    logged_in = data.get("BackendState") == "Running"
+    dns_name = ((data.get("Self") or {}).get("DNSName") or "").rstrip(".")
+
+    https_active, url = False, None
+    if logged_in and dns_name:
+        serve_result, serve_err = _run_tailscale(["serve", "status"], timeout=10)
+        if not serve_err and serve_result and serve_result.returncode == 0:
+            out = serve_result.stdout or ""
+            if out.strip() and "No serve config" not in out:
+                https_active = True
+                url = f"https://{dns_name}"
+
+    return {
+        "supported": True, "installed": True, "logged_in": logged_in,
+        "https_active": https_active, "url": url, "port": MDNS_PORT,
+    }
+
+
+@app.post("/api/remote-access/enable")
+async def remote_access_enable():
+    """Ativa o Tailscale Serve na porta do SyncPulse e devolve o URL HTTPS
+    final (para colar na app mobile). Exige que o Tailscale já esteja
+    instalado e com sessão iniciada -- ver /api/remote-access/status."""
+    if not IS_WINDOWS:
+        return JSONResponse(status_code=400, content={"message": "Só disponível na versão Windows."})
+
+    exe = _find_tailscale_exe()
+    if not exe:
+        return JSONResponse(status_code=400, content={"message": "O Tailscale não está instalado."})
+
+    status_result, err = _run_tailscale(["status", "--json"], timeout=10)
+    if err or status_result is None or status_result.returncode != 0:
+        return JSONResponse(status_code=400, content={"message": "Não foi possível falar com o Tailscale. Confirma que está aberto e com sessão iniciada."})
+
+    try:
+        data = json.loads(status_result.stdout)
+    except Exception:
+        return JSONResponse(status_code=400, content={"message": "Resposta inesperada do Tailscale."})
+
+    if data.get("BackendState") != "Running":
+        return JSONResponse(status_code=400, content={"message": "Inicia sessão no Tailscale primeiro."})
+
+    dns_name = ((data.get("Self") or {}).get("DNSName") or "").rstrip(".")
+    if not dns_name:
+        return JSONResponse(status_code=400, content={"message": "Não foi possível obter o nome do dispositivo no Tailscale."})
+
+    serve_result, err = _run_tailscale(["serve", "--bg", str(MDNS_PORT)], timeout=25)
+    if err or serve_result is None or serve_result.returncode != 0:
+        return JSONResponse(status_code=502, content={
+            "message": "Não foi possível ativar o acesso remoto. Confirma que o HTTPS está ativado em "
+                        "https://login.tailscale.com/admin/dns (secção \"HTTPS Certificates\") e tenta novamente."
+        })
+
+    return {"status": "ok", "url": f"https://{dns_name}"}
 
 
 @app.get("/api/discover")
