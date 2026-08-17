@@ -520,7 +520,7 @@
 							<path d="M100 256H160L190 140L256 380L322 140L352 256H412" stroke="#3b82f6" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>
 						</svg>
 					</div>
-					<h2 class="text-xl font-black text-white uppercase tracking-widest" data-key="welcome_title">SyncPulse VERSION 2.0</h2>
+					<h2 class="text-xl font-black text-white uppercase tracking-widest" data-key="welcome_title">SyncPulse Version 1.4</h2>
 					<p class="text-[10px] text-slate-500 font-bold uppercase mt-1">ZimaOS Edition</p>
 				</div>
 
@@ -998,15 +998,15 @@
 
     <!-- MODAL PREFERÊNCIAS ATUALIZADO -->
     <div id="mPrefs" class="modal-overlay hidden">
-        <div class="bg-slate-900 border border-slate-700 w-full max-w-md rounded-2xl p-8 shadow-2xl">
-            <div class="flex justify-between items-center mb-6">
+        <div class="bg-slate-900 border border-slate-700 w-full max-w-md rounded-2xl p-8 shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+            <div class="flex justify-between items-center mb-6 shrink-0">
                 <h3 class="text-xl font-black text-white uppercase tracking-wider">
                     <i class="fas fa-cog mr-3 text-slate-500"></i><span data-key="preferences">Preferências</span>
                 </h3>
                 <button onclick="toggleModal('mPrefs', false)" class="text-slate-500 hover:text-white text-2xl">&times;</button>
             </div>
 
-            <div class="space-y-6">
+            <div class="flex-1 min-h-0 space-y-6 overflow-y-auto custom-scrollbar pr-1 -mr-1">
                 <!-- Ativação: os dados são validados pelo servidor, não apenas pela interface. -->
                 <div class="p-4 bg-slate-800/40 rounded-xl border border-slate-700/50 space-y-3">
                     <div class="flex items-center justify-between gap-3">
@@ -1064,7 +1064,7 @@
                 </div>
                 
                 <div class="text-center opacity-70 text-[11px] font-mono text-slate-500 pt-2">
-                    SyncPulse ZIMAOS EDITION<br>VERSION 2.0
+                    SyncPulse ZIMAOS EDITION<br>VERSION 1.4
                 </div>
             </div>
 
@@ -1081,7 +1081,7 @@
 			en: {
 				// Splash & Welcome
 				starting_app: "Starting SyncPulse...",
-				welcome_title: "SyncPulse VERSION 2.0",
+				welcome_title: "SyncPulse Version 1.4",
 				zima_edition: "ZimaOS Edition",
 				about_sync_title: "About the Project",
 				about_sync_text: "SyncPulse is a professional interface and automation engine designed to simplify hybrid storage management on ZimaOS. It acts as an intelligent bridge between your hardware and the leading Cloud services.",
@@ -1332,7 +1332,7 @@
 			},
 			fr: {
 				starting_app: "Démarrage de SyncPulse...",
-				welcome_title: "SyncPulse VERSION 2.0",
+				welcome_title: "SyncPulse Version 1.4",
 				zima_edition: "ZimaOS Edition",
 				about_sync_title: "À propos du projet",
 				about_sync_text: "SyncPulse est une interface professionnelle et un moteur d'automatisation conçu pour simplifier la gestion du stockage hybride sur ZimaOS.",
@@ -1369,7 +1369,7 @@
 			},
 			de: {
 				starting_app: "SyncPulse wird gestartet...",
-				welcome_title: "SyncPulse VERSION 2.0",
+				welcome_title: "SyncPulse Version 1.4",
 				zima_edition: "ZimaOS Edition",
 				about_sync_title: "Über das Projekt",
 				about_sync_text: "SyncPulse ist eine professionelle Schnittstelle und Automatisierungs-Engine zur Vereinfachung der hybriden Speicherverwaltung auf ZimaOS.",
@@ -2692,7 +2692,7 @@
 			// destacada e copiável, com um campo para colar o resultado.
 			if (option.Name === 'config_token') {
 				const cmdMatch = (option.Help || '').match(/rclone authorize [^\n]+/);
-				const cmd = cmdMatch ? cmdMatch[0].trim() : (option.Help || '').trim();
+				const cmd = cmdMatch ? './' + cmdMatch[0].trim() : (option.Help || '').trim();
 				dyn.innerHTML = `<div class="p-4 bg-blue-500/10 border border-blue-500/20 rounded-2xl mb-3">
 					<p class="text-blue-400 text-[11px] font-bold uppercase mb-1"><i class="fas fa-laptop-mobile mr-1"></i>${t.wiz_oauth_remote_title || 'Authorize from another device'}</p>
 					<p class="text-slate-300 text-[12px] leading-relaxed">${t.wiz_oauth_remote_desc || 'This service needs browser authorization, which cannot happen inside the container. Run this on a computer with rclone installed and a web browser (e.g. your own PC or Mac):'}</p>

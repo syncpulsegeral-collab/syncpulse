@@ -53,7 +53,7 @@ IS_MACOS = platform.system() == "Darwin"
 # ficheiro (ex: "SyncPulse v2.1_Setup.exe" -> APP_VERSION = "2.1"), já que
 # main.py viaja dentro do próprio instalador e é ele que diz à app "em que
 # versão estou eu, a correr agora".
-APP_VERSION = "2.4"
+APP_VERSION = "2.5"
 UPDATE_REPO = "syncpulsegeral-collab/syncpulse"
 UPDATE_DIR = "Downloads/Windows"
 UPDATE_FILENAME_RE = re.compile(r"^SyncPulse v([0-9]+(?:\.[0-9]+)*)_Setup\.exe$", re.IGNORECASE)
