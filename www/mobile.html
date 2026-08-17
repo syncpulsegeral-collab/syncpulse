@@ -335,7 +335,7 @@
       <div class="conn-dot" id="conn-dot"></div>
       <div>
         <h1>SyncPulse</h1>
-        <span>ZimaOS Edition</span>
+        <span id="edition-label">ZimaOS Edition</span>
       </div>
     </div>
   </div>
@@ -968,6 +968,16 @@ function apiFetch(path, opts) {
   return fetch(SERVER_URL + path, opts);
 }
 
+/* Atualiza "ZimaOS/Windows/macOS/Linux Edition" consoante o servidor a que
+   a app está realmente ligada (vem do campo "edition" de /api/discover,
+   que o backend já calcula com base na plataforma onde está a correr). */
+function applyEditionLabel(info) {
+  const el = document.getElementById('edition-label');
+  if (!el || !info) return;
+  const labels = { zimaos: 'ZimaOS Edition', windows: 'Windows Edition', macos: 'macOS Edition', linux: 'Linux Edition' };
+  el.textContent = labels[info.edition] || 'Edition';
+}
+
 async function pingServer(url, timeoutMs) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs || 4000);
@@ -1020,6 +1030,7 @@ async function autoDetectScan(statusElId, onSuccess) {
   const total = subnets.length * 254;
   let scanned = 0;
   let found = null;
+  let foundInfo = null;
   const CONCURRENCY = 40;
 
   scanLoop:
@@ -1032,20 +1043,21 @@ async function autoDetectScan(statusElId, onSuccess) {
         for (const port of SCAN_PORTS) {
           const candidate = `http://${host}:${port}`;
           const info = await pingServer(candidate, 700);
-          if (info) return candidate;
+          if (info) return { candidate, info };
         }
         return null;
       }));
       scanned += batch.length;
       setStatus(statusElId, 'info', `${t().conn_searching} (${Math.min(scanned, total)}/${total})`);
       const hit = results.find(r => r);
-      if (hit) { found = hit; break scanLoop; }
+      if (hit) { found = hit.candidate; foundInfo = hit.info; break scanLoop; }
     }
   }
 
   if (found) {
     SERVER_URL = found;
     await storageSet(STORAGE_KEY_SERVER, found);
+    applyEditionLabel(foundInfo);
     setStatus(statusElId, 'success', t().conn_success);
     if (onSuccess) onSuccess();
   } else {
@@ -1073,6 +1085,7 @@ async function connectToServer(rawInput) {
   if (!info) return false;
   SERVER_URL = url;
   await storageSet(STORAGE_KEY_SERVER, url);
+  applyEditionLabel(info);
   return true;
 }
 
@@ -1097,6 +1110,7 @@ async function autoDetectMDNS(statusElId, onSuccess) {
         try { await ZeroConf.close(); } catch (e) {}
         SERVER_URL = candidate;
         await storageSet(STORAGE_KEY_SERVER, candidate);
+        applyEditionLabel(info);
         setStatus(statusElId, 'success', t().conn_success);
         if (onSuccess) onSuccess();
       }
@@ -1158,6 +1172,8 @@ function onSettingsAutoSuccess() {
 async function forgetServer() {
   await storageRemove(STORAGE_KEY_SERVER);
   SERVER_URL = null;
+  const editionEl = document.getElementById('edition-label');
+  if (editionEl) editionEl.textContent = '';
   if (socket) { try { socket.close(); } catch (e) {} socket = null; }
   document.getElementById('conn-input').value = '';
   document.getElementById('settings-server-input').value = '';
@@ -1651,6 +1667,7 @@ async function boot() {
     const info = await pingServer(saved, 5000);
     if (info) {
       SERVER_URL = saved;
+      applyEditionLabel(info);
       document.getElementById('settings-server-input').value = saved.replace(/^https?:\/\//i, '');
       updateServerSettingsDisplay();
       closeConnectScreen();
