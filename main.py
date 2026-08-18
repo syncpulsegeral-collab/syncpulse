@@ -3102,7 +3102,14 @@ async def discover_ping():
         "hwid_short": get_secure_hwid()[:12],
     }
 
-FRONTEND_FILE = "index_win.html" if IS_WINDOWS and not IS_CONTAINER else "index.html"
+if IS_CONTAINER:
+    FRONTEND_FILE = "index.html"
+elif IS_WINDOWS:
+    FRONTEND_FILE = "index_win.html"
+elif IS_MACOS:
+    FRONTEND_FILE = "index_mac.html"
+else:
+    FRONTEND_FILE = "index_linux.html"
 
 @app.get("/")
 async def serve_index():
@@ -3118,3 +3125,12 @@ if not os.path.isdir(WWW_PATH):
 if not os.path.isfile(os.path.join(WWW_PATH, FRONTEND_FILE)):
     raise RuntimeError(f"Frontend '{FRONTEND_FILE}' não encontrado em: {WWW_PATH}")
 app.mount("/", StaticFiles(directory=WWW_PATH), name="static")
+
+if __name__ == "__main__":
+    # Só relevante fora do Docker (ZimaOS arranca isto via "uvicorn main:app"
+    # no CMD do Dockerfile, nunca chega a executar este bloco). Para
+    # Windows, macOS e Linux nativos -- incluindo builds empacotados com
+    # PyInstaller a apontar diretamente para este ficheiro -- isto é o que
+    # efetivamente arranca o servidor.
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=MDNS_PORT)

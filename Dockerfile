@@ -2,7 +2,7 @@
 FROM python:3.10-slim
 
 # 2. Definir versão do Rclone e evitar conflitos de variáveis de ambiente
-ARG INSTALL_RCLONE_VER=1.74.3
+ARG INSTALL_RCLONE_VER=1.75.0
 ENV TZ=Europe/Lisbon
 ENV PYTHONUNBUFFERED=1
 
@@ -15,7 +15,7 @@ RUN apt-get update && apt-get install -y -qq \
     fuse3 \
     && rm -rf /var/lib/apt/lists/*
 
-# 4. Instalar Rclone v1.74.3 via pacote .deb (específico para AMD64/ZimaOS)
+# 4. Instalar Rclone v1.75.0 via pacote .deb (específico para AMD64/ZimaOS)
 RUN curl -fSL -o rclone.deb https://downloads.rclone.org/v${INSTALL_RCLONE_VER}/rclone-v${INSTALL_RCLONE_VER}-linux-amd64.deb \
     && dpkg -i rclone.deb \
     && rm rclone.deb
@@ -27,8 +27,7 @@ RUN pip install --no-cache-dir \
     watchdog \
     apscheduler \
     websockets \
-	httpx \
-	pywebpush
+	httpx
 
 # 6. Criar estrutura de pastas
 # /app_dist e /www_dist são as fontes "protegidas" dentro da imagem
