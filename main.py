@@ -53,7 +53,7 @@ IS_MACOS = platform.system() == "Darwin"
 # ficheiro (ex: "SyncPulse v2.1_Setup.exe" -> APP_VERSION = "2.1"), já que
 # main.py viaja dentro do próprio instalador e é ele que diz à app "em que
 # versão estou eu, a correr agora".
-APP_VERSION = "2.5"
+APP_VERSION = "2.0"
 UPDATE_REPO = "syncpulsegeral-collab/syncpulse"
 UPDATE_DIR = "Downloads/Windows"
 UPDATE_FILENAME_RE = re.compile(r"^SyncPulse v([0-9]+(?:\.[0-9]+)*)_Setup\.exe$", re.IGNORECASE)
@@ -138,7 +138,7 @@ DEFAULT_PUSH_PREFS = {
 # Porto onde o servidor está exposto na rede local. Se mapeares o container
 # para outro porto no ZimaOS, ajusta via variável de ambiente SYNCPULSE_PORT.
 MDNS_SERVICE_TYPE = "_syncpulse._tcp.local."
-MDNS_PORT = int(os.getenv("SYNCPULSE_PORT", "8181"))
+MDNS_PORT = int(os.getenv("SYNCPULSE_PORT", "8000"))
 ZC_INSTANCE = None
 ZC_SERVICE_INFO = None
 

@@ -5,6 +5,12 @@ FROM python:3.10-slim
 ARG INSTALL_RCLONE_VER=1.75.0
 ENV TZ=Europe/Lisbon
 ENV PYTHONUNBUFFERED=1
+# O CMD mais abaixo arranca o Uvicorn diretamente na porta 8181 -- esta
+# variável tem de bater sempre certo com esse valor, porque é ela que o
+# main.py usa para anunciar a app via mDNS na rede local (deteção
+# automática pela app mobile). Sem isto, o anúncio mDNS aponta para a
+# porta por omissão (8000), que não é onde o servidor realmente está.
+ENV SYNCPULSE_PORT=8181
 
 # 3. Instalar dependências do sistema
 RUN apt-get update && apt-get install -y -qq \
@@ -21,13 +27,18 @@ RUN curl -fSL -o rclone.deb https://downloads.rclone.org/v${INSTALL_RCLONE_VER}/
     && rm rclone.deb
 
 # 5. Instalar bibliotecas Python necessárias
+# (lista alinhada com requirements.txt -- pywebpush/cryptography faltavam
+# aqui, e sem eles as notificações push nunca conseguem criar uma
+# subscrição real, por mais vezes que se ative o interruptor na app.)
 RUN pip install --no-cache-dir \
     fastapi \
     "uvicorn[standard]" \
     watchdog \
     apscheduler \
-    websockets \
-	httpx
+    httpx \
+    pywebpush \
+    cryptography \
+    zeroconf
 
 # 6. Criar estrutura de pastas
 # /app_dist e /www_dist são as fontes "protegidas" dentro da imagem
@@ -42,7 +53,9 @@ COPY www/ /www_dist/
 WORKDIR /app_dist
 
 # 9. Expor a porta da API
-EXPOSE 8181
+EXPOSE ${SYNCPULSE_PORT}
 
 # 10. Comando de arranque (Uvicorn mantém o processo vivo)
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8181"]
+# "exec" garante que o Uvicorn recebe diretamente os sinais do Docker
+# (ex: SIGTERM ao fazer "docker stop"), em vez de ficarem presos na shell.
+CMD ["sh", "-c", "exec uvicorn main:app --host 0.0.0.0 --port ${SYNCPULSE_PORT}"]
