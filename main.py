@@ -3126,11 +3126,50 @@ if not os.path.isfile(os.path.join(WWW_PATH, FRONTEND_FILE)):
     raise RuntimeError(f"Frontend '{FRONTEND_FILE}' não encontrado em: {WWW_PATH}")
 app.mount("/", StaticFiles(directory=WWW_PATH), name="static")
 
+def run_native_macos_window():
+    """Arranca o FastAPI em background e abre a interface numa janela Cocoa."""
+    try:
+        import webview
+    except ImportError as error:
+        raise RuntimeError("Falta pywebview. Corre: pip install pywebview") from error
+
+    import uvicorn
+    server = uvicorn.Server(uvicorn.Config(
+        app, host="0.0.0.0", port=MDNS_PORT, log_level="info"
+    ))
+    server_thread = threading.Thread(target=server.run, name="syncpulse-server", daemon=True)
+    server_thread.start()
+
+    # Só abre a janela quando o backend já está pronto a responder.
+    deadline = time.monotonic() + 15
+    url = f"http://127.0.0.1:{MDNS_PORT}"
+    while time.monotonic() < deadline:
+        try:
+            with urlopen(url, timeout=0.5):
+                break
+        except Exception:
+            time.sleep(0.15)
+    else:
+        server.should_exit = True
+        raise RuntimeError("O servidor local do SyncPulse não arrancou.")
+
+    webview.create_window(
+        "SyncPulse", url, width=1440, height=900, min_size=(960, 640)
+    )
+    try:
+        webview.start()
+    finally:
+        server.should_exit = True
+        server_thread.join(timeout=5)
+
 if __name__ == "__main__":
     # Só relevante fora do Docker (ZimaOS arranca isto via "uvicorn main:app"
     # no CMD do Dockerfile, nunca chega a executar este bloco). Para
     # Windows, macOS e Linux nativos -- incluindo builds empacotados com
     # PyInstaller a apontar diretamente para este ficheiro -- isto é o que
     # efetivamente arranca o servidor.
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=MDNS_PORT)
+    if IS_MACOS:
+        run_native_macos_window()
+    else:
+        import uvicorn
+        uvicorn.run(app, host="0.0.0.0", port=MDNS_PORT)
