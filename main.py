@@ -53,7 +53,7 @@ IS_MACOS = platform.system() == "Darwin"
 # ficheiro (ex: "SyncPulse v2.1_Setup.exe" -> APP_VERSION = "2.1"), já que
 # main.py viaja dentro do próprio instalador e é ele que diz à app "em que
 # versão estou eu, a correr agora".
-APP_VERSION = "2.0"
+APP_VERSION = "2.7"
 UPDATE_REPO = "syncpulsegeral-collab/syncpulse"
 UPDATE_DIR = "Downloads/Windows"
 UPDATE_FILENAME_RE = re.compile(r"^SyncPulse v([0-9]+(?:\.[0-9]+)*)_Setup\.exe$", re.IGNORECASE)
@@ -3126,8 +3126,13 @@ if not os.path.isfile(os.path.join(WWW_PATH, FRONTEND_FILE)):
     raise RuntimeError(f"Frontend '{FRONTEND_FILE}' não encontrado em: {WWW_PATH}")
 app.mount("/", StaticFiles(directory=WWW_PATH), name="static")
 
-def run_native_macos_window():
-    """Arranca o FastAPI em background e abre a interface numa janela Cocoa."""
+def run_native_desktop_window():
+    """Arranca o FastAPI em background e abre a interface numa janela nativa."""
+    # O WebKitGTK pode renderizar uma janela totalmente branca em VMware quando
+    # a composição acelerada está ativa. Esta opção afeta apenas Linux/GTK e
+    # mantém o frontend funcional em máquinas físicas e virtuais.
+    if not IS_MACOS and not IS_WINDOWS:
+        os.environ.setdefault("WEBKIT_DISABLE_COMPOSITING_MODE", "1")
     try:
         import webview
     except ImportError as error:
@@ -3157,7 +3162,8 @@ def run_native_macos_window():
         "SyncPulse", url, width=1440, height=900, min_size=(960, 640)
     )
     try:
-        webview.start()
+        # macOS usa Cocoa; Linux usa GTK/WebKit. Docker continua sem GUI.
+        webview.start(gui="cocoa" if IS_MACOS else "gtk")
     finally:
         server.should_exit = True
         server_thread.join(timeout=5)
@@ -3168,8 +3174,8 @@ if __name__ == "__main__":
     # Windows, macOS e Linux nativos -- incluindo builds empacotados com
     # PyInstaller a apontar diretamente para este ficheiro -- isto é o que
     # efetivamente arranca o servidor.
-    if IS_MACOS:
-        run_native_macos_window()
+    if IS_MACOS or (not IS_WINDOWS and not IS_CONTAINER):
+        run_native_desktop_window()
     else:
         import uvicorn
         uvicorn.run(app, host="0.0.0.0", port=MDNS_PORT)
