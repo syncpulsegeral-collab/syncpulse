@@ -169,7 +169,7 @@ LAST_BOX_CHECK_TIME = 0
 # as criar; extraí-la do .exe não dá a ninguém forma de fabricar uma licença
 # nova. Substitui pelo valor real que o script te der (base64, 32 bytes),
 # ou define a variável de ambiente SYNCPULSE_LICENSE_PUBLIC_KEY.
-LICENSE_PUBLIC_KEY_B64 = os.getenv("SYNCPULSE_LICENSE_PUBLIC_KEY", "TtNoXgSv3Uuqb+b8s1iC0y5c6UpcRGAauZ2mobip/bw=")
+LICENSE_PUBLIC_KEY_B64 = os.getenv("SYNCPULSE_LICENSE_PUBLIC_KEY", "COLA_AQUI_A_CHAVE_PUBLICA_BASE64")
 
 # --- Notificações push (Web Push) ---
 VAPID_PRIVATE_FILE = os.path.join(CONFIG_DIR, "vapid_private.pem")
@@ -670,6 +670,7 @@ async def activate_license_local(request: Request):
         # aceitamos se a assinatura bater certo com email+hwid+expires_at
         # exatamente como o Railway (dono da chave privada) os validou.
         expires_at = res_data.get("expires_at", "")
+        print(f">>> [LICENSE-DEBUG] payload verificado: {_license_signing_payload(email, hwid, expires_at)!r}")  # TEMPORÁRIO -- remover depois de confirmar
         if not verify_license_signature(email, hwid, expires_at, res_data.get("signature")):
             print(">>> [LICENSE] Assinatura do servidor inválida ou ausente -- ativação recusada.")
             return JSONResponse(status_code=502, content={
