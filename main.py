@@ -58,7 +58,7 @@ def verify_license_signature(email, hwid, expires_at, signature_b64):
     if not LICENSE_SIGNING_AVAILABLE:
         print(">>> [LICENSE] 'cryptography' não instalada -- não é possível verificar a assinatura.")
         return False
-    if not signature_b64 or LICENSE_PUBLIC_KEY_B64 == "COLA_AQUI_A_CHAVE_PUBLICA_BASE64":
+    if not signature_b64 or LICENSE_PUBLIC_KEY_B64 == "TtNoXgSv3Uuqb+b8s1iC0y5c6UpcRGAauZ2mobip/bw=":
         return False
     try:
         public_key = Ed25519PublicKey.from_public_bytes(base64.b64decode(LICENSE_PUBLIC_KEY_B64))
@@ -169,7 +169,7 @@ LAST_BOX_CHECK_TIME = 0
 # as criar; extraí-la do .exe não dá a ninguém forma de fabricar uma licença
 # nova. Substitui pelo valor real que o script te der (base64, 32 bytes),
 # ou define a variável de ambiente SYNCPULSE_LICENSE_PUBLIC_KEY.
-LICENSE_PUBLIC_KEY_B64 = os.getenv("SYNCPULSE_LICENSE_PUBLIC_KEY", "COLA_AQUI_A_CHAVE_PUBLICA_BASE64")
+LICENSE_PUBLIC_KEY_B64 = os.getenv("SYNCPULSE_LICENSE_PUBLIC_KEY", "TtNoXgSv3Uuqb+b8s1iC0y5c6UpcRGAauZ2mobip/bw=")
 
 # --- Notificações push (Web Push) ---
 VAPID_PRIVATE_FILE = os.path.join(CONFIG_DIR, "vapid_private.pem")
