@@ -5,7 +5,7 @@ from fastapi import FastAPI, BackgroundTasks, Request, WebSocket, WebSocketDisco
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from contextlib import asynccontextmanager # <--- Garante este import
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -30,6 +30,45 @@ try:
     ZEROCONF_AVAILABLE = True
 except ImportError:
     ZEROCONF_AVAILABLE = False
+
+# --- Verificação de assinatura da licença (Ed25519) ---
+# Usa só o 'cryptography' (não o 'pywebpush') -- por isso tem a sua própria
+# flag, independente do PUSH_AVAILABLE. Sem isto instalado, por segurança a
+# app trata qualquer licença como não verificável (nunca assume válida às
+# cegas só porque a biblioteca falta).
+try:
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+    from cryptography.exceptions import InvalidSignature
+    LICENSE_SIGNING_AVAILABLE = True
+except ImportError:
+    LICENSE_SIGNING_AVAILABLE = False
+    print(">>> [LICENSE] 'cryptography' não instalada — verificação de assinatura desativada. Corre: pip install cryptography")
+
+def _license_signing_payload(email, hwid, expires_at):
+    """Constrói exatamente a mesma string que o Railway assina -- os dois
+    lados têm de concordar byte a byte, incluindo a normalização (email em
+    minúsculas, sem espaços à volta)."""
+    return f"{str(email or '').strip().lower()}|{str(hwid or '').strip()}|{str(expires_at or '').strip()}|active".encode("utf-8")
+
+def verify_license_signature(email, hwid, expires_at, signature_b64):
+    """True só se a assinatura bater certo com estes campos exatos -- ou
+    seja, só se foi mesmo o Railway (dono da chave privada) a validar esta
+    combinação precisa de email+hwid+expires_at. Editar o license.json à
+    mão, ou reaproveitar a assinatura de outro dispositivo/data, falha aqui."""
+    if not LICENSE_SIGNING_AVAILABLE:
+        print(">>> [LICENSE] 'cryptography' não instalada -- não é possível verificar a assinatura.")
+        return False
+    if not signature_b64 or LICENSE_PUBLIC_KEY_B64 == "COLA_AQUI_A_CHAVE_PUBLICA_BASE64":
+        return False
+    try:
+        public_key = Ed25519PublicKey.from_public_bytes(base64.b64decode(LICENSE_PUBLIC_KEY_B64))
+        public_key.verify(base64.b64decode(signature_b64), _license_signing_payload(email, hwid, expires_at))
+        return True
+    except InvalidSignature:
+        return False
+    except Exception as e:
+        print(f">>> [LICENSE] Erro ao verificar assinatura: {e}")
+        return False
 
 # --- CONFIGURAÇÕES DE CAMINHOS (híbrido ZimaOS/Docker + Windows/macOS/Linux) ---
 # Dentro do container ZimaOS a imagem tem sempre /app_dist e /www_dist (criadas
@@ -124,6 +163,13 @@ _bundled_rclone = os.path.join(BUNDLE_DIR, "rclone", "rclone.exe" if IS_WINDOWS 
 RCLONE_EXE = os.getenv("SYNCPULSE_RCLONE_PATH", _bundled_rclone if os.path.isfile(_bundled_rclone) else "rclone")
 HWID_SALT = os.getenv("SYNCPULSE_HWID_SALT", "syncpulse-hwid-v1")
 LAST_BOX_CHECK_TIME = 0
+
+# Chave PÚBLICA Ed25519 do par gerado para o licenciamento (ver chaves.py).
+# É segura de trazer aqui -- só serve para VERIFICAR assinaturas, nunca para
+# as criar; extraí-la do .exe não dá a ninguém forma de fabricar uma licença
+# nova. Substitui pelo valor real que o script te der (base64, 32 bytes),
+# ou define a variável de ambiente SYNCPULSE_LICENSE_PUBLIC_KEY.
+LICENSE_PUBLIC_KEY_B64 = os.getenv("SYNCPULSE_LICENSE_PUBLIC_KEY", "TtNoXgSv3Uuqb+b8s1iC0y5c6UpcRGAauZ2mobip/bw=")
 
 # --- Notificações push (Web Push) ---
 VAPID_PRIVATE_FILE = os.path.join(CONFIG_DIR, "vapid_private.pem")
@@ -306,7 +352,15 @@ def get_initial_state():
     # Validação Híbrida:
     # 1. O ficheiro tem de ter "active": true (como no teu print)
     # 2. O HWID gravado tem de ser IGUAL ao HWID atual do hardware
-    is_valid = lic.get("active") is True and lic.get("hwid") == hwid_atual and license_is_current(lic)
+    # 3. A assinatura tem de bater certo com os campos gravados -- sem isto,
+    #    editar o license.json à mão continuaria a "funcionar" só por
+    #    reescrever active/hwid/expires_at.
+    is_valid = (
+        lic.get("active") is True
+        and lic.get("hwid") == hwid_atual
+        and license_is_current(lic)
+        and verify_license_signature(lic.get("email"), lic.get("hwid"), lic.get("expires_at"), lic.get("signature"))
+    )
     is_expired = lic.get("active") is True and license_is_expired(lic)
 
     return {
@@ -395,6 +449,29 @@ bootstrap()
 
 
 
+# Quantos dias a app continua a confiar numa licença já validada, mesmo sem
+# conseguir voltar a contactar o Railway (viagens sem rede, firewall
+# corporativa, downtime do servidor, etc.). Passada esta janela sem uma
+# confirmação nova, a app bloqueia -- deixa de ser "confia para sempre" só
+# porque o servidor está inacessível.
+LICENSE_OFFLINE_GRACE_DAYS = 7
+
+def _license_offline_grace_expired():
+    """True se já não validamos a licença há mais dias do que a janela de
+    tolerância permite (LICENSE_OFFLINE_GRACE_DAYS) -- nesse caso deixamos
+    de confiar cegamente em "não consegui contactar o servidor". Sem
+    nenhuma validação bem-sucedida registada, não há tolerância nenhuma."""
+    raw_last_check = str(STATE["license_info"].get("last_check") or "").strip()
+    if not raw_last_check:
+        return True
+    try:
+        last_check = datetime.fromisoformat(raw_last_check.replace("Z", "+00:00"))
+        if last_check.tzinfo is None:
+            last_check = last_check.replace(tzinfo=timezone.utc)
+    except ValueError:
+        return True
+    return (datetime.now(timezone.utc) - last_check) > timedelta(days=LICENSE_OFFLINE_GRACE_DAYS)
+
 async def silent_license_check():
     """Valida a licença no Railway em background sem interromper o utilizador."""
     await asyncio.sleep(1)
@@ -419,17 +496,23 @@ async def silent_license_check():
 
         if response.status_code == 200:
             res_data = response.json()
-            if res_data.get("valid"):
+            expires_at = res_data.get("expires_at") or STATE["license_info"].get("expires_at", "")
+            signature_ok = res_data.get("valid") and verify_license_signature(email, hwid, expires_at, res_data.get("signature"))
+            if res_data.get("valid") and not signature_ok:
+                # O servidor disse "válido", mas a assinatura não bate certo
+                # -- trata isto como recusa, nunca como confirmação.
+                print(">>> [BACKGROUND] Resposta do servidor com assinatura inválida -- a tratar como recusa.")
+            if signature_ok:
                 # Licença confirmada! Atualizamos o ficheiro local com a data do check
                 STATE["licensed"] = True
                 STATE["license_active"] = True
                 STATE["license_expired"] = False
                 STATE["license_info"]["active"] = True
                 STATE["license_info"]["hwid"] = hwid
-                STATE["license_info"]["last_check"] = datetime.now().isoformat()
+                STATE["license_info"]["last_check"] = datetime.now(timezone.utc).isoformat()
                 STATE["license_info"]["plan"] = res_data.get("plan", STATE["license_info"].get("plan", 1))
-                if res_data.get("expires_at"):
-                    STATE["license_info"]["expires_at"] = res_data.get("expires_at")
+                STATE["license_info"]["expires_at"] = expires_at
+                STATE["license_info"]["signature"] = res_data.get("signature")
                 save_license(STATE["license_info"])
                 await refresh_automation_services()
                 await manager.broadcast({"type": "update", "state": STATE})
@@ -449,11 +532,19 @@ async def silent_license_check():
                 STATE["license_info"]["expires_at"] = details.get("expires_at", "")
             await revoke_license_local(expired=details.get("reason") == "expired")
         else:
-            # Servidor offline ou erro 500: mantemos o utilizador ativo (Modo Híbrido/Offline)
+            # Servidor com erro (5xx, etc.): mantemos o utilizador ativo, mas
+            # só dentro da janela de tolerância -- para lá disso, já não
+            # confiamos só porque "não conseguimos confirmar que é inválida".
             print(f">>> [BACKGROUND] Servidor central indisponível ({response.status_code}).")
+            if _license_offline_grace_expired():
+                print(">>> [BACKGROUND] Janela de tolerância offline expirou -- a bloquear.")
+                await revoke_license_local()
 
     except Exception as e:
         print(f">>> [BACKGROUND] Sem ligação à internet para validar: {e}")
+        if _license_offline_grace_expired():
+            print(">>> [BACKGROUND] Janela de tolerância offline expirou -- a bloquear.")
+            await revoke_license_local()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -574,6 +665,17 @@ async def activate_license_local(request: Request):
                 content={"message": res_data.get("message", "Licença inválida ou limite atingido.")}
             )
 
+        # 2b. CONFIRMA A ASSINATURA -- sem isto, um proxy/MITM ou um servidor
+        # falso poderia devolver "valid: true" para qualquer coisa. Só
+        # aceitamos se a assinatura bater certo com email+hwid+expires_at
+        # exatamente como o Railway (dono da chave privada) os validou.
+        expires_at = res_data.get("expires_at", "")
+        if not verify_license_signature(email, hwid, expires_at, res_data.get("signature")):
+            print(">>> [LICENSE] Assinatura do servidor inválida ou ausente -- ativação recusada.")
+            return JSONResponse(status_code=502, content={
+                "message": "Não foi possível confirmar a autenticidade da resposta do servidor de licenças. Tenta novamente."
+            })
+
         # 3. SE O SERVIDOR ACEITAR: PREPARAR DADOS PARA O DISCO
         # Adicionamos 'last_check' para o modo híbrido saber quando foi a última validação online
         license_data = {
@@ -583,9 +685,10 @@ async def activate_license_local(request: Request):
             "hwid": hwid,
             "device_name": device_name,
             "plan": res_data.get("plan", 1),
-            "activated_at": datetime.now().isoformat(),
-            "last_check": datetime.now().isoformat(),
-            "expires_at": res_data.get("expires_at", "")
+            "activated_at": datetime.now(timezone.utc).isoformat(),
+            "last_check": datetime.now(timezone.utc).isoformat(),
+            "expires_at": expires_at,
+            "signature": res_data.get("signature"),
         }
 
         # 4. PERSISTÊNCIA FÍSICA (Garante que sobrevive ao Reboot)
@@ -663,13 +766,14 @@ except ImportError:
 
 
 # --- LICENCIAMENTO ---------------------------------------------------------
-# O Railway é a fonte de verdade para licenças e limite de dispositivos.
-# A aplicação guarda localmente apenas uma ativação já validada para que não
-# seja necessário consultar a API a cada sincronização.
+# O servidor de licenciamento (hoje alojado no Render; o Railway expirou) é a
+# fonte de verdade para licenças e limite de dispositivos. A aplicação guarda
+# localmente apenas uma ativação já validada para que não seja necessário
+# consultar a API a cada sincronização.
 TEST_LICENSE_EMAIL = "syncpulsegeral@gmail.com"
 TEST_LICENSE_KEY = "SYNC-TEST-2026-UNLOCK"
 AUTH_SERVER_URL = os.getenv(
-    "SYNCPULSE_AUTH_SERVER_URL", "https://syncpulse-auth-production.up.railway.app"
+    "SYNCPULSE_AUTH_SERVER_URL", "https://syncpulse-auth.onrender.com"
 ).rstrip("/")
 LICENSE_API_URL = f"{AUTH_SERVER_URL}/api/licenses/activate"
 # Endpoint sem efeitos laterais: confirma que a ativação deste HWID ainda
@@ -726,7 +830,20 @@ def validate_license_with_api(email, license_key, device_name=None):
 
 def is_license_active():
     license_data = load_license()
-    return license_data.get("active") is True and license_data.get("hwid") == get_secure_hwid() and license_is_current(license_data)
+    if license_data.get("active") is not True:
+        return False
+    if license_data.get("hwid") != get_secure_hwid():
+        return False
+    if not license_is_current(license_data):
+        return False
+    # A assinatura tem de bater certo com os campos exatamente como estão
+    # gravados no ficheiro -- é isto que impede alguém de editar o
+    # license.json à mão (mudar active/hwid/expires_at quebra a assinatura,
+    # porque deixa de bater com o que o Railway realmente assinou).
+    return verify_license_signature(
+        license_data.get("email"), license_data.get("hwid"),
+        license_data.get("expires_at"), license_data.get("signature"),
+    )
 
 def stop_all_realtime_watchers():
     for tid in list(WATCHERS):
