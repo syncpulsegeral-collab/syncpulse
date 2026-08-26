@@ -58,7 +58,7 @@ def verify_license_signature(email, hwid, expires_at, signature_b64):
     if not LICENSE_SIGNING_AVAILABLE:
         print(">>> [LICENSE] 'cryptography' não instalada -- não é possível verificar a assinatura.")
         return False
-    if not signature_b64 or LICENSE_PUBLIC_KEY_B64 == "TtNoXgSv3Uuqb+b8s1iC0y5c6UpcRGAauZ2mobip/bw=":
+    if not signature_b64 or LICENSE_PUBLIC_KEY_B64 == "COLA_AQUI_A_CHAVE_PUBLICA_BASE64":
         return False
     try:
         public_key = Ed25519PublicKey.from_public_bytes(base64.b64decode(LICENSE_PUBLIC_KEY_B64))
