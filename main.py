@@ -375,14 +375,16 @@ def get_initial_state():
         "license_active": is_valid, 
         "license_expired": is_expired,
         "license_info": {
-            "email": lic.get("email", ""),
-            "key": lic.get("key", ""),
-            "device_name": lic.get("device_name", ""),
-            "activated_at": lic.get("activated_at", ""),
-            "plan": lic.get("plan", 1),
-            "active": is_valid,
-            "expires_at": lic.get("expires_at", ""), # <--- Garante que este campo vai para o front
-            "hwid": lic.get("hwid", "")
+            # Valores por omissão (garantem que estas chaves existem sempre,
+            # mesmo sem nenhuma licença gravada -- lic == {} no primeiro
+            # arranque). O frontend conta com isto para nunca ver "undefined".
+            "email": "", "key": "", "device_name": "", "activated_at": "",
+            "plan": 1, "expires_at": "", "hwid": "",
+            **lic,  # sobrepõe com o que estiver gravado em disco -- todos os
+                    # campos (incluindo signature, last_check e quaisquer
+                    # outros futuros), não só uma lista fixa que já se
+                    # esqueceu duas vezes de campos importantes.
+            "active": is_valid,  # e isto é sempre o valor recalculado agora, nunca o cru do ficheiro
         },
         "hwid": hwid_atual
     }
