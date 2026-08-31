@@ -92,7 +92,7 @@ IS_MACOS = platform.system() == "Darwin"
 # ficheiro (ex: "SyncPulse v2.1_Setup.exe" -> APP_VERSION = "2.1"), já que
 # main.py viaja dentro do próprio instalador e é ele que diz à app "em que
 # versão estou eu, a correr agora".
-APP_VERSION = "2.7"
+APP_VERSION = "2.9"
 UPDATE_REPO = "syncpulsegeral-collab/syncpulse"
 UPDATE_DIR = "Downloads/Windows"
 UPDATE_FILENAME_RE = re.compile(r"^SyncPulse v([0-9]+(?:\.[0-9]+)*)_Setup\.exe$", re.IGNORECASE)
@@ -672,7 +672,6 @@ async def activate_license_local(request: Request):
         # aceitamos se a assinatura bater certo com email+hwid+expires_at
         # exatamente como o Railway (dono da chave privada) os validou.
         expires_at = res_data.get("expires_at", "")
-        print(f">>> [LICENSE-DEBUG] payload verificado: {_license_signing_payload(email, hwid, expires_at)!r}")  # TEMPORÁRIO -- remover depois de confirmar
         if not verify_license_signature(email, hwid, expires_at, res_data.get("signature")):
             print(">>> [LICENSE] Assinatura do servidor inválida ou ausente -- ativação recusada.")
             return JSONResponse(status_code=502, content={
