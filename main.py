@@ -2512,6 +2512,22 @@ async def answer_remote_create(session_id: str, req: Request):
             return JSONResponse(status_code=404, content={"message": "Sessão inválida ou expirada."})
         if session["status"] != "input_required":
             return JSONResponse(status_code=409, content={"message": "Não há nenhuma pergunta pendente nesta sessão."})
+        # A renovação de um OAuth existente não usa ``config reconnect``:
+        # esse subcomando é estritamente interativo e não aceita --state nem
+        # --non-interactive. O token produzido por ``rclone authorize`` é
+        # guardado diretamente na configuração já existente.
+        if session.get("operation") == "refresh_token":
+            name = session["name"]
+            session["status"] = "working"
+            out, err, code = run_rclone_raw(["config", "update", name, f"token={value}"], timeout=30)
+            if code != 0:
+                session["status"] = "error"
+                session["error"] = err or out or "Não foi possível guardar o novo token."
+                return JSONResponse(status_code=500, content={"message": session["error"]})
+            session["status"] = "done"
+            session["state"] = None
+            session["option"] = None
+            return {"status": "done"}
         state = session["state"]
         base_args = session["base_args"]
         session["status"] = "working"
@@ -2536,15 +2552,33 @@ async def refresh_remote_token(name: str):
     if code != 0 or clean_name not in configured:
         return JSONResponse(status_code=404, content={"message": "Cloud não encontrada."})
 
+    # ``listremotes --long`` devolve "nome: tipo". Precisamos do tipo para
+    # gerar o comando de autorização que o utilizador irá correr fora do
+    # container ZimaOS.
+    long_out, long_err, long_code = run_rclone_raw(["listremotes", "--long"], timeout=10)
+    remote_type = None
+    if long_code == 0:
+        for line in long_out.splitlines():
+            if ":" not in line:
+                continue
+            listed_name, listed_type = line.split(":", 1)
+            if listed_name.strip() == clean_name:
+                remote_type = listed_type.strip()
+                break
+    if not remote_type:
+        return JSONResponse(status_code=400, content={"message": "Não foi possível identificar o serviço desta cloud."})
+
     session_id = uuid.uuid4().hex
-    args = ["config", "reconnect", f"{clean_name}:", "--non-interactive"]
     with _REMOTE_SESSIONS_LOCK:
         PENDING_REMOTE_SESSIONS[session_id] = {
-            "name": clean_name, "type": None, "base_args": list(args),
-            "state": None, "status": "working", "option": None, "error": None,
+            "name": clean_name, "type": remote_type, "operation": "refresh_token",
+            "state": None, "status": "input_required", "error": None,
+            "option": {
+                "Name": "config_token",
+                "Help": f"rclone authorize {remote_type}",
+            },
         }
-    _advance_remote_session(session_id, args)
-    return {"session_id": session_id, "status": "working"}
+    return {"session_id": session_id, "status": "input_required"}
 
 @app.delete("/api/remotes/create/{session_id}")
 def cancel_remote_create(session_id: str):

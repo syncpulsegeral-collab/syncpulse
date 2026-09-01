@@ -2899,8 +2899,7 @@
 				openCloudWizard();
 				// O token já pertence a uma cloud existente: saltamos os passos
 				// de nome/serviço e usamos diretamente a área de autorização.
-				wizStepIndex = 3;
-				wizRenderStep();
+				wizGoToStep(3);
 				wizActiveSession = result.session_id;
 				wizPollStartedAt = Date.now();
 				wizLockNav(true);
