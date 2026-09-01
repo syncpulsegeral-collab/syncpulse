@@ -2439,13 +2439,12 @@ def _advance_remote_session(session_id: str, args: list, timeout: int = 300):
                 name, p_type = session["name"], session["type"]
 
             option_name = option.get("Name")
+            base_args = session["base_args"]
             if option_name == "config_shared_client_id":
-                current_args = ["config", "create", name, p_type, "--non-interactive",
-                                 "--continue", "--state", new_state, "--result", "true"]
+                current_args = base_args + ["--continue", "--state", new_state, "--result", "true"]
                 continue
             if IS_CONTAINER and option_name == "config_is_local":
-                current_args = ["config", "create", name, p_type, "--non-interactive",
-                                 "--continue", "--state", new_state, "--result", "false"]
+                current_args = base_args + ["--continue", "--state", new_state, "--result", "false"]
                 continue
 
             with _REMOTE_SESSIONS_LOCK:
@@ -2479,6 +2478,7 @@ async def create_remote_wizard(req: Request):
     with _REMOTE_SESSIONS_LOCK:
         PENDING_REMOTE_SESSIONS[session_id] = {
             "name": name, "type": p_type,
+            "base_args": list(args),
             "state": None, "status": "working",
             "option": None, "error": None,
         }
@@ -2513,13 +2513,38 @@ async def answer_remote_create(session_id: str, req: Request):
         if session["status"] != "input_required":
             return JSONResponse(status_code=409, content={"message": "Não há nenhuma pergunta pendente nesta sessão."})
         state = session["state"]
-        name, p_type = session["name"], session["type"]
+        base_args = session["base_args"]
         session["status"] = "working"
 
-    args = ["config", "create", name, p_type, "--non-interactive",
-            "--continue", "--state", state, "--result", str(value)]
+    args = base_args + ["--continue", "--state", state, "--result", str(value)]
     _advance_remote_session(session_id, args)
     return {"status": "working"}
+
+@app.post("/api/remotes/refresh/{name}")
+async def refresh_remote_token(name: str):
+    """Inicia a reautorização OAuth de um remote já existente.
+
+    No ZimaOS o browser está fora do container: quando o rclone pedir o
+    token, o frontend mostra o respetivo ``rclone authorize`` para correr
+    noutro computador e envia o resultado de volta para esta sessão.
+    """
+    clean_name = name.strip().rstrip(":")
+    if not clean_name:
+        return JSONResponse(status_code=400, content={"message": "Nome da cloud inválido."})
+    out, err, code = run_rclone_raw(["listremotes"], timeout=10)
+    configured = {line.strip().rstrip(":") for line in out.splitlines() if line.strip()}
+    if code != 0 or clean_name not in configured:
+        return JSONResponse(status_code=404, content={"message": "Cloud não encontrada."})
+
+    session_id = uuid.uuid4().hex
+    args = ["config", "reconnect", f"{clean_name}:", "--non-interactive"]
+    with _REMOTE_SESSIONS_LOCK:
+        PENDING_REMOTE_SESSIONS[session_id] = {
+            "name": clean_name, "type": None, "base_args": list(args),
+            "state": None, "status": "working", "option": None, "error": None,
+        }
+    _advance_remote_session(session_id, args)
+    return {"session_id": session_id, "status": "working"}
 
 @app.delete("/api/remotes/create/{session_id}")
 def cancel_remote_create(session_id: str):
