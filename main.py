@@ -2558,6 +2558,20 @@ async def refresh_remote_token(name: str):
     if code != 0 or clean_name not in configured:
         return JSONResponse(status_code=404, content={"message": "Cloud não encontrada."})
 
+    # Nas instalações nativas o rclone consegue abrir o browser do próprio
+    # equipamento. No ZimaOS (Docker) não há browser no container, pelo que
+    # abaixo usamos o fluxo remoto de copiar/colar o token.
+    if not IS_CONTAINER:
+        try:
+            subprocess.Popen(
+                [RCLONE_EXE, "--config", RCLONE_CONFIG, "config", "reconnect", f"{clean_name}:"],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                **_hidden_subprocess_kwargs(),
+            )
+            return {"status": "started", "mode": "local_browser"}
+        except OSError as error:
+            return JSONResponse(status_code=500, content={"message": str(error)})
+
     # ``listremotes --long`` devolve "nome: tipo". Precisamos do tipo para
     # gerar o comando de autorização que o utilizador irá correr fora do
     # container ZimaOS.
