@@ -2519,7 +2519,13 @@ async def answer_remote_create(session_id: str, req: Request):
         if session.get("operation") == "refresh_token":
             name = session["name"]
             session["status"] = "working"
-            out, err, code = run_rclone_raw(["config", "update", name, f"token={value}"], timeout=30)
+            # Sem esta flag, o rclone pode pedir confirmação/opções extra
+            # depois de já gravar o token, deixando o processo bloqueado até
+            # ao timeout e fazendo o frontend reportar uma falsa falha.
+            out, err, code = run_rclone_raw(
+                ["config", "update", name, f"token={value}", "--non-interactive"],
+                timeout=30,
+            )
             if code != 0:
                 session["status"] = "error"
                 session["error"] = err or out or "Não foi possível guardar o novo token."
