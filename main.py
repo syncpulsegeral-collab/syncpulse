@@ -2399,13 +2399,23 @@ def _advance_remote_session(session_id: str, args: list, timeout: int = 300):
     espera que o resultado seja colado de volta -- é esse passo (Option
     "config_token") que o wizard mostra ao utilizador com uma caixa de
     comando copiável e um campo para colar a resposta.
+
+    Versões mais recentes do rclone (>=1.75) introduziram uma pergunta nova
+    ANTES desta ("config_shared_client_id" -- sobre o client_id partilhado
+    do Google Drive estar a ser descontinuado durante 2026), que também
+    saltamos automaticamente com "sim" (continuar a usar o client_id
+    partilhado) -- não temos infraestrutura para os utilizadores criarem o
+    seu próprio client_id OAuth, por isso não faz sentido perguntar-lhes.
+
     Nas outras plataformas (Windows, macOS, Linux nativo), onde a app e o
     browser correm na mesma máquina, o comportamento mantém-se inalterado:
-    a pergunta "Use auto config?" continua a ser feita normalmente.
+    a pergunta "Use auto config?" continua a ser feita normalmente (a do
+    client_id partilhado é sempre saltada, em qualquer plataforma, já que
+    nunca oferecemos forma de configurar um client_id próprio).
     """
     def worker():
         current_args = args
-        for _ in range(5):  # guarda contra loops infinitos; normalmente resolve-se numa única iteração
+        for _ in range(5):  # guarda contra loops infinitos; normalmente resolve-se em 1-2 iterações
             data, out, err, code = run_rclone_json(current_args, timeout=timeout)
             with _REMOTE_SESSIONS_LOCK:
                 session = PENDING_REMOTE_SESSIONS.get(session_id)
@@ -2428,7 +2438,12 @@ def _advance_remote_session(session_id: str, args: list, timeout: int = 300):
                 option = data.get("Option") or {}
                 name, p_type = session["name"], session["type"]
 
-            if IS_CONTAINER and option.get("Name") == "config_is_local":
+            option_name = option.get("Name")
+            if option_name == "config_shared_client_id":
+                current_args = ["config", "create", name, p_type, "--non-interactive",
+                                 "--continue", "--state", new_state, "--result", "true"]
+                continue
+            if IS_CONTAINER and option_name == "config_is_local":
                 current_args = ["config", "create", name, p_type, "--non-interactive",
                                  "--continue", "--state", new_state, "--result", "false"]
                 continue
