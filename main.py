@@ -2563,11 +2563,19 @@ async def refresh_remote_token(name: str):
     # abaixo usamos o fluxo remoto de copiar/colar o token.
     if not IS_CONTAINER:
         try:
-            subprocess.Popen(
-                [RCLONE_EXE, "--config", RCLONE_CONFIG, "config", "reconnect", f"{clean_name}:"],
-                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                **_hidden_subprocess_kwargs(),
-            )
+            def reconnect_in_browser():
+                # Em builds empacotados não existe stdin de consola. A
+                # resposta mantém o fluxo "auto config" ativo, permitindo
+                # ao rclone abrir o browser predefinido do sistema.
+                result = subprocess.run(
+                    [RCLONE_EXE, "--config", RCLONE_CONFIG, "--interactive", "--auto-confirm",
+                     "config", "reconnect", f"{clean_name}:"],
+                    input="y\n", capture_output=True, text=True, timeout=300,
+                    **_hidden_subprocess_kwargs(),
+                )
+                if result.returncode != 0:
+                    print(f">>> [RCLONE] Falha ao renovar {clean_name}: {result.stderr or result.stdout}")
+            threading.Thread(target=reconnect_in_browser, daemon=True).start()
             return {"status": "started", "mode": "local_browser"}
         except OSError as error:
             return JSONResponse(status_code=500, content={"message": str(error)})
