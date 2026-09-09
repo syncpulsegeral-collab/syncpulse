@@ -133,6 +133,12 @@
 			background: #111d29; border: 1px solid #1e293b; border-radius: 12px; padding: 20px; 
 			position: relative; cursor: pointer; transition: 0.2s; border-left: 3px solid transparent;
 		}
+		.card[draggable="true"] { cursor: grab; }
+		.card[draggable="true"]:active { cursor: grabbing; }
+		.card.dragging { opacity: .42; transform: scale(.98); }
+		.card.drag-over { border-color: #38bdf8; box-shadow: 0 0 0 2px rgba(56,189,248,.22); }
+		.task-drag-handle { color: #475569; cursor: grab; padding: 3px 5px 3px 0; }
+		.task-drag-handle:hover { color: #38bdf8; }
 		.card.selected-card { border-left-color: #3b82f6; border-color: #3b82f6; background: #162635; }
 		.card.active-border { border-left-color: #3b82f6; }
 
@@ -520,7 +526,7 @@
 							<path d="M100 256H160L190 140L256 380L322 140L352 256H412" stroke="#3b82f6" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>
 						</svg>
 					</div>
-					<h2 class="text-xl font-black text-white uppercase tracking-widest" data-key="welcome_title">SyncPulse Version 3.1</h2>
+					<h2 class="text-xl font-black text-white uppercase tracking-widest" data-key="welcome_title">SyncPulse Version 3.2</h2>
 					<p class="text-[10px] text-slate-500 font-bold uppercase mt-1">ZimaOS Edition</p>
 				</div>
 
@@ -1064,7 +1070,7 @@
                 </div>
                 
                 <div class="text-center opacity-70 text-[11px] font-mono text-slate-500 pt-2">
-                    SyncPulse ZIMAOS EDITION<br>Version 3.1
+                    SyncPulse ZIMAOS EDITION<br>Version 3.2
                 </div>
             </div>
 
@@ -1081,7 +1087,7 @@
 			en: {
 				// Splash & Welcome
 				starting_app: "Starting SyncPulse...",
-				welcome_title: "SyncPulse Version 3.1",
+				welcome_title: "SyncPulse Version 3.2",
 				zima_edition: "ZimaOS Edition",
 				about_sync_title: "About the Project",
 				about_sync_text: "SyncPulse is a professional interface and automation engine designed to simplify hybrid storage management on ZimaOS. It acts as an intelligent bridge between your hardware and the leading Cloud services.",
@@ -1332,7 +1338,7 @@
 			},
 			fr: {
 				starting_app: "Démarrage de SyncPulse...",
-				welcome_title: "SyncPulse Version 3.1",
+				welcome_title: "SyncPulse Version 3.2",
 				zima_edition: "ZimaOS Edition",
 				about_sync_title: "À propos du projet",
 				about_sync_text: "SyncPulse est une interface professionnelle et un moteur d'automatisation conçu pour simplifier la gestion du stockage hybride sur ZimaOS.",
@@ -1369,7 +1375,7 @@
 			},
 			de: {
 				starting_app: "SyncPulse wird gestartet...",
-				welcome_title: "SyncPulse Version 3.1",
+				welcome_title: "SyncPulse Version 3.2",
 				zima_edition: "ZimaOS Edition",
 				about_sync_title: "Über das Projekt",
 				about_sync_text: "SyncPulse ist eine professionelle Schnittstelle und Automatisierungs-Engine zur Vereinfachung der hybriden Speicherverwaltung auf ZimaOS.",
@@ -1665,9 +1671,9 @@
                 if (status === 'idle' && stats && stats.percent === 100) statusText = lo.status_done;
     
                 return `
-                <div class="card ${isSelected ? 'selected-card' : ''} ${isRunning ? 'active-border' : ''}" onclick="selectTask('${t.id}')">
+                <div class="card ${isSelected ? 'selected-card' : ''} ${isRunning ? 'active-border' : ''}" data-task-id="${t.id}" draggable="true" onclick="selectTask('${t.id}')">
                     <div class="card-header">
-                        <div class="card-title"><div class="status-dot ${isRunning ? 'active' : ''}"></div> ${t.name}</div>
+                        <div class="card-title"><i class="fas fa-grip-vertical task-drag-handle" title="Arrastar para reordenar"></i><div class="status-dot ${isRunning ? 'active' : ''}"></div> ${t.name}</div>
                         <div class="flex items-center gap-3">
                             ${hasErrors ? `<i class="fas fa-exclamation-triangle text-yellow-500 text-lg animate-pulse"></i>` : ''}
                             <div class="badge-status">${statusText}</div>
@@ -1692,6 +1698,7 @@
                     </div>
                 </div>`;
             }).join('');
+            enableTaskReordering(grid);
     
             if (tidStr) {
                 // Vai buscar os dados ao STATE ou usa valores padrão se ainda não existirem
@@ -1713,6 +1720,67 @@
                 updateFilaELogs(tidStr);
             }
             document.getElementById('t-count').innerText = tasks.length;
+        }
+
+        let draggedTaskId = null;
+        let suppressTaskClick = false;
+
+        function enableTaskReordering(grid) {
+            grid.querySelectorAll('.card[draggable="true"]').forEach(card => {
+                card.addEventListener('dragstart', event => {
+                    draggedTaskId = card.dataset.taskId;
+                    suppressTaskClick = true;
+                    card.classList.add('dragging');
+                    event.dataTransfer.effectAllowed = 'move';
+                    event.dataTransfer.setData('text/plain', draggedTaskId);
+                });
+                card.addEventListener('dragend', () => {
+                    card.classList.remove('dragging');
+                    grid.querySelectorAll('.drag-over').forEach(item => item.classList.remove('drag-over'));
+                    setTimeout(() => { suppressTaskClick = false; }, 0);
+                    draggedTaskId = null;
+                });
+                card.addEventListener('dragover', event => {
+                    if (!draggedTaskId || card.dataset.taskId === draggedTaskId) return;
+                    event.preventDefault();
+                    event.dataTransfer.dropEffect = 'move';
+                    card.classList.add('drag-over');
+                });
+                card.addEventListener('dragleave', () => card.classList.remove('drag-over'));
+                card.addEventListener('drop', async event => {
+                    event.preventDefault();
+                    card.classList.remove('drag-over');
+                    const sourceId = event.dataTransfer.getData('text/plain') || draggedTaskId;
+                    const sourceIndex = tasks.findIndex(task => String(task.id) === String(sourceId));
+                    let targetIndex = tasks.findIndex(task => String(task.id) === String(card.dataset.taskId));
+                    if (sourceIndex < 0 || targetIndex < 0 || sourceIndex === targetIndex) return;
+
+                    const previousOrder = [...tasks];
+                    const [moved] = tasks.splice(sourceIndex, 1);
+                    if (sourceIndex < targetIndex) targetIndex -= 1;
+                    const box = card.getBoundingClientRect();
+                    const insertAfter = event.clientY > box.top + box.height / 2;
+                    tasks.splice(targetIndex + (insertAfter ? 1 : 0), 0, moved);
+                    refreshUI();
+
+                    try {
+                        const response = await fetch('/api/tasks', {
+                            method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(tasks)
+                        });
+                        if (!response.ok) throw new Error('Não foi possível guardar a nova ordem.');
+                    } catch (error) {
+                        tasks = previousOrder;
+                        refreshUI();
+                        alert(error.message || 'Não foi possível guardar a nova ordem.');
+                    }
+                });
+                card.addEventListener('click', event => {
+                    if (suppressTaskClick) {
+                        event.stopImmediatePropagation();
+                        event.preventDefault();
+                    }
+                }, true);
+            });
         }
     
         // 1. Variáveis de controlo de memória (fora da função)
