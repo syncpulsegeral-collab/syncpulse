@@ -92,7 +92,7 @@ IS_MACOS = platform.system() == "Darwin"
 # ficheiro (ex: "SyncPulse v2.1_Setup.exe" -> APP_VERSION = "2.1"), já que
 # main.py viaja dentro do próprio instalador e é ele que diz à app "em que
 # versão estou eu, a correr agora".
-APP_VERSION = "3.0"
+APP_VERSION = "3.1"
 UPDATE_REPO = "syncpulsegeral-collab/syncpulse"
 UPDATE_DIR = "Downloads/Windows"
 UPDATE_FILENAME_RE = re.compile(r"^SyncPulse v([0-9]+(?:\.[0-9]+)*)_Setup\.exe$", re.IGNORECASE)
@@ -2908,51 +2908,70 @@ async def delete_cloud_config(name: str):
         print(f">>> [API] Erro ao processar pedido: {e}")
         return JSONResponse(status_code=500, content={"message": str(e)})
         
+async def _get_remote_quota(name, r_type):
+    """Corre "rclone about" para UM remote, sem bloquear o event loop --
+    isto é chamado em paralelo para todos os remotes (ver list_remotes_with_quota
+    mais abaixo), por isso o tempo total deixa de ser a soma de todas as
+    clouds e passa a ser só o tempo da mais lenta."""
+    quota = {"total": 0, "used": 0, "free": 0, "supported": False}
+    status, error_detail = "ok", None
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            RCLONE_EXE, "--config", RCLONE_CONFIG, "about", f"{name}:", "--json",
+            stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+            **_hidden_subprocess_kwargs()
+        )
+        try:
+            stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=8)
+        except asyncio.TimeoutError:
+            proc.kill()
+            await proc.wait()
+            return {"name": name, "type": r_type, "quota": quota, "status": "error", "error_detail": "timeout"}
+
+        if proc.returncode == 0:
+            data = json.loads(stdout.decode())
+            quota = {"total": data.get("total", 0), "used": data.get("used", 0), "supported": True}
+        else:
+            err = (stderr.decode(errors="ignore") or "").lower()
+            if "not supported" in err or "doesn't support" in err:
+                pass  # backend simplesmente não reporta quota, não é um erro de ligação
+            elif any(k in err for k in ["invalid_grant", "oauth", "token", "401", "403", "unauthorized", "authentication"]):
+                status, error_detail = "error", "auth"
+            elif any(k in err for k in ["timeout", "deadline", "i/o timeout"]):
+                status, error_detail = "error", "timeout"
+            elif any(k in err for k in ["no such host", "connection refused", "network is unreachable", "couldn't", "could not", "dial tcp"]):
+                status, error_detail = "error", "connection"
+            elif err.strip():
+                status, error_detail = "error", "unknown"
+    except Exception:
+        pass
+    return {"name": name, "type": r_type, "quota": quota, "status": status, "error_detail": error_detail}
+
+
 @app.get("/api/remotes/list_with_quota")
 async def list_remotes_with_quota():
     if not os.path.exists(RCLONE_CONFIG):
         return []
-    
+
     try:
-        # 1. Lista remotes
-        res_list = subprocess.run([RCLONE_EXE, "--config", RCLONE_CONFIG, "listremotes", "--long"], 
+        # 1. Lista remotes (rápido, só lê o ficheiro de configuração local)
+        res_list = subprocess.run([RCLONE_EXE, "--config", RCLONE_CONFIG, "listremotes", "--long"],
                                   capture_output=True, text=True, timeout=5, **_hidden_subprocess_kwargs())
         if res_list.returncode != 0: return []
-        
-        remotes = []
+
+        entries = []
         for line in res_list.stdout.strip().split('\n'):
             if ':' in line:
                 name = line.split(':')[0].strip()
                 r_type = line.split(':')[1].strip()
-                
-                # 2. Tenta quota, mas com timeout curto para não travar a UI
-                quota = {"total": 0, "used": 0, "free": 0, "supported": False}
-                status, error_detail = "ok", None
-                try:
-                    res_about = subprocess.run([RCLONE_EXE, "--config", RCLONE_CONFIG, "about", f"{name}:", "--json"], 
-                                             capture_output=True, text=True, timeout=8, **_hidden_subprocess_kwargs())
-                    if res_about.returncode == 0:
-                        data = json.loads(res_about.stdout)
-                        quota = { "total": data.get("total", 0), "used": data.get("used", 0), "supported": True }
-                    else:
-                        err = (res_about.stderr or "").lower()
-                        if "not supported" in err or "doesn't support" in err:
-                            pass  # backend simplesmente não reporta quota, não é um erro de ligação
-                        elif any(k in err for k in ["invalid_grant", "oauth", "token", "401", "403", "unauthorized", "authentication"]):
-                            status, error_detail = "error", "auth"
-                        elif any(k in err for k in ["timeout", "deadline", "i/o timeout"]):
-                            status, error_detail = "error", "timeout"
-                        elif any(k in err for k in ["no such host", "connection refused", "network is unreachable", "couldn't", "could not", "dial tcp"]):
-                            status, error_detail = "error", "connection"
-                        elif err.strip():
-                            status, error_detail = "error", "unknown"
-                except subprocess.TimeoutExpired:
-                    status, error_detail = "error", "timeout"
-                except Exception:
-                    pass
-                
-                remotes.append({"name": name, "type": r_type, "quota": quota, "status": status, "error_detail": error_detail})
-        return remotes
+                entries.append((name, r_type))
+
+        # 2. Consulta a quota de TODAS as clouds em paralelo, não uma a
+        # seguir à outra -- com N clouds, o tempo total passa a ser o da
+        # mais lenta, não a soma de todas, e a app deixa de ficar congelada
+        # à espera.
+        remotes = await asyncio.gather(*[_get_remote_quota(name, r_type) for name, r_type in entries])
+        return list(remotes)
     except:
         return []
 
