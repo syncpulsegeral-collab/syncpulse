@@ -2,7 +2,7 @@
 FROM python:3.10-slim
 
 # 2. Definir versão do Rclone e evitar conflitos de variáveis de ambiente
-ARG INSTALL_RCLONE_VER=1.75.0
+ARG INSTALL_RCLONE_VER=1.75.2
 ENV TZ=Europe/Lisbon
 ENV PYTHONUNBUFFERED=1
 # O CMD mais abaixo arranca o Uvicorn diretamente na porta 8181 -- esta
@@ -21,7 +21,7 @@ RUN apt-get update && apt-get install -y -qq \
     fuse3 \
     && rm -rf /var/lib/apt/lists/*
 
-# 4. Instalar Rclone v1.75.0 via pacote .deb (específico para AMD64/ZimaOS)
+# 4. Instalar Rclone v1.75.2 via pacote .deb (específico para AMD64/ZimaOS)
 RUN curl -fSL -o rclone.deb https://downloads.rclone.org/v${INSTALL_RCLONE_VER}/rclone-v${INSTALL_RCLONE_VER}-linux-amd64.deb \
     && dpkg -i rclone.deb \
     && rm rclone.deb
@@ -49,7 +49,7 @@ RUN mkdir -p /app /www /config /app_dist /www_dist
 COPY main.py /app_dist/main.py
 COPY www/ /www_dist/
 
-# 8. Definir diretório de trabalho na pasta protegida
+# 8. Definir diretório de trabalho na pasta protegidas
 WORKDIR /app_dist
 
 # 9. Expor a porta da API
